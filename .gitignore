@@ -1,0 +1,19 @@
+# Planilha do processo anterior: só referência local, NUNCA versionar (LGPD)
+referencia/
+# Arquivos de inscrição reais importados/baixados
+importados/
+*.xlsx
+!exemplos/*.xlsx
+inscricoes*.csv
+!exemplos/*.csv
+respostas*.csv
+backup*.json
+# Node / build
+node_modules/
+dist/
+web/dist/
+.vercel/
+.env
+.env.*
+*.log
+.DS_Store
