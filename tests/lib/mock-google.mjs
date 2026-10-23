@@ -38,6 +38,7 @@ class Aba {
   }
   getDataRange() { return new Intervalo(this, 1, 1, Math.max(1, this.getLastRow()), Math.max(1, this.getLastColumn())); }
   clear() { this.dados = []; return this; }
+  deleteRow(r) { this.dados.splice(r - 1, 1); return this; }
   hideSheet() { this.oculta = true; return this; }
   protect() { return encadeavel({ getEditors: () => [], canDomainEdit: () => false, getDescription: () => 'PS:' }); }
   setFrozenRows() { return this; } setFrozenColumns() { return this; } setColumnWidth() { return this; } setRowHeight() { return this; }

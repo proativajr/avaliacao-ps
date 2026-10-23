@@ -100,11 +100,6 @@ function apagarDados_(zerarContadores) {
   });
 }
 
-/** Limpa o cache do servidor (definido no módulo da API; aqui um fallback seguro). */
-function limparCache_() {
-  try { CacheService.getScriptCache().removeAll(['config', 'candidatos', 'avaliadores', 'criterios']); } catch (e) { /* sem cache */ }
-}
-
 // ------------------- Itens do menu da planilha -------------------
 
 function menuGerarDadosFicticios() {
