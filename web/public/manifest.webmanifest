@@ -1,0 +1,13 @@
+{
+  "name": "Avaliação do PS · Proativa Jr.",
+  "short_name": "Avaliação PS",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f6f8",
+  "theme_color": "#1f4fbf",
+  "icons": [
+    { "src": "icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

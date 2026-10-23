@@ -84,3 +84,37 @@ O URL continua o mesmo.
 - etapa fechada, candidato inativo, critério e nota inválidos são recusados;
 - regerar token derruba o link antigo; desativar avaliador bloqueia o acesso;
 - importação: reimportar não duplica, "criar mesmo assim", atualizar sem trocar o nome editado.
+
+## Marco 3: site (admin) com cadastro de avaliadores e importação de candidatos
+
+O site fica em `web/` (Vite + Preact + TypeScript) e é publicado como página estática.
+
+### Publicar o site na Vercel (uns 5 minutos, uma vez só)
+
+1. Entre em [vercel.com](https://vercel.com) com a conta do GitHub **proativajr**.
+2. **Add New… → Project → Import** o repositório `avaliacao-ps`. Não mude nada (o `vercel.json` já diz como montar). **Deploy**.
+3. Anote o endereço gerado (ex.: `https://avaliacao-ps.vercel.app`).
+4. No GitHub, abra `web/public/config.js` → ✏ (editar) → cole o URL do Web App do Apps Script em `ensaio:` (e depois em `producao:`) → **Commit changes**. A Vercel publica de novo sozinha.
+5. Na planilha, aba **Config**, preencha `url_app` com o endereço do site. Depois use **PS Proativa → Mostrar link do admin**.
+
+### Como testar
+
+1. Cole o novo `Codigo.gs` no Apps Script, salve e **Gerenciar implantações → ✏ → Nova versão → Implantar**.
+2. Abra o link do admin. Com a lista vazia, o painel já abre em **Importar candidatos**.
+3. Importe `exemplos/inscricoes-ficticias.csv` (baixe do GitHub). Confira:
+   - colunas sugeridas automaticamente (dá para trocar);
+   - avisos de nome vazio, email inválido, nome em CAIXA ALTA corrigido, espaços extras e linha repetida;
+   - para cada duplicado: ignorar, atualizar ou criar mesmo assim.
+4. Importe depois `exemplos/inscricoes-ficticias-reimportar.csv`: só **1** inscrição nova deve entrar.
+5. Teste também a colagem: copie algumas linhas de uma planilha (com o cabeçalho) e cole na caixa da direita.
+6. Em **Candidatos**: edite o nome de exibição, mude o status, veja a **Inscrição** original. A coluna "Os avaliadores veem"
+   mostra o sobrenome quando dois candidatos têm o mesmo primeiro nome.
+7. Em **Avaliadores**: **Colar lista** (nome e email por linha), **Copiar link**, **WhatsApp**, **Regerar link** e **Desativar**.
+
+### Testar no computador, sem Google (para quem programa)
+
+```bash
+npm install
+npm run build && node scripts/servidor-local.mjs   # API local com dados fictícios (memória)
+# em outro terminal: crie web/dist/config.js apontando para http://localhost:8787 e rode: npx vite preview
+```

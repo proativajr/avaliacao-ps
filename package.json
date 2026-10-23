@@ -5,7 +5,23 @@
   "type": "module",
   "description": "Sistema de avaliação do processo seletivo da Proativa Jr.",
   "scripts": {
+    "dev": "vite",
+    "build": "tsc -p . && vite build",
+    "preview": "vite preview",
     "build:gas": "node scripts/build-gas.mjs",
     "test": "npm run build:gas && node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@fontsource/atkinson-hyperlegible": "^5.2.6",
+    "papaparse": "^5.5.3",
+    "preact": "^10.27.3",
+    "read-excel-file": "^5.8.0",
+    "write-excel-file": "^2.3.2"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.2",
+    "@types/papaparse": "^5.5.2",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.7"
   }
 }

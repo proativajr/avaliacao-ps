@@ -1838,7 +1838,7 @@ ACOES_ADMIN['admin.importarCandidatos'] = function (dados) {
     lerObjetos_(ABAS.INSCRICOES).forEach(function (i) { hashes[String(i.hash_linha)] = String(i.candidato_id); });
 
     var criar = linhas.filter(function (l) { return l.acao === 'criar' && (l.forcar || !hashes[l.hash]); });
-    var ignoradas = linhas.length - criar.length - linhas.filter(function (l) { return l.acao === 'atualizar'; }).length;
+    var ignoradas = (Number(lote.ignorados_no_app) || 0) + linhas.length - criar.length - linhas.filter(function (l) { return l.acao === 'atualizar'; }).length;
     var ids = proximosIds_('c', ABAS.CANDIDATOS, criar.length);
     var novos = [], inscr = [], atualizados = [];
     criar.forEach(function (l, i) {
