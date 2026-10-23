@@ -1,0 +1,11 @@
+{
+  "name": "avaliacao-ps",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Sistema de avaliação do processo seletivo da Proativa Jr.",
+  "scripts": {
+    "build:gas": "node scripts/build-gas.mjs",
+    "test": "npm run build:gas && node --test tests/*.test.mjs"
+  }
+}
