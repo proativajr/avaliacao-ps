@@ -106,7 +106,7 @@ export function Resultados({ d, setD, acao, sessao }: PropsAba) {
 
       <div class="indicadores">
         <div class="indicador"><b>{notasNaEtapa.length}</b><span>notas registradas</span></div>
-        <div class="indicador"><b>{totalPossivel ? Math.round((totalCompletos / totalPossivel) * 100) : 0}%</b><span>de conclusão ({totalCompletos}/{totalPossivel})</span></div>
+        <div class="indicador metrica"><b>{totalPossivel ? Math.round((totalCompletos / totalPossivel) * 100) : 0}%</b><span>de conclusão ({totalCompletos}/{totalPossivel})</span></div>
         <div class="indicador"><b>{cfg.nota_de_corte === '' ? '—' : acima}</b><span>acima do corte{cfg.nota_de_corte !== '' ? ` (${num2(Number(cfg.nota_de_corte))})` : ''}</span></div>
         <div class="indicador"><b>{insuf}</b><span>com dados insuficientes</span></div>
         <div class="indicador"><b>{diverg}</b><span>com divergência</span></div>

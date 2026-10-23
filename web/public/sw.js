@@ -1,9 +1,9 @@
 // Service worker: guarda o "casco" do app para abrir sem internet.
 // As chamadas à API (script.google.com) nunca passam por cache.
-const CACHE = 'avaliacao-ps-v1';
+const CACHE = 'avaliacao-ps-v2';
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './index.html', './config.js', './manifest.webmanifest', './icone.svg'])).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './index.html', './config.js', './manifest.webmanifest', './marca/simbolo-192.png', './marca/simbolo-96.png', './marca/assinatura-horizontal-positiva.png'])).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {

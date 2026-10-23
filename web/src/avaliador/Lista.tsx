@@ -4,6 +4,7 @@ import { normalizarNome } from '@shared/texto.js';
 import { gravar, ler } from '../api';
 import type { Contexto, Pacote } from './Avaliador';
 import type { EstadoFila } from './fila';
+import { Simbolo } from '../marca';
 
 export interface PropsTela {
   ctx: Contexto; estadoFila: { e: EstadoFila; n: number }; semConexao: boolean; erro: string;
@@ -46,6 +47,7 @@ export function Lista({ ctx, estadoFila, semConexao, abertas, trocarEtapa, abrir
     <>
       <header class="av-topo lista">
         <div class="av-linha">
+          <Simbolo />
           <div class="av-titulo">
             <b>{pacote.processo.nome || 'Processo seletivo'}</b>
             <small>Olá, {pacote.eu.nome.split(' ')[0]}</small>

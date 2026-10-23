@@ -1,6 +1,10 @@
 import { render } from 'preact';
-import '@fontsource/atkinson-hyperlegible/400.css';
-import '@fontsource/atkinson-hyperlegible/700.css';
+import '@fontsource/poppins/latin-400.css';
+import '@fontsource/poppins/latin-500.css';
+import '@fontsource/poppins/latin-600.css';
+import '@fontsource/poppins/latin-700.css';
+import '@fontsource/poppins/latin-ext-400.css';
+import '@fontsource/poppins/latin-ext-600.css';
 import './estilo.css';
 import { App } from './App';
 

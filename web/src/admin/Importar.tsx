@@ -109,7 +109,7 @@ export function Importar({ d, setD, acao, aoTerminar }: PropsAba & { aoTerminar:
                       const v = (e.target as HTMLSelectElement).value;
                       setMapa((m) => { const n = { ...m }; if (v === '') delete n[c.id]; else n[c.id] = Number(v); return n; });
                     }}>
-                      <option value="">— não usar —</option>
+                      <option value="">Não usar</option>
                       {colunas.map((col, i) => <option value={i}>{col}</option>)}
                     </select>
                     <small class="ajuda">{exemplo ? 'Ex.: ' + String(exemplo).slice(0, 60) : ' '}</small>

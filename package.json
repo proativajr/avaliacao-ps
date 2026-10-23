@@ -12,7 +12,7 @@
     "test": "npm run build:gas && node --test tests/*.test.mjs"
   },
   "dependencies": {
-    "@fontsource/atkinson-hyperlegible": "^5.2.6",
+    "@fontsource/poppins": "^5.2.7",
     "papaparse": "^5.5.3",
     "preact": "^10.27.3",
     "read-excel-file": "^5.8.0",

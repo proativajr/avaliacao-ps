@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'preact/hooks';
 import { chamar, ErroApi, Sessao, sair, trocarSessao } from '../api';
 import type { AdminDados } from '../tipos';
 import { FaixaTeste, toast } from '../ui';
+import { Assinatura } from '../marca';
 import { Avaliadores } from './Avaliadores';
 import { Candidatos } from './Candidatos';
 import { Resultados } from './Resultados';
@@ -70,6 +71,7 @@ export function Admin({ sessao, outras }: { sessao: Sessao; outras: Sessao[] }) 
       {ensaio && <FaixaTeste />}
       <header class="adm-topo">
         <div class="linha1">
+          <Assinatura />
           <h1>{d.config.nome_processo || 'Processo seletivo'} · Painel do admin</h1>
           {ocupado && <span class="selo marca" role="status">Salvando…</span>}
           {d.planilha_url && <a class="botao pequeno" href={d.planilha_url} target="_blank" rel="noopener">Abrir planilha</a>}
