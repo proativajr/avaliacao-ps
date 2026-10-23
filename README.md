@@ -118,3 +118,31 @@ npm install
 npm run build && node scripts/servidor-local.mjs   # API local com dados fictícios (memória)
 # em outro terminal: crie web/dist/config.js apontando para http://localhost:8787 e rode: npx vite preview
 ```
+
+## Marco 4: tela do avaliador
+
+Pensada para celular 360×640 e só com toques: um candidato por tela, critérios agrupados por bloco
+(um bloco aberto por vez, e ele cabe inteiro na tela), botões grandes de 1 a 5 e "Não posso avaliar".
+
+- **Salvamento automático a cada toque.** A nota vai primeiro para o aparelho e depois para o servidor, em lotes.
+  Indicador no topo: *Salvando… / Salvo ✓ / Sem conexão*. Sem internet, as notas ficam guardadas (mesmo fechando
+  o app) e são enviadas quando a conexão volta. O servidor nunca duplica.
+- **Não posso avaliar este candidato:** marca todos os critérios como "não posso avaliar" de uma vez
+  (conta como concluído, e não entra nas médias).
+- **Em votação agora:** na aba **Votação** do admin, marque quem acabou de apresentar. Em até 20 segundos aparece
+  um atalho para esses candidatos no topo da lista dos avaliadores, e o admin acompanha quantos já completaram.
+- Lista com busca, filtros (Todos, Pendentes, Parciais, Completos) e "Você avaliou X de Y".
+- Anterior/próximo, "Ir para o próximo pendente", observação opcional por candidato, descrições curtas ou completas.
+- No computador: teclas **1–5** e **N**, **↑ ↓** trocam o critério, **← →** trocam o candidato.
+- Etapa fechada (ou avaliação fechada na Configuração): aviso e somente leitura.
+- Tema claro e escuro conforme o celular.
+
+### Como testar
+
+1. Atualize o `Codigo.gs` (cole, salve, **Gerenciar implantações → Nova versão**) e aguarde a Vercel publicar.
+2. No modo ensaio, gere dados fictícios (**PS Proativa → Ensaio: gerar dados fictícios**, ou pela aba **Ensaio e dados**).
+3. Na aba **Avaliadores**, copie o link de um avaliador e abra no celular.
+4. Avalie alguns candidatos. Ligue o modo avião, dê mais notas (aparece "Sem conexão"), feche o app, desligue
+   o modo avião e abra de novo: as notas são enviadas e aparecem na planilha (aba **Avaliacoes**) sem duplicar.
+5. No computador, abra a aba **Votação**, selecione dois candidatos e clique em **Abrir votação**. No celular,
+   o atalho aparece no topo da lista.
