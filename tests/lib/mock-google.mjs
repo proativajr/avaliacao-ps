@@ -22,7 +22,7 @@ class Aba {
   constructor(nome, planilha) { this.nome = nome; this.planilha = planilha; this.dados = []; this.maxCols = 26; this.maxRows = 1000; this.oculta = false; }
   getName() { return this.nome; }
   celula(r, c) { return (this.dados[r - 1] || [])[c - 1]; }
-  definir(r, c, v) { while (this.dados.length < r) this.dados.push([]); const l = this.dados[r - 1]; while (l.length < c) l.push(''); l[c - 1] = v; }
+  definir(r, c, v) { if (typeof v === 'string' && v.startsWith("'")) v = v.slice(1); /* como no Sheets: apóstrofo = texto */ while (this.dados.length < r) this.dados.push([]); const l = this.dados[r - 1]; while (l.length < c) l.push(''); l[c - 1] = v; }
   getLastRow() { for (let i = this.dados.length; i > 0; i--) if ((this.dados[i - 1] || []).some((v) => v !== '' && v != null)) return i; return 0; }
   getLastColumn() { let m = 0; this.dados.forEach((l) => l.forEach((v, j) => { if (v !== '' && v != null) m = Math.max(m, j + 1); })); return m; }
   getMaxColumns() { return this.maxCols; }
@@ -57,6 +57,7 @@ class Intervalo {
     vals.forEach((l, i) => l.forEach((v, j) => this.aba.definir(this.r + i, this.c + j, v))); return this;
   }
   getValue() { return this.getValues()[0][0]; }
+  getDisplayValue() { return String(this.getValue()); }
   setValue(v) { this.aba.definir(this.r, this.c, v); return this; }
   setFormula(f) { this.aba.definir(this.r, this.c, { formula: f }); return this; }
   getFormula() { const v = this.aba.celula(this.r, this.c); return v && v.formula ? v.formula : ''; }

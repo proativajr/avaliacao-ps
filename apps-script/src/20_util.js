@@ -113,16 +113,28 @@ function proximosIds_(prefixo, nomeAba, quantidade) {
 /** Lê a aba Config como objeto {chave: valor}. */
 function lerConfig_() {
   var cfg = {};
-  lerObjetos_(ABAS.CONFIG).forEach(function (o) { cfg[String(o.chave).trim()] = o.valor; });
+  lerObjetos_(ABAS.CONFIG).forEach(function (o) {
+    var v = o.valor;
+    // Datas viram texto AAAA-MM-DD (a planilha às vezes converte sozinha)
+    if (v instanceof Date) v = Utilities.formatDate(v, 'America/Fortaleza', 'yyyy-MM-dd');
+    cfg[String(o.chave).trim()] = v;
+  });
   return cfg;
+}
+
+/** Chaves gravadas como texto puro (com apóstrofo), para a planilha não transformar em data. */
+var CONFIG_TEXTO = ['data_inicio', 'data_fim', 'em_votacao', 'url_app', 'nome_processo'];
+function valorConfigParaCelula_(chave, valor) {
+  return CONFIG_TEXTO.indexOf(chave) >= 0 && valor !== '' ? "'" + String(valor) : valor;
 }
 
 /** Grava um valor na aba Config (cria a chave se não existir). */
 function gravarConfig_(chave, valor) {
   var linhas = lerObjetos_(ABAS.CONFIG);
   var achou = linhas.filter(function (o) { return o.chave === chave; })[0];
-  if (achou) aba_(ABAS.CONFIG).getRange(achou._linha, 2).setValue(valor);
-  else acrescentar_(ABAS.CONFIG, [{ chave: chave, valor: valor, descricao: '' }]);
+  var v = valorConfigParaCelula_(chave, valor);
+  if (achou) aba_(ABAS.CONFIG).getRange(achou._linha, 2).setValue(v);
+  else acrescentar_(ABAS.CONFIG, [{ chave: chave, valor: v, descricao: '' }]);
 }
 
 function ehSim_(v) {

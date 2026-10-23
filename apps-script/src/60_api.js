@@ -328,8 +328,8 @@ ACOES_ADMIN['admin.notas'] = function () {
 
 var VALIDA_CONFIG = {
   nome_processo: function (v) { return String(v).trim().slice(0, 80); },
-  data_inicio: function (v) { return String(v).trim(); },
-  data_fim: function (v) { return String(v).trim(); },
+  data_inicio: dataOuVazio_,
+  data_fim: dataOuVazio_,
   avaliacao_aberta: simNao_,
   avaliadores_veem_notas_dos_outros: simNao_,
   nota_de_corte: function (v) { return numeroOuVazio_(v, 1, 5); },
@@ -343,6 +343,12 @@ var VALIDA_CONFIG = {
   },
   url_app: function (v) { return String(v).trim().replace(/\/+$/, ''); },
 };
+
+function dataOuVazio_(v) {
+  var s = String(v || '').trim();
+  if (s && !/^\d{4}-\d{2}-\d{2}$/.test(s)) throw erroApi_('VALIDACAO', 'Use datas no formato AAAA-MM-DD.');
+  return s;
+}
 
 function simNao_(v) {
   if (v === true) return 'SIM';

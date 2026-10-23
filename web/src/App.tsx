@@ -1,7 +1,14 @@
+import { useEffect, useState } from 'preact/hooks';
 import { lerSessao, urlApi } from './api';
 import { Toasts } from './ui';
-import { Admin } from './admin/Admin';
 import { Avaliador } from './avaliador/Avaliador';
+
+/** O painel do admin só é baixado por quem é admin (o app do avaliador fica mais leve). */
+function AdminPreguicoso(p: any) {
+  const [C, setC] = useState<any>(null);
+  useEffect(() => { import('./admin/Admin').then((m) => setC(() => m.Admin)); }, []);
+  return C ? <C {...p} /> : <div class="carregando">Carregando o painel…</div>;
+}
 
 const { atual, outras } = lerSessao();
 
@@ -30,7 +37,7 @@ export function App() {
   }
   return (
     <>
-      {atual.perfil === 'admin' ? <Admin sessao={atual} outras={outras} /> : <Avaliador sessao={atual} outras={outras} />}
+      {atual.perfil === 'admin' ? <AdminPreguicoso sessao={atual} outras={outras} /> : <Avaliador sessao={atual} outras={outras} />}
       <Toasts />
     </>
   );

@@ -715,16 +715,28 @@ function proximosIds_(prefixo, nomeAba, quantidade) {
 /** Lê a aba Config como objeto {chave: valor}. */
 function lerConfig_() {
   var cfg = {};
-  lerObjetos_(ABAS.CONFIG).forEach(function (o) { cfg[String(o.chave).trim()] = o.valor; });
+  lerObjetos_(ABAS.CONFIG).forEach(function (o) {
+    var v = o.valor;
+    // Datas viram texto AAAA-MM-DD (a planilha às vezes converte sozinha)
+    if (v instanceof Date) v = Utilities.formatDate(v, 'America/Fortaleza', 'yyyy-MM-dd');
+    cfg[String(o.chave).trim()] = v;
+  });
   return cfg;
+}
+
+/** Chaves gravadas como texto puro (com apóstrofo), para a planilha não transformar em data. */
+var CONFIG_TEXTO = ['data_inicio', 'data_fim', 'em_votacao', 'url_app', 'nome_processo'];
+function valorConfigParaCelula_(chave, valor) {
+  return CONFIG_TEXTO.indexOf(chave) >= 0 && valor !== '' ? "'" + String(valor) : valor;
 }
 
 /** Grava um valor na aba Config (cria a chave se não existir). */
 function gravarConfig_(chave, valor) {
   var linhas = lerObjetos_(ABAS.CONFIG);
   var achou = linhas.filter(function (o) { return o.chave === chave; })[0];
-  if (achou) aba_(ABAS.CONFIG).getRange(achou._linha, 2).setValue(valor);
-  else acrescentar_(ABAS.CONFIG, [{ chave: chave, valor: valor, descricao: '' }]);
+  var v = valorConfigParaCelula_(chave, valor);
+  if (achou) aba_(ABAS.CONFIG).getRange(achou._linha, 2).setValue(v);
+  else acrescentar_(ABAS.CONFIG, [{ chave: chave, valor: v, descricao: '' }]);
 }
 
 function ehSim_(v) {
@@ -773,6 +785,13 @@ function setup() {
   Object.keys(CABECALHOS).forEach(function (nome) { garantirCabecalho_(nome); });
   preencherPadroes_();
   montarAbasDeCalculo_();
+  // Conferência de segurança: se as fórmulas não forem entendidas (problema de idioma da planilha),
+  // troca o idioma para inglês (EUA), que sempre funciona, e refaz as fórmulas.
+  SpreadsheetApp.flush();
+  if (/^#(ERROR|NAME|ERRO)/i.test(String(aba_(ABAS.AUX).getRange('B4').getDisplayValue()))) {
+    ss.setSpreadsheetLocale('en_US');
+    montarAbasDeCalculo_();
+  }
   aplicarValidacoes_();
   aplicarProtecoes_(ss);
 
@@ -835,7 +854,7 @@ function preencherPadroes_() {
   var existentes = {};
   lerObjetos_(ABAS.CONFIG).forEach(function (o) { existentes[o.chave] = true; });
   var faltam = CONFIG_PADRAO.filter(function (c) { return !existentes[c[0]]; })
-    .map(function (c) { return { chave: c[0], valor: c[1], descricao: c[2] }; });
+    .map(function (c) { return { chave: c[0], valor: valorConfigParaCelula_(c[0], c[1]), descricao: c[2] }; });
   acrescentar_(ABAS.CONFIG, faltam);
 
   var linhas = function (cab, matriz) {
@@ -1575,8 +1594,8 @@ ACOES_ADMIN['admin.notas'] = function () {
 
 var VALIDA_CONFIG = {
   nome_processo: function (v) { return String(v).trim().slice(0, 80); },
-  data_inicio: function (v) { return String(v).trim(); },
-  data_fim: function (v) { return String(v).trim(); },
+  data_inicio: dataOuVazio_,
+  data_fim: dataOuVazio_,
   avaliacao_aberta: simNao_,
   avaliadores_veem_notas_dos_outros: simNao_,
   nota_de_corte: function (v) { return numeroOuVazio_(v, 1, 5); },
@@ -1590,6 +1609,12 @@ var VALIDA_CONFIG = {
   },
   url_app: function (v) { return String(v).trim().replace(/\/+$/, ''); },
 };
+
+function dataOuVazio_(v) {
+  var s = String(v || '').trim();
+  if (s && !/^\d{4}-\d{2}-\d{2}$/.test(s)) throw erroApi_('VALIDACAO', 'Use datas no formato AAAA-MM-DD.');
+  return s;
+}
 
 function simNao_(v) {
   if (v === true) return 'SIM';

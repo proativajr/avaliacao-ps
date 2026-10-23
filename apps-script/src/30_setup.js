@@ -25,6 +25,13 @@ function setup() {
   Object.keys(CABECALHOS).forEach(function (nome) { garantirCabecalho_(nome); });
   preencherPadroes_();
   montarAbasDeCalculo_();
+  // Conferência de segurança: se as fórmulas não forem entendidas (problema de idioma da planilha),
+  // troca o idioma para inglês (EUA), que sempre funciona, e refaz as fórmulas.
+  SpreadsheetApp.flush();
+  if (/^#(ERROR|NAME|ERRO)/i.test(String(aba_(ABAS.AUX).getRange('B4').getDisplayValue()))) {
+    ss.setSpreadsheetLocale('en_US');
+    montarAbasDeCalculo_();
+  }
   aplicarValidacoes_();
   aplicarProtecoes_(ss);
 
@@ -87,7 +94,7 @@ function preencherPadroes_() {
   var existentes = {};
   lerObjetos_(ABAS.CONFIG).forEach(function (o) { existentes[o.chave] = true; });
   var faltam = CONFIG_PADRAO.filter(function (c) { return !existentes[c[0]]; })
-    .map(function (c) { return { chave: c[0], valor: c[1], descricao: c[2] }; });
+    .map(function (c) { return { chave: c[0], valor: valorConfigParaCelula_(c[0], c[1]), descricao: c[2] }; });
   acrescentar_(ABAS.CONFIG, faltam);
 
   var linhas = function (cab, matriz) {
