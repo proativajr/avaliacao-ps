@@ -58,13 +58,13 @@ export function Avaliadores({ d, setD, acao, sessao }: PropsAba) {
       </div>
 
       {!d.avaliadores.length ? (
-        <div class="painel">
-          <h3>Nenhum avaliador cadastrado</h3>
+        <div class="bloco">
+          <h2>Nenhum avaliador cadastrado</h2>
           <p>Cole a lista de membros (nome e email, um por linha) ou adicione um por um.</p>
           <button class="botao principal" onClick={() => { setTexto(''); setColando(true); }}>Colar lista de membros</button>
         </div>
       ) : (
-        <div class="tabela-box">
+        <div class="tabela-box vira-cartao ate-desktop">
           <table class="tabela">
             <thead><tr><th>Nome</th><th>Email</th><th>Área</th><th>Último acesso</th><th class="num">Ações</th></tr></thead>
             <tbody>
@@ -73,11 +73,11 @@ export function Avaliadores({ d, setD, acao, sessao }: PropsAba) {
                 const ativo = a.ativo === 'SIM';
                 return (
                   <tr class={ativo ? '' : 'inativo'}>
-                    <td><b>{a.nome}</b> {!ativo && <span class="selo">desativado</span>}<br /><small class="ajuda">{a.id}</small></td>
-                    <td>{a.email || '—'}</td>
-                    <td>{a.area || '—'}</td>
-                    <td>{dataRelativa(a.ultimo_acesso)}</td>
-                    <td>
+                    <td class="titulo-cel"><b>{a.nome}</b> {!ativo && <span class="selo">desativado</span>}<span class="sub-cel">{a.id}</span></td>
+                    <td data-rotulo="Email" style={{ overflowWrap: 'anywhere' }}>{a.email || '—'}</td>
+                    <td data-rotulo="Área">{a.area || '—'}</td>
+                    <td data-rotulo="Último acesso">{dataRelativa(a.ultimo_acesso)}</td>
+                    <td class="acoes-cel">
                       <div class="acoes-linha">
                         {ativo && <button class="botao pequeno" onClick={() => copiar(link, 'Link de ' + a.nome.split(' ')[0] + ' copiado')}>Copiar link</button>}
                         {ativo && <a class="botao pequeno" target="_blank" rel="noopener" href={'https://wa.me/?text=' + encodeURIComponent(mensagemWhats(a, processo, link))}>WhatsApp</a>}

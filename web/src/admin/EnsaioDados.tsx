@@ -15,13 +15,13 @@ export function EnsaioDados({ d, acao, recarregar, sessao }: PropsAba) {
       <h2>Ensaio e dados</h2>
       <p class="subtitulo">Esta planilha está no modo <b>{ensaio ? 'ENSAIO' : 'PRODUCAO'}</b>{sessao.amb === 'ensaio' ? ' e você abriu pelo link de ensaio' : ''}.</p>
 
-      <div class="grade-2" style={{ marginBottom: 16 }}>
-        <div class="painel">
-          <h3>Dados fictícios</h3>
+      <div class="grade-blocos tres">
+        <div class="bloco">
+          <h2>Dados fictícios</h2>
           {!ensaio ? <p class="ajuda">Só disponível no modo ENSAIO, para não misturar dados de teste com o processo real.</p> : (
             <>
               <p class="ajuda">Cria candidatos e avaliadores fictícios com notas aleatórias, alguns "não posso avaliar" e alguns candidatos parciais.</p>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div class="form-grade" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', marginTop: 12 }}>
                 <label class="campo"><span>Candidatos</span><input type="number" min="1" max="200" value={nCand} onInput={(e) => setNCand(Number((e.target as HTMLInputElement).value))} /></label>
                 <label class="campo"><span>Avaliadores</span><input type="number" min="1" max="50" value={nAval} onInput={(e) => setNAval(Number((e.target as HTMLInputElement).value))} /></label>
               </div>
@@ -37,24 +37,24 @@ export function EnsaioDados({ d, acao, recarregar, sessao }: PropsAba) {
           )}
         </div>
 
-        <div class="painel">
-          <h3>Conferir cálculos</h3>
+        <div class="bloco">
+          <h2>Conferir cálculos</h2>
           <p class="ajuda">Recalcula a Tabela Geral por fora (mesmo código do app) e compara com as fórmulas da planilha, na dinâmica escolhida na célula B2 da Tabela Geral.</p>
-          <button class="botao" onClick={async () => setConferencia(await acao('admin.conferir'))}>Conferir agora</button>
+          <button class="botao" style={{ marginTop: 12 }} onClick={async () => setConferencia(await acao('admin.conferir'))}>Conferir agora</button>
           {conferencia && (conferencia.ok
             ? <p class="aviso ok" style={{ marginTop: 12 }}>Tudo certo: {conferencia.candidatos} candidatos conferidos (dinâmica {conferencia.etapa}).</p>
             : <div class="aviso erro" style={{ marginTop: 12 }}><b>Diferenças encontradas:</b><ul>{conferencia.diferencas.slice(0, 20).map((x: string) => <li>{x}</li>)}</ul></div>)}
         </div>
 
-        <div class="painel">
-          <h3>Backup completo</h3>
+        <div class="bloco">
+          <h2>Backup completo</h2>
           <p class="ajuda">Baixa todas as abas de dados (inclui tokens e contatos). Guarde em local seguro.</p>
-          <button class="botao" onClick={async () => { const r = await acao('admin.backup', {}, 'Backup gerado'); if (r) baixarJson(`backup_${dataArquivo()}.json`, r); }}>Baixar backup</button>
+          <button class="botao" style={{ marginTop: 12 }} onClick={async () => { const r = await acao('admin.backup', {}, 'Backup gerado'); if (r) baixarJson(`backup_${dataArquivo()}.json`, r); }}>Baixar backup</button>
         </div>
       </div>
 
-      <div class="painel" style={{ borderColor: 'var(--erro)' }}>
-        <h3>Apagar dados do processo</h3>
+      <div class="bloco perigo" style={{ marginTop: 16 }}>
+        <h2>Apagar dados do processo</h2>
         <p>Ao fim do processo (LGPD), apaga <b>todos</b> os candidatos, avaliadores, inscrições, notas e observações desta planilha. A configuração e os critérios ficam. Não dá para desfazer.</p>
         <p class="ajuda">Depois, para apagar também o histórico de versões, faça uma cópia da planilha vazia e exclua a original (e esvazie a lixeira do Drive).</p>
         <label class="campo" style={{ maxWidth: 320 }}><span>Digite APAGAR para confirmar</span><input value={confirmacao} onInput={(e) => setConfirmacao((e.target as HTMLInputElement).value)} /></label>

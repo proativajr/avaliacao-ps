@@ -66,7 +66,7 @@ export function Importar({ d, setD, acao, aoTerminar }: PropsAba & { aoTerminar:
 
       {passo === 0 && (
         <div class="grade-2">
-          <label class={'zona-arquivo' + (arrastando ? ' ativa' : '')}
+          <label class={'zona-arquivo' + (arrastando ? ' ativa' : '')} style={{ alignContent: 'center' }}
             onDragOver={(e) => { e.preventDefault(); setArrastando(true); }} onDragLeave={() => setArrastando(false)}
             onDrop={(e) => { e.preventDefault(); setArrastando(false); escolherArquivo(e.dataTransfer?.files?.[0]); }}>
             <b>Escolher arquivo CSV ou XLSX</b>
@@ -74,8 +74,8 @@ export function Importar({ d, setD, acao, aoTerminar }: PropsAba & { aoTerminar:
             <input type="file" accept=".csv,.xlsx,.txt,text/csv" style={{ display: 'none' }} onChange={(e) => escolherArquivo((e.target as HTMLInputElement).files?.[0])} />
             <span class="botao principal">Escolher arquivo</span>
           </label>
-          <div class="painel">
-            <h3>Ou cole as linhas</h3>
+          <div class="bloco">
+            <h2>Ou cole as linhas</h2>
             <p class="ajuda">Selecione as células na planilha de respostas (com o cabeçalho), copie e cole aqui.</p>
             <textarea class="entrada" style={{ minHeight: 140 }} value={colado} onInput={(e) => setColado((e.target as HTMLTextAreaElement).value)} aria-label="Linhas coladas" />
             <button class="botao" style={{ marginTop: 8 }} disabled={!colado.trim()} onClick={() => carregar(lerTexto(colado), { origem: 'colagem', nome_arquivo: '' })}>Ler linhas coladas</button>
@@ -85,9 +85,9 @@ export function Importar({ d, setD, acao, aoTerminar }: PropsAba & { aoTerminar:
 
       {passo === 1 && (
         <>
-          <div class="painel" style={{ marginBottom: 16 }}>
-            <h3>Qual linha é o cabeçalho?</h3>
-            <div class="tabela-box"><table class="tabela"><tbody>
+          <div class="bloco" style={{ marginBottom: 16 }}>
+            <h2>Qual linha é o cabeçalho?</h2>
+            <div class="matriz-box" style={{ marginTop: 12 }}><table class="tabela"><tbody>
               {matriz.slice(0, 5).map((l, i) => (
                 <tr style={{ background: i === iCab ? 'var(--marca-suave)' : undefined, cursor: 'pointer' }} onClick={() => { setICab(i); setMapa(sugerirMapeamento(nomesDeColuna(matriz[i])) as Record<string, number>); }}>
                   <td><input type="radio" checked={i === iCab} aria-label={'Linha ' + (i + 1)} /></td>
@@ -96,8 +96,8 @@ export function Importar({ d, setD, acao, aoTerminar }: PropsAba & { aoTerminar:
               ))}
             </tbody></table></div>
           </div>
-          <div class="painel">
-            <h3>Ligue cada informação a uma coluna</h3>
+          <div class="bloco">
+            <h2>Ligue cada informação a uma coluna</h2>
             <p class="ajuda">Sugeri pelo nome das colunas. Só o nome é obrigatório. {matriz.length - iCab - 1} inscrição(ões) encontradas.</p>
             <div class="grade-2" style={{ marginTop: 12 }}>
               {CAMPOS.map((c) => {
@@ -144,7 +144,7 @@ export function Importar({ d, setD, acao, aoTerminar }: PropsAba & { aoTerminar:
               Importar {resumo.criar ? `${resumo.criar} novo(s)` : ''}{resumo.criar && resumo.atualizar ? ' e ' : ''}{resumo.atualizar ? `atualizar ${resumo.atualizar}` : ''}
             </button>
           </div>
-          <div class="tabela-box">
+          <div class="tabela-box vira-cartao ate-desktop">
             <table class="tabela">
               <thead><tr><th class="num">Linha</th><th>Nome</th><th>Email</th><th>Curso</th><th>Situação</th><th>O que fazer</th></tr></thead>
               <tbody>
@@ -152,14 +152,14 @@ export function Importar({ d, setD, acao, aoTerminar }: PropsAba & { aoTerminar:
                   const [rot, cor] = ROTULO_TIPO[l.tipo];
                   return (
                     <tr class={l.acao === 'ignorar' ? 'inativo' : ''}>
-                      <td class="num">{l.n}</td>
-                      <td><b>{l.dados.nome_exibicao || '—'}</b></td>
-                      <td>{l.dados.email || '—'}</td>
-                      <td>{l.dados.curso || '—'}</td>
-                      <td><span class={'selo ' + cor}>{rot}</span>
+                      <td class="num lado-cel suave">{l.n}</td>
+                      <td class="titulo-cel"><b>{l.dados.nome_exibicao || '—'}</b></td>
+                      <td data-rotulo="Email" style={{ overflowWrap: 'anywhere' }}>{l.dados.email || '—'}</td>
+                      <td data-rotulo="Curso">{l.dados.curso || '—'}</td>
+                      <td data-rotulo="Situação" style={{ flexWrap: 'wrap' }}><span class={'selo ' + cor}>{rot}</span>
                         {l.problemas.map((p) => <div class="ajuda">{p}{l.alvo_id && p.includes(l.alvo_id) ? ` (${nomeAlvo(l.alvo_id)})` : ''}</div>)}
                       </td>
-                      <td>
+                      <td class="acoes-cel">
                         <select class="entrada" style={{ minWidth: 170 }} value={l.acao} disabled={l.opcoes.length < 2} onChange={(e) => mudarAcao(l.n, (e.target as HTMLSelectElement).value)} aria-label={'Ação para a linha ' + l.n}>
                           {l.opcoes.map((o) => <option value={o}>{o === 'criar' && l.tipo !== 'novo' ? 'Criar mesmo assim' : ROTULO_ACAO[o]}</option>)}
                         </select>
@@ -174,8 +174,8 @@ export function Importar({ d, setD, acao, aoTerminar }: PropsAba & { aoTerminar:
       )}
 
       {passo === 3 && resultado && (
-        <div class="painel">
-          <h3>Importação concluída</h3>
+        <div class="bloco">
+          <h2>Importação concluída</h2>
           <p>{resultado.criados} candidato(s) criados, {resultado.atualizados} atualizados e {resultado.ignorados} ignorados.</p>
           <p class="ajuda">A linha original de cada inscrição ficou guardada na aba Inscricoes_Original e pode ser vista no cadastro do candidato.</p>
           <div class="barra-acoes">

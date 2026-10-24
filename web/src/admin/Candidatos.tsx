@@ -31,7 +31,7 @@ export function Candidatos(props: PropsAba) {
 
   if (modo === 'importar') return (
     <>
-      {d.candidatos.length > 0 && <button class="botao leve" onClick={() => setModo('lista')} style={{ marginBottom: 8 }}>‹ Voltar para a lista</button>}
+      {d.candidatos.length > 0 && <button class="botao leve" onClick={() => setModo('lista')} style={{ marginBottom: 8, marginLeft: -12 }}>‹ Voltar para a lista</button>}
       <Importar {...props} aoTerminar={() => setModo('lista')} />
     </>
   );
@@ -64,37 +64,37 @@ export function Candidatos(props: PropsAba) {
         <button class="botao" onClick={() => setEditando({ nome_exibicao: '', email: '', telefone: '', curso: '', semestre: '', foto_url: '' })}>Adicionar à mão</button>
         <button class="botao principal" onClick={() => setModo('importar')}>Importar inscrições</button>
       </div>
-      <div class="tabela-box">
+      <div class="tabela-box vira-cartao ate-desktop">
         <table class="tabela">
           <thead><tr><th>ID</th><th>Nome de exibição</th><th>Os avaliadores veem</th><th>Curso</th><th>Status</th><th class="num">Avaliadores</th><th class="num">Ações</th></tr></thead>
           <tbody>
             {lista.map((c) => (
               <tr class={c.status === 'ATIVO' ? '' : 'inativo'}>
-                <td>{c.id}</td>
-                <td><b>{c.nome_exibicao}</b><br /><small class="ajuda">{c.email || 'sem email'}{c.origem === 'importado' ? ' · importado ' + dataCurta(c.importado_em) : ' · manual'}</small></td>
-                <td>{curtos[c.id] || '—'}</td>
-                <td>{c.curso || '—'}{c.semestre ? ` (${c.semestre}º)` : ''}</td>
-                <td>
-                  <select class={'entrada selo ' + (COR_STATUS[c.status] || '')} style={{ width: 'auto', minHeight: 36 }} value={c.status} aria-label={'Status de ' + c.nome_exibicao}
+                <td class="lado-cel suave">{c.id}</td>
+                <td class="titulo-cel"><b>{c.nome_exibicao}</b><span class="sub-cel">{c.email || 'sem email'}{c.origem === 'importado' ? ' · importado ' + dataCurta(c.importado_em) : ' · manual'}</span></td>
+                <td data-rotulo="Avaliadores veem">{curtos[c.id] || '—'}</td>
+                <td data-rotulo="Curso">{c.curso || '—'}{c.semestre ? ` (${c.semestre}º)` : ''}</td>
+                <td data-rotulo="Status">
+                  <select class={'entrada selo ' + (COR_STATUS[c.status] || '')} style={{ width: 'auto' }} value={c.status} aria-label={'Status de ' + c.nome_exibicao}
                     onChange={(e) => salvar([{ id: c.id, status: (e.target as HTMLSelectElement).value }], 'Status atualizado')}>
                     {STATUS.map((s) => <option value={s}>{s}</option>)}
                   </select>
                 </td>
-                <td class="num">{notasPorCand[c.id]?.size || 0}</td>
-                <td><div class="acoes-linha">
+                <td class="num" data-rotulo="Avaliadores que deram nota">{notasPorCand[c.id]?.size || 0}</td>
+                <td class="acoes-cel"><div class="acoes-linha">
                   <button class="botao pequeno" onClick={() => setEditando(c)}>Editar</button>
                   {c.origem === 'importado' && <button class="botao pequeno" onClick={() => abrirInscricao(c)}>Inscrição</button>}
                 </div></td>
               </tr>
             ))}
-            {!lista.length && <tr><td colSpan={7} class="ajuda">Nenhum candidato encontrado.</td></tr>}
+            {!lista.length && <tr><td colSpan={7} class="titulo-cel ajuda">Nenhum candidato encontrado.</td></tr>}
           </tbody>
         </table>
       </div>
 
       {editando && (
         <Modal titulo={editando.id ? `Editar ${editando.id}` : 'Adicionar candidato'} aoFechar={() => setEditando(null)}>
-          <form onSubmit={async (e) => {
+          <form class="form-grade" onSubmit={async (e) => {
             e.preventDefault();
             if (!editando.nome_exibicao?.trim()) return;
             if (editando.email && !emailValido(editando.email)) { alert('Email inválido.'); return; }
@@ -102,13 +102,13 @@ export function Candidatos(props: PropsAba) {
             if (await salvar([{ id, nome_exibicao, email, telefone, curso, semestre: semestre as any, foto_url }], id ? 'Candidato salvo' : 'Candidato adicionado')) setEditando(null);
           }}>
             {([['nome_exibicao', 'Nome de exibição (o que os avaliadores veem)'], ['email', 'Email'], ['telefone', 'Telefone'], ['curso', 'Curso'], ['semestre', 'Semestre'], ['foto_url', 'Link da foto (opcional)']] as const).map(([k, r]) => (
-              <label class="campo"><span>{r}</span>
+              <label class="campo" style={k === 'nome_exibicao' || k === 'foto_url' ? { gridColumn: '1 / -1' } : undefined}><span>{r}</span>
                 <input required={k === 'nome_exibicao'} type={k === 'email' ? 'email' : 'text'} value={String((editando as any)[k] ?? '')}
                   onInput={(e) => setEditando({ ...editando, [k]: (e.target as HTMLInputElement).value })} />
               </label>
             ))}
-            <p class="ajuda">Email e telefone só aparecem para admins.</p>
-            <div class="acoes"><button type="button" class="botao" onClick={() => setEditando(null)}>Cancelar</button><button class="botao principal">Salvar</button></div>
+            <p class="ajuda" style={{ gridColumn: '1 / -1' }}>Email e telefone só aparecem para admins.</p>
+            <div class="acoes" style={{ gridColumn: '1 / -1' }}><button type="button" class="botao" onClick={() => setEditando(null)}>Cancelar</button><button class="botao principal">Salvar</button></div>
           </form>
         </Modal>
       )}
@@ -117,10 +117,10 @@ export function Candidatos(props: PropsAba) {
         <Modal titulo={`Inscrição original · ${inscricao.c.nome_exibicao}`} aoFechar={() => setInscricao(null)}>
           {!inscricao.itens ? <p class="carregando">Carregando…</p> : !inscricao.itens.length ? <p>Nenhuma inscrição guardada.</p> :
             inscricao.itens.map((i) => (
-              <div class="painel" style={{ marginBottom: 12 }}>
+              <div class="bloco" style={{ marginBottom: 12 }}>
                 <p class="ajuda">Lote {i.lote_id} · {dataCurta(i.importado_em)}</p>
                 <dl style={{ margin: 0 }}>
-                  {Object.entries(i.dados).map(([k, v]) => (<><dt style={{ fontWeight: 700, fontSize: 14, color: 'var(--suave)' }}>{k}</dt><dd style={{ margin: '0 0 8px', whiteSpace: 'pre-wrap' }}>{String(v) || '—'}</dd></>))}
+                  {Object.entries(i.dados).map(([k, v]) => (<><dt style={{ fontWeight: 500, fontSize: 14, color: 'var(--suave)' }}>{k}</dt><dd style={{ margin: '0 0 8px', whiteSpace: 'pre-wrap' }}>{String(v) || '—'}</dd></>))}
                 </dl>
               </div>
             ))}

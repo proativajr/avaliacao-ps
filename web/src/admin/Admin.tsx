@@ -77,7 +77,7 @@ export function Admin({ sessao, outras }: { sessao: Sessao; outras: Sessao[] }) 
   }, [sessao]);
 
   if (erro && !d) return <div class="centro"><div class="cartao-simples"><h1>Não foi possível abrir o painel</h1><p class="aviso erro">{erro}</p><button class="botao" onClick={() => recarregar()}>Tentar de novo</button></div></div>;
-  if (!d) return <div class="carregando">Carregando o painel…</div>;
+  if (!d) return <div class="carregando" role="status">Carregando o painel…</div>;
 
   const ensaio = sessao.amb === 'ensaio' || String(d.config.modo).toUpperCase() === 'ENSAIO';
   const props: PropsAba = { d, setD, acao, sessao, recarregar };
@@ -85,14 +85,15 @@ export function Admin({ sessao, outras }: { sessao: Sessao; outras: Sessao[] }) 
   return (
     <div class="adm">
       {ensaio && <FaixaTeste />}
+      <div class="adm-corpo">
       <header class="adm-topo">
         <div class="linha1">
           <Assinatura />
           <nav class="adm-nav" aria-label="Seções">
-            {SECOES.map(([id, rot]) => <button aria-current={secao === id ? 'page' : undefined} onClick={() => ir(id)}>{rot}</button>)}
+            {SECOES.map(([id, rot]) => <button aria-current={secao === id ? 'page' : undefined} onClick={() => ir(id)}><Icone d={ICONES[id]} />{rot}</button>)}
           </nav>
           <span class="espaco" />
-          {ocupado ? <span class="adm-status" role="status">Salvando…</span> : <span class="adm-status">{d.config.nome_processo || 'PS'}</span>}
+          <span class={'adm-status' + (ocupado ? ' salvando' : '')} role="status">{ocupado ? 'Salvando…' : d.config.nome_processo || 'PS'}</span>
         </div>
       </header>
 
@@ -123,6 +124,7 @@ export function Admin({ sessao, outras }: { sessao: Sessao; outras: Sessao[] }) 
           </>
         )}
       </main>
+      </div>
 
       <nav class="adm-barra" aria-label="Seções">
         {SECOES.map(([id, rot]) => (

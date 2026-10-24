@@ -99,10 +99,10 @@ export function Resultados({ d, setD, acao, sessao }: PropsAba) {
 
   return (
     <section class="ranking">
-      <div class="cabeca">
+      <div class="cabeca-pagina">
         <div>
           <h1 class="titulo">Ranking</h1>
-          <span class="sub">Atualizado {dataRelativa(atualizado.toISOString())} · <button class="link" onClick={() => atualizar(false)}>atualizar</button></span>
+          <span class="sub">Atualizado {dataRelativa(atualizado.toISOString())} · <button class="link" onClick={() => atualizar(false)}>atualizar agora</button></span>
         </div>
         <div class="segmentado" role="radiogroup" aria-label="Dinâmica">
           {[['*', 'Todas'], ...d.etapas.map((e) => [e.id, e.nome])].map(([id, rot]) => (
@@ -111,76 +111,88 @@ export function Resultados({ d, setD, acao, sessao }: PropsAba) {
         </div>
       </div>
 
-      <div class="metricas">
+      <div class="metricas" role="group" aria-label="Resumo">
         <div class="metrica destaque"><b>{pct}%</b><span>de conclusão</span></div>
-        <div class="metrica"><b>{ativosN}</b><span>candidatos</span></div>
-        <div class="metrica"><b>{cfg.nota_de_corte === '' ? notasNaEtapa.length : acima}</b><span>{cfg.nota_de_corte === '' ? 'notas' : `acima do corte (${num2(Number(cfg.nota_de_corte))})`}</span></div>
+        <div class="metrica"><b>{ativosN}</b><span>candidatos ativos</span></div>
+        <div class="metrica"><b>{cfg.nota_de_corte === '' ? notasNaEtapa.length : acima}</b><span>{cfg.nota_de_corte === '' ? 'notas registradas' : `acima do corte (${num2(Number(cfg.nota_de_corte))})`}</span></div>
         <div class="metrica"><b>{diverg + insuf}</b><span>com alerta</span></div>
       </div>
 
-      <div class="filtros-linha">
-        <input class="entrada" type="search" placeholder="Buscar candidato" value={busca} onInput={(e) => setBusca((e.target as HTMLInputElement).value)} aria-label="Buscar candidato" />
-        <select class="entrada" value={ordem} onChange={(e) => setOrdem((e.target as HTMLSelectElement).value)} aria-label="Ordenar por">
-          {ORDENS.map(([v, r]) => <option value={v}>{r}</option>)}
-        </select>
-        <label class="check"><input type="checkbox" checked={porCriterio} onChange={() => setPorCriterio(!porCriterio)} /> Por critério</label>
-      </div>
-
-      {!d.candidatos.length ? <p class="vazio">Nenhum candidato ainda. Comece por Pessoas.</p> : (
-        <div class="tabela-box">
-          <table class={'tabela' + (porCriterio ? '' : ' compacta')}>
-            <thead><tr>
-              <th class="num">#</th><th>Candidato</th>
-              {res.blocos.map((b) => <th class="num bl">{b.nome_curto}</th>)}
-              {porCriterio && res.criterios.map((k) => <th class="num" title={k.nome}>{k.sigla || k.nome.slice(0, 6)}</th>)}
-              <th class="num">Média</th><th class="num bl">Avaliadores</th><th>Situação</th>
-            </tr></thead>
-            <tbody>
-              {linhas.map((l) => {
-                const [rot, cor] = situacao(l);
-                return (
-                  <tr class={l.status !== 'ATIVO' ? 'inativo' : ''} style={{ cursor: 'pointer' }} onClick={() => setDetalhe(l.id)}>
-                    <td class="num suave">{l.ranking ?? '—'}</td>
-                    <td><b class="nome-c">{l.nome}</b></td>
-                    {res.blocos.map((b) => <td class="num bl">{num2(l.porBloco[b.id])}</td>)}
-                    {porCriterio && res.criterios.map((k) => <td class="num">{num2(l.porCriterio[k.id])}</td>)}
-                    <td class="num media">{num2(l.media)}</td>
-                    <td class="num suave bl">{l.nAvaliadores}</td>
-                    <td>{rot && <span class={'situ ' + cor}><i />{rot}</span>}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <div class="acoes-rodape">
-        <button class="botao" onClick={() => baixarXlsx(`ranking_${sufixo}.xlsx`, 'Ranking', tabelaRanking())}>Baixar ranking</button>
-        <details class="mais">
-          <summary class="botao leve">Outros arquivos</summary>
-          <div class="mais-menu">
-            <button class="botao leve" onClick={() => baixarCsv(`ranking_${sufixo}.csv`, tabelaRanking())}>Ranking CSV</button>
-            <button class="botao leve" onClick={() => baixarXlsx(`avaliacoes_${sufixo}.xlsx`, 'Avaliações', tabelaAvaliacoes())}>Avaliações XLSX</button>
-            <button class="botao leve" onClick={() => baixarCsv(`avaliacoes_${sufixo}.csv`, tabelaAvaliacoes())}>Avaliações CSV</button>
-            <button class="botao leve" onClick={async () => { const r = await acao('admin.backup', {}, 'Backup gerado'); if (r) baixarJson(`backup_${dataArquivo()}.json`, r); }}>Backup completo</button>
+      <div class="ranking-grade">
+        <div class="bloco">
+          <div class="bloco-topo">
+            <h2>Candidatos</h2>
+            <div class="acoes-topo">
+              <button class="botao" onClick={() => baixarXlsx(`ranking_${sufixo}.xlsx`, 'Ranking', tabelaRanking())}>Baixar ranking</button>
+              <details class="mais">
+                <summary class="botao leve">Outros arquivos</summary>
+                <div class="mais-menu">
+                  <button class="botao leve" onClick={() => baixarCsv(`ranking_${sufixo}.csv`, tabelaRanking())}>Ranking CSV</button>
+                  <button class="botao leve" onClick={() => baixarXlsx(`avaliacoes_${sufixo}.xlsx`, 'Avaliações', tabelaAvaliacoes())}>Avaliações XLSX</button>
+                  <button class="botao leve" onClick={() => baixarCsv(`avaliacoes_${sufixo}.csv`, tabelaAvaliacoes())}>Avaliações CSV</button>
+                  <button class="botao leve" onClick={async () => { const r = await acao('admin.backup', {}, 'Backup gerado'); if (r) baixarJson(`backup_${dataArquivo()}.json`, r); }}>Backup completo</button>
+                </div>
+              </details>
+            </div>
           </div>
-        </details>
-      </div>
+          <div class="filtros-linha">
+            <input class="entrada" type="search" placeholder="Buscar candidato" value={busca} onInput={(e) => setBusca((e.target as HTMLInputElement).value)} aria-label="Buscar candidato" />
+            <select class="entrada" value={ordem} onChange={(e) => setOrdem((e.target as HTMLSelectElement).value)} aria-label="Ordenar por">
+              {ORDENS.map(([v, r]) => <option value={v}>Ordem: {r}</option>)}
+            </select>
+            <label class="check"><input type="checkbox" checked={porCriterio} onChange={() => setPorCriterio(!porCriterio)} /> Por critério</label>
+          </div>
 
-      <h2 class="secao">Avaliadores</h2>
-      <ul class="progresso-av">
-        {progresso.map((p) => (
-          <li>
-            <span class="n"><b>{p.av.nome}</b><small>{dataRelativa(p.av.ultimo_acesso)}</small></span>
-            <span class="barra" aria-hidden="true"><span style={{ width: `${p.pct * 100}%` }} /></span>
-            <span class="pct">{Math.round(p.pct * 100)}%</span>
-            {p.pendentes + p.parciais > 0
-              ? <button class="botao leve pequeno" onClick={() => copiar(lembrete(p), 'Lembrete copiado: cole no WhatsApp')} aria-label={`Copiar lembrete para ${p.av.nome}`}>Lembrete</button>
-              : <span class="em-dia">em dia</span>}
-          </li>
-        ))}
-      </ul>
+          {!d.candidatos.length ? <div class="vazio"><p>Nenhum candidato ainda. Cadastre em Pessoas.</p></div> : !linhas.length ? <div class="vazio"><p>Ninguém com esse nome.</p></div> : (
+            <div class={'tabela-box' + (porCriterio ? '' : ' vira-cartao')}>
+              <table class="tabela">
+                <thead><tr>
+                  <th class="num">#</th><th>Candidato</th>
+                  {res.blocos.map((b) => <th class="num">{b.nome_curto}</th>)}
+                  {porCriterio && res.criterios.map((k) => <th class="num" title={k.nome}>{k.sigla || k.nome.slice(0, 6)}</th>)}
+                  <th class="num">Média</th><th class="num">Avaliadores</th><th>Situação</th>
+                </tr></thead>
+                <tbody>
+                  {linhas.map((l) => {
+                    const [rot, cor] = situacao(l);
+                    return (
+                      <tr class={'clicavel' + (l.status !== 'ATIVO' ? ' inativo' : '')} onClick={() => setDetalhe(l.id)}>
+                        <td class="num suave esconde-cartao">{l.ranking ?? '—'}</td>
+                        <td class="titulo-cel"><button class="link-linha" onClick={(e) => { e.stopPropagation(); setDetalhe(l.id); }}><span class="pos">{l.ranking ?? '—'}º</span><b>{l.nome}</b></button></td>
+                        {res.blocos.map((b) => <td class="num" data-rotulo={b.nome_curto}>{num2(l.porBloco[b.id])}</td>)}
+                        {porCriterio && res.criterios.map((k) => <td class="num">{num2(l.porCriterio[k.id])}</td>)}
+                        <td class="num media lado-cel">{num2(l.media)}</td>
+                        <td class="num suave" data-rotulo="Avaliadores">{l.nAvaliadores}</td>
+                        <td data-rotulo={rot ? 'Situação' : undefined} class={rot ? '' : 'esconde-cartao'}>{rot && <span class={'situ ' + cor}><i aria-hidden="true" />{rot}</span>}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div class="bloco">
+          <div class="bloco-topo"><h2>Avaliadores</h2></div>
+          {!progresso.length ? <div class="vazio"><p>Nenhum avaliador ativo.</p></div> : (
+            <ul class="progresso-av">
+              {progresso.map((p) => (
+                <li>
+                  <span class="n"><b>{p.av.nome}</b><small>Último acesso: {dataRelativa(p.av.ultimo_acesso)}</small></span>
+                  <span class="linha-barra">
+                    <span class="barra" aria-hidden="true"><span style={{ width: `${p.pct * 100}%` }} /></span>
+                    <span class="pct">{Math.round(p.pct * 100)}%</span>
+                  </span>
+                  {p.pendentes + p.parciais > 0
+                    ? <button class="botao leve pequeno" onClick={() => copiar(lembrete(p), 'Lembrete copiado: cole no WhatsApp')} aria-label={`Copiar lembrete para ${p.av.nome}`}>Lembrete</button>
+                    : <span class="em-dia">em dia ✓</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
 
       <p class="regras">"Não posso avaliar" e vazio não entram nas médias. Média ponderada pelos pesos; empate divide a posição. Dados insuficientes: menos de {cfg.min_avaliadores_por_candidato || '—'} avaliadores. Divergência: desvio acima de {cfg.limite_divergencia || '—'}.</p>
 
@@ -210,14 +222,14 @@ function Detalhe({ id, res, props, aoFechar }: { id: string; res: ReturnType<typ
   return (
     <Modal titulo={`${l.nome}`} aoFechar={aoFechar}>
       <p class="ajuda">{l.id} · {l.status} · ranking {l.ranking ?? '—'} · média {num2(l.media)} · {l.nAvaliadores} avaliador(es) · desvio {num2(l.desvio)}{l.situacao ? ' · ' + l.situacao : ''}</p>
-      <h3 style={{ fontSize: 16, margin: '16px 0 6px' }}>Média por critério × média do grupo</h3>
+      <h3>Média por critério × média do grupo</h3>
       <div role="img" aria-label="Gráfico de barras: candidato contra a média do grupo por critério">
         {crits.map((k) => {
           const v = l.porCriterio[k.id] ?? null, g = grupo(k.id);
           return (
-            <div style={{ marginBottom: 8 }}>
-              <div style={{ fontSize: 14, display: 'flex', justifyContent: 'space-between' }}><span>{k.sigla ? k.sigla + ' · ' : ''}{k.nome}</span><span><b>{num2(v)}</b> <small class="ajuda">grupo {num2(g)}</small></span></div>
-              <div style={{ position: 'relative', height: 12, background: 'var(--superficie-2)', borderRadius: 6 }}>
+            <div class="barra-crit">
+              <div class="rot"><span>{k.sigla ? k.sigla + ' · ' : ''}{k.nome}</span><span><b>{num2(v)}</b> <small class="ajuda">grupo {num2(g)}</small></span></div>
+              <div class="trilho">
                 {v != null && <div style={{ position: 'absolute', inset: 0, width: `${((v - 1) / 4) * 100}%`, background: 'var(--marca)', borderRadius: 6, minWidth: 4 }} />}
                 {g != null && <div title="Média do grupo" style={{ position: 'absolute', top: -3, bottom: -3, left: `calc(${((g - 1) / 4) * 100}% - 1px)`, width: 3, background: 'var(--texto)' }} />}
               </div>
@@ -227,17 +239,17 @@ function Detalhe({ id, res, props, aoFechar }: { id: string; res: ReturnType<typ
         <p class="ajuda">Escala de 1 a 5. A barra é o candidato; o traço escuro é a média dos candidatos ativos.</p>
       </div>
 
-      <h3 style={{ fontSize: 16, margin: '16px 0 6px' }}>Notas por avaliador</h3>
+      <h3>Notas por avaliador</h3>
       {!avIds.length ? <p class="ajuda">Ninguém avaliou ainda.</p> : (
-        <div class="tabela-box"><table class="tabela" style={{ fontSize: 13 }}>
+        <div class="matriz-box"><table class="tabela">
           <thead><tr><th>Avaliador</th>{crits.map((k) => <th class="num" title={k.nome}>{k.sigla || k.nome.slice(0, 5)}</th>)}</tr></thead>
           <tbody>{avIds.map((av) => <tr><td>{nomeAv(av)}</td>{crits.map((k) => <td class="num">{celula(av, k.id)}</td>)}</tr>)}</tbody>
         </table></div>
       )}
 
-      <h3 style={{ fontSize: 16, margin: '16px 0 6px' }}>Observações</h3>
+      <h3>Observações</h3>
       {!obs.length ? <p class="ajuda">Sem observações.</p> : obs.map((o) => (
-        <div class="painel" style={{ marginBottom: 8 }}><small class="ajuda">{nomeAv(o.avaliador_id)} · {nomeEtapa(o.etapa)}</small><p style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{o.texto}</p></div>
+        <div class="painel" style={{ marginBottom: 8 }}><small class="ajuda" style={{ display: 'block' }}>{nomeAv(o.avaliador_id)} · {nomeEtapa(o.etapa)}</small><p style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{o.texto}</p></div>
       ))}
       <div class="acoes"><button class="botao" onClick={aoFechar}>Fechar</button></div>
     </Modal>

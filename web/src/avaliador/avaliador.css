@@ -1,43 +1,46 @@
 /* Tela do avaliador: minimalista, pensada para o celular e o polegar. */
-.av { min-height: 100vh; background: var(--superficie); }
-.av-topo { position: sticky; top: 0; z-index: 30; background: var(--superficie); padding: 12px 20px 4px; }
-.av-topo.cand { padding: 8px 8px 0; border-bottom: 0; }
+.av { min-height: 100vh; background: var(--fundo); }
+.av-topo { position: sticky; top: 0; z-index: 30; background: var(--superficie); padding: 8px var(--margem); border-bottom: 1px solid var(--linha-suave); }
+.av-topo.cand { padding: 6px calc(var(--margem) - 12px); }
 .av-linha { display: flex; align-items: center; gap: 12px; min-height: 44px; max-width: 560px; margin: 0 auto; }
 .av-titulo { flex: 1; min-width: 0; font-size: 15px; font-weight: 500; color: var(--suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.av-topo.cand .av-titulo { font-size: 13px; font-weight: 400; }
+.av-topo.cand .av-titulo { font-size: var(--fs-legenda); font-weight: 400; }
 .av-logo { width: 28px; height: 28px; flex: none; }
 .icone { width: 44px; height: 44px; flex: none; border: 0; background: none; border-radius: var(--raio); cursor: pointer; color: var(--marca); display: grid; place-items: center; }
 .icone:hover { background: var(--superficie-2); }
 
-.salv { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--suave); white-space: nowrap; padding-right: 4px; }
+.salv { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-legenda); color: var(--suave); white-space: nowrap; padding-right: 4px; }
 .salv i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .salv.ok { color: var(--ok); }
 .salv.offline { color: var(--alerta); }
 .salv.erro { color: var(--erro); }
 
-.av-conteudo { max-width: 560px; margin: 0 auto; padding: 8px 20px 96px; }
-.sobrelinha { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--suave); }
+.av-conteudo { max-width: 560px; margin: 0 auto; padding: var(--e4) var(--margem) 96px; display: grid; gap: var(--e4); align-content: start; }
+.sobrelinha { display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-legenda); font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--suave); }
 
 /* Equipe da vez */
-.equipe-agora { padding-top: 24px; }
+.equipe-agora { background: var(--superficie); border: 1px solid var(--linha-suave); border-radius: var(--raio); box-shadow: var(--sombra-1); padding: var(--e4) var(--e4) var(--e1); }
 .eq-titulo { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.eq-titulo h1 { margin: 0; font-size: 34px; font-weight: 600; color: var(--marca); letter-spacing: -0.01em; line-height: 1.2; }
+.eq-titulo h1 { margin: 0; font-size: var(--fs-h1); font-weight: 600; color: var(--marca); letter-spacing: -0.01em; line-height: 1.2; }
 .eq-titulo span { font-size: 15px; color: var(--suave); white-space: nowrap; }
 .segmentos { display: flex; gap: 4px; margin: 12px 0 16px; }
 .segmentos span { flex: 1; height: 4px; border-radius: 2px; background: var(--superficie-2); }
 .segmentos span.ok { background: var(--destaque); } /* o amarelo da tela: progresso da equipe */
 
 /* Aguardando */
-.espera { padding: 32px 0 20px; display: grid; gap: 8px; }
+.espera { padding: var(--e4) 0 var(--e2); display: grid; gap: var(--e2); }
 .espera .sobrelinha i { width: 10px; height: 10px; border-radius: 50%; background: var(--destaque); }
-.espera h1 { margin: 0; font-size: 26px; font-weight: 600; color: var(--marca); line-height: 1.25; }
+.espera h1 { margin: 0; font-size: var(--fs-h2); font-weight: 600; color: var(--marca); line-height: 1.25; }
 .espera p { margin: 0; font-size: 15px; color: var(--suave); }
 
-.busca { display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 14px; border-radius: var(--raio); background: var(--fundo); border: 1px solid var(--superficie-2); color: var(--suave); margin: 4px 0 4px; }
+.busca { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 14px; border-radius: var(--raio); background: var(--superficie); border: 1px solid var(--linha); color: var(--suave); }
+.busca:focus-within { outline: var(--anel-foco); outline-offset: 2px; }
 .busca input { flex: 1; min-width: 0; border: 0; background: transparent; font-size: 15px; color: var(--texto); outline: none; }
 
 /* Listas de candidatos */
 .cands { list-style: none; margin: 0; padding: 0; }
+.av-conteudo > .cands { background: var(--superficie); border: 1px solid var(--linha-suave); border-radius: var(--raio); box-shadow: var(--sombra-1); padding: 0 var(--e4); }
+.cands li:last-child > button { border-bottom: 0; }
 .cands li > button {
   width: 100%; display: flex; align-items: center; gap: 16px; text-align: left; min-height: 64px; padding: 6px 0;
   border: 0; border-bottom: 1px solid var(--superficie-2); background: none; cursor: pointer; color: var(--texto);
@@ -48,38 +51,40 @@
 .cands .vazio { color: var(--suave); padding: 16px 0; }
 .avatar { flex: none; border-radius: 50%; object-fit: cover; background: var(--superficie-2); color: var(--marca); display: inline-grid; place-items: center; font-weight: 500; font-size: 14px; width: 44px; height: 44px; }
 .av-ini.feito .avatar { background: var(--cor-marca-azul); color: #FFFFFF; }
-.estado { font-size: 13px; color: var(--suave); white-space: nowrap; display: inline-flex; color: var(--borda-forte); }
+.estado { font-size: var(--fs-legenda); color: var(--suave); white-space: nowrap; display: inline-flex; color: var(--borda-forte); }
 .estado.parcial { color: var(--suave); }
 .estado.completo { color: var(--marca); }
-.ver-todos { width: 100%; min-height: 48px; margin-top: 16px; border: 0; background: none; color: var(--suave); font-size: 15px; font-weight: 500; cursor: pointer; }
-.etapas { display: flex; gap: 6px; overflow-x: auto; padding: 4px 20px 0; max-width: 560px; margin: 0 auto; }
-.etapas button { min-height: 36px; padding: 0 12px; border-radius: var(--raio); border: 1px solid var(--linha); background: var(--superficie); font-weight: 500; white-space: nowrap; cursor: pointer; font-size: 14px; }
+.ver-todos { width: 100%; min-height: 48px; border: 0; background: none; color: var(--suave); font-size: 15px; font-weight: 500; cursor: pointer; }
+.etapas { display: flex; gap: 6px; overflow-x: auto; padding: var(--e2) var(--margem) 0; max-width: 560px; margin: 0 auto; }
+.etapas button { min-height: var(--toque); padding: 0 12px; border-radius: var(--raio); border: 1px solid var(--linha); background: var(--superficie); font-weight: 500; white-space: nowrap; cursor: pointer; font-size: var(--fs-legenda); }
 .etapas button[aria-selected='true'] { background: var(--marca); color: var(--marca-texto); border-color: var(--marca); }
 
 /* ---------- Tela do candidato ---------- */
-.av-conteudo.cand { padding: 0 20px 112px; }
-.cand-nome { margin: 4px 0 12px; font-size: 26px; font-weight: 600; color: var(--marca); letter-spacing: -0.01em; line-height: 1.2; }
-.blocos { display: flex; gap: 24px; border-bottom: 1px solid var(--superficie-2); margin-bottom: 4px; overflow-x: auto; }
-.blocos button { border: 0; background: none; padding: 10px 0; font-size: 14px; font-weight: 500; color: var(--suave); cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.av-conteudo.cand { padding: var(--e2) var(--margem) 120px; gap: var(--e3); }
+.cand-nome { margin: 0; font-size: var(--fs-h1); font-weight: 600; color: var(--marca); letter-spacing: -0.01em; line-height: 1.2; }
+.blocos { display: flex; gap: var(--e5); border-bottom: 1px solid var(--linha); overflow-x: auto; scrollbar-width: none; }
+.blocos button { border: 0; background: none; padding: 0; min-height: var(--toque); font-size: var(--fs-legenda); font-weight: 500; color: var(--suave); cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .blocos button[aria-selected='true'] { color: var(--marca); font-weight: 600; border-bottom-color: var(--marca); }
 .blocos button span { font-weight: 400; color: var(--suave); }
 .blocos button span.ok { color: var(--ok); }
 
-.crit { padding: 8px 0 6px; }
-.crit-rotulo { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: 0; background: none; padding: 0 0 6px; cursor: pointer; min-height: 24px; color: var(--texto); }
-.crit-rotulo .sigla { font-size: 12px; font-weight: 600; color: var(--borda-forte); width: 14px; flex: none; }
+.crits { background: var(--superficie); border: 1px solid var(--linha-suave); border-radius: var(--raio); box-shadow: var(--sombra-1); padding: var(--e1) var(--e4) var(--e3); }
+.crit { padding: var(--e1) 0 var(--e2); border-bottom: 1px solid var(--linha-suave); }
+.crit:last-child { border-bottom: 0; }
+.crit-rotulo { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: 0; background: none; padding: 0; cursor: pointer; min-height: var(--toque); color: var(--texto); }
+.crit-rotulo .sigla { font-size: var(--fs-legenda); font-weight: 600; color: var(--suave); width: 16px; flex: none; }
 .crit.feito .crit-rotulo .sigla { color: var(--marca); }
-.crit-rotulo .nome { font-size: 14px; font-weight: 500; }
-.crit-rotulo .colegas { font-size: 12px; color: var(--suave); }
+.crit-rotulo .nome { font-size: var(--fs-corpo); font-weight: 500; }
+.crit-rotulo .colegas { font-size: var(--fs-legenda); color: var(--suave); }
 .crit-rotulo .ponto { width: 6px; height: 6px; border-radius: 50%; background: var(--destaque); } /* o amarelo da tela: critério da vez */
-.desc-completa { margin: 0 0 8px; font-size: 13px; color: var(--suave); }
+.desc-completa { margin: 0 0 8px; font-size: var(--fs-legenda); color: var(--suave); }
 
-.notas { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) 64px; gap: 6px; }
+.notas { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(56px, 72px); gap: 6px; }
 .notas button {
-  height: 44px; border-radius: var(--raio); border: 1px solid var(--linha); background: var(--superficie);
+  height: 48px; border-radius: var(--raio); border: 1px solid var(--linha); background: var(--superficie);
   font-size: 16px; font-weight: 500; cursor: pointer; color: var(--texto); padding: 0; transition: background-color 0.12s, transform 0.12s;
 }
-.notas button.na { font-size: 12px; color: var(--suave); }
+.notas button.na { font-size: var(--fs-legenda); color: var(--suave); }
 .notas button:active:not(:disabled) { transform: scale(0.94); }
 .notas button.marcada { background: var(--marca); border-color: var(--marca); color: var(--marca-texto); }
 .notas button.na.marcada { background: var(--suave); border-color: var(--suave); color: var(--superficie); }
@@ -90,7 +95,7 @@
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; gap: 12px;
   padding: 12px 20px calc(16px + env(safe-area-inset-bottom)); background: var(--superficie); border-top: 1px solid var(--superficie-2);
 }
-.av-rodape .botao.principal { flex: 1; min-height: 52px; font-size: 16px; max-width: 460px; margin-left: auto; }
+.av-rodape .botao.principal { flex: 1; min-height: 52px; font-size: var(--fs-corpo); max-width: 460px; margin-left: auto; }
 .av-rodape .botao.mais { width: 52px; min-height: 52px; padding: 0; border: 1px solid var(--linha) !important; color: var(--marca); margin-right: auto; }
 @media (min-width: 600px) { .av-rodape { justify-content: center; } .av-rodape .botao.principal { margin-left: 0; } .av-rodape .botao.mais { margin-right: 0; } }
 
@@ -100,6 +105,5 @@
 .folha button:disabled { opacity: 0.4; }
 .folha button.cancelar { border-bottom: 0; color: var(--suave); }
 
-.av .faixa-teste { font-size: 11px; padding: 1px 8px; line-height: 14px; }
-.av .faixa-teste + .av-topo { top: 16px; }
-.faixa-offline { margin: 0; padding: 6px 20px; background: var(--alerta-suave); color: var(--alerta); font-size: 13px; font-weight: 500; text-align: center; }
+.av .faixa-teste + .av-topo { top: 25px; }
+.faixa-offline { margin: 0; padding: 6px var(--margem); background: var(--alerta-suave); color: var(--alerta); font-size: var(--fs-legenda); font-weight: 500; text-align: center; }
