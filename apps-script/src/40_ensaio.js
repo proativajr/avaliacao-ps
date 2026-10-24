@@ -93,7 +93,7 @@ function apagarDados_(zerarContadores) {
   return comTrava_(function () {
     [ABAS.AVALIACOES, ABAS.OBSERVACOES, ABAS.INSCRICOES, ABAS.IMPORTACOES, ABAS.CANDIDATOS, ABAS.AVALIADORES]
       .forEach(function (n) { limparDados_(n); });
-    gravarConfig_('em_votacao', '');
+    gravarConfig_('em_votacao', ''); gravarConfig_('equipe_ativa', ''); limparDados_(ABAS.EQUIPES);
     if (zerarContadores) { props_().deleteProperty('seq_c'); props_().deleteProperty('seq_a'); }
     limparCache_();
     return { ok: true };

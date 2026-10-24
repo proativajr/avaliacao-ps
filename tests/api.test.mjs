@@ -181,3 +181,36 @@ test('apagar dados exige "APAGAR"', () => {
   assert.equal(gas.lerObjetos_('Candidatos').length, 0);
   assert.equal(gas.lerObjetos_('Avaliadores').length, 0);
 });
+
+test('equipes e momento ao vivo: admin monta equipes, abre uma e o avaliador vê só ela', () => {
+  const { ok, chamar, adm, tA } = preparar();
+  ok(adm, 'admin.salvarEtapas', { lista: [{ nome: 'Dinâmica 2', ordem: 2, aberta: 'NÃO' }] });
+  const r = ok(adm, 'admin.salvarEquipes', { etapa: 'dinamica_2', equipes: [
+    { nome: 'Equipe 1', membros: ['c001', 'c002'] },
+    { nome: 'Equipe 2', membros: ['c002', 'c003', 'c999'] }, // c002 repetido e c999 inexistente são descartados
+  ] });
+  assert.deepEqual(r.equipes.map((e) => e.membros), [['c001', 'c002'], ['c003']]);
+  // avaliador não pode mexer em equipes nem no momento ao vivo
+  assert.equal(chamar(tA, 'admin.aoVivo', { etapa: 'dinamica_2', equipe: 'dinamica_2_eq1' }).codigo, 'SEM_PERMISSAO');
+  assert.equal(chamar(adm, 'admin.aoVivo', { etapa: 'geral', equipe: 'dinamica_2_eq1' }).ok, false, 'equipe de outra dinâmica');
+  ok(adm, 'admin.aoVivo', { etapa: 'dinamica_2', equipe: 'dinamica_2_eq1' });
+  const s = ok(tA, 'av.sincronizar');
+  assert.equal(s.dinamica_ativa, 'dinamica_2');
+  assert.deepEqual(s.equipe.membros, ['c001', 'c002']);
+  assert.deepEqual(s.em_votacao, ['c001', 'c002']);
+  assert.ok(s.etapas.find((e) => e.id === 'dinamica_2').aberta, 'abrir a equipe abre a dinâmica');
+  // notas separadas por dinâmica: mesma pessoa, mesmo critério, duas notas diferentes
+  ok(tA, 'av.salvar', { notas: [
+    { etapa: 'geral', candidato_id: 'c001', criterio_id: 'valores_rede', nota: 2, cliente_ts: 1 },
+    { etapa: 'dinamica_2', candidato_id: 'c001', criterio_id: 'valores_rede', nota: 5, cliente_ts: 1 },
+  ] });
+  const minhas = ok(tA, 'av.iniciar').minhas.notas.map((n) => n.etapa + ':' + n.nota).sort();
+  assert.deepEqual(minhas, ['dinamica_2:5', 'geral:2']);
+  // trocar a equipe ativa atualiza a votação; refazer as equipes sem a ativa encerra
+  ok(adm, 'admin.salvarEquipes', { etapa: 'dinamica_2', equipes: [{ nome: 'Equipe 1', membros: ['c003'] }] });
+  assert.deepEqual(ok(tA, 'av.sincronizar').em_votacao, ['c003']);
+  ok(adm, 'admin.salvarEquipes', { etapa: 'dinamica_2', equipes: [] });
+  const fim = ok(tA, 'av.sincronizar');
+  assert.equal(fim.equipe, null);
+  assert.deepEqual(fim.em_votacao, []);
+});

@@ -13,9 +13,11 @@
 var CACHE_SEG = 300; // 5 minutos
 var CHAVES_CACHE = ['pub', 'tokens'];
 
-function limparCache_() {
+/** Limpa o cache. manterVersao = true para mudanças que a consulta leve já entrega (equipe, votação):
+ *  assim os celulares não baixam tudo de novo. */
+function limparCache_(manterVersao) {
   try { CacheService.getScriptCache().removeAll(CHAVES_CACHE); } catch (e) { /* sem cache */ }
-  props_().setProperty('versao_pub', String(Date.now()));
+  if (!manterVersao) props_().setProperty('versao_pub', String(Date.now()));
 }
 
 function erroApi_(codigo, mensagem) {
@@ -110,7 +112,9 @@ function pacotePublico_() {
     processo: { nome: String(cfg.nome_processo || ''), modo: String(cfg.modo || 'ENSAIO').toUpperCase() },
     avaliacao_aberta: ehSim_(cfg.avaliacao_aberta),
     veem_outros: ehSim_(cfg.avaliadores_veem_notas_dos_outros),
-    em_votacao: String(cfg.em_votacao || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean),
+    em_votacao: listaIds_(cfg.em_votacao),
+    dinamica_ativa: String(cfg.dinamica_ativa || ''),
+    equipe: equipeAtiva_(cfg),
     etapas: lerObjetos_(ABAS.ETAPAS).map(function (e) { return { id: String(e.id), nome: String(e.nome), ordem: Number(e.ordem) || 0, aberta: ehSim_(e.aberta) }; })
       .sort(function (a, b) { return a.ordem - b.ordem; }),
     blocos: blocosAtivos(blocos, criterios).map(function (b) { return { id: b.id, nome: b.nome, nome_curto: b.nome_curto, ordem: b.ordem }; }),
@@ -121,6 +125,18 @@ function pacotePublico_() {
   };
   cache.put('pub', JSON.stringify(pub), CACHE_SEG);
   return pub;
+}
+
+function listaIds_(txt) {
+  return String(txt || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+}
+
+/** Equipe em avaliação agora: {id, nome, etapa, membros[]} ou null. */
+function equipeAtiva_(cfg) {
+  var id = String(cfg.equipe_ativa || '');
+  if (!id) return null;
+  var e = lerObjetos_(ABAS.EQUIPES).filter(function (x) { return String(x.id) === id; })[0];
+  return e ? { id: id, nome: String(e.nome), etapa: String(e.etapa), membros: listaIds_(e.membros) } : null;
 }
 
 /** Tira _linha e converte datas em texto ISO (para JSON). */
@@ -186,7 +202,8 @@ ACOES_AVALIADOR['av.iniciar'] = function (av) {
 /** Consulta leve, feita de tempos em tempos: votação atual, etapas abertas e se algo mudou. */
 ACOES_AVALIADOR['av.sincronizar'] = function (av) {
   var pub = pacotePublico_();
-  return { versao: pub.versao, em_votacao: pub.em_votacao, avaliacao_aberta: pub.avaliacao_aberta, etapas: pub.etapas };
+  return { versao: pub.versao, em_votacao: pub.em_votacao, avaliacao_aberta: pub.avaliacao_aberta, etapas: pub.etapas,
+    dinamica_ativa: pub.dinamica_ativa, equipe: pub.equipe };
 };
 
 /** Média dos colegas por etapa|candidato|critério (só quando a configuração permite). */
@@ -308,6 +325,7 @@ ACOES_ADMIN['admin.iniciar'] = function () {
     planilha_url: planilha_().getUrl ? planilha_().getUrl() : '',
     config: lerConfig_(),
     etapas: lerObjetos_(ABAS.ETAPAS).map(limparObj_),
+    equipes: lerEquipes_(),
     blocos: lerObjetos_(ABAS.BLOCOS).map(limparObj_),
     criterios: lerObjetos_(ABAS.CRITERIOS).map(limparObj_),
     avaliadores: lerObjetos_(ABAS.AVALIADORES).map(limparObj_),
@@ -387,8 +405,72 @@ ACOES_ADMIN['admin.salvarConfig'] = function (dados) {
 ACOES_ADMIN['admin.emVotacao'] = function (dados) {
   var ids = (dados.ids || []).map(String).filter(function (s) { return /^c\d+$/.test(s); });
   comTrava_(function () { gravarConfig_('em_votacao', ids.join(',')); });
-  limparCache_();
+  limparCache_(true);
   return { em_votacao: ids };
+};
+
+function lerEquipes_() {
+  return lerObjetos_(ABAS.EQUIPES).map(function (e) {
+    return { id: String(e.id), etapa: String(e.etapa), nome: String(e.nome), ordem: Number(e.ordem) || 0, membros: listaIds_(e.membros) };
+  }).sort(function (a, b) { return a.ordem - b.ordem; });
+}
+
+/**
+ * Substitui todas as equipes de uma dinâmica.
+ * dados: {etapa, equipes: [{nome, membros: [ids]}]}. Um candidato fica em no máximo uma equipe.
+ */
+ACOES_ADMIN['admin.salvarEquipes'] = function (dados) {
+  var etapa = String(dados.etapa || '');
+  return comTrava_(function () {
+    if (!lerObjetos_(ABAS.ETAPAS).some(function (e) { return String(e.id) === etapa; })) throw erroApi_('VALIDACAO', 'Dinâmica inexistente.');
+    var cands = {};
+    lerObjetos_(ABAS.CANDIDATOS).forEach(function (c) { cands[String(c.id)] = true; });
+    var usado = {};
+    var novas = (dados.equipes || []).slice(0, 30).map(function (q, i) {
+      var membros = (q.membros || []).map(String).filter(function (id) {
+        if (!cands[id] || usado[id]) return false;
+        usado[id] = true; return true;
+      });
+      return { id: etapa + '_eq' + (i + 1), etapa: etapa, nome: String(q.nome || ('Equipe ' + (i + 1))).trim().slice(0, 40), ordem: i + 1, membros: membros.join(',') };
+    });
+    var outras = lerObjetos_(ABAS.EQUIPES).filter(function (e) { return String(e.etapa) !== etapa; })
+      .map(function (e) { return { id: e.id, etapa: e.etapa, nome: e.nome, ordem: e.ordem, membros: e.membros }; });
+    limparDados_(ABAS.EQUIPES);
+    acrescentar_(ABAS.EQUIPES, outras.concat(novas));
+    // Se a equipe ativa deixou de existir ou mudou, atualiza quem está em votação
+    var cfg = lerConfig_();
+    var ativa = novas.filter(function (q) { return q.id === String(cfg.equipe_ativa); })[0];
+    if (ativa) gravarConfig_('em_votacao', ativa.membros);
+    else if (String(cfg.equipe_ativa).indexOf(etapa + '_eq') === 0) { gravarConfig_('equipe_ativa', ''); gravarConfig_('em_votacao', ''); }
+    limparCache_(true);
+    return { equipes: lerEquipes_(), config: lerConfig_() };
+  });
+};
+
+/**
+ * Momento ao vivo, controlado pelo admin.
+ * dados: {etapa, equipe}. etapa = dinâmica que os avaliadores veem (abre ela, se estiver fechada).
+ * equipe = ID da equipe em avaliação agora ('' encerra).
+ */
+ACOES_ADMIN['admin.aoVivo'] = function (dados) {
+  var etapa = String(dados.etapa || '');
+  var equipeId = String(dados.equipe || '');
+  return comTrava_(function () {
+    var et = lerObjetos_(ABAS.ETAPAS).filter(function (e) { return String(e.id) === etapa; })[0];
+    if (!et) throw erroApi_('VALIDACAO', 'Dinâmica inexistente.');
+    if (!ehSim_(et.aberta)) aba_(ABAS.ETAPAS).getRange(et._linha, CABECALHOS[ABAS.ETAPAS].indexOf('aberta') + 1).setValue('SIM');
+    var membros = '';
+    if (equipeId) {
+      var q = lerEquipes_().filter(function (x) { return x.id === equipeId && x.etapa === etapa; })[0];
+      if (!q) throw erroApi_('VALIDACAO', 'Equipe inexistente nesta dinâmica.');
+      membros = q.membros.join(',');
+    }
+    gravarConfig_('dinamica_ativa', etapa);
+    gravarConfig_('equipe_ativa', equipeId);
+    gravarConfig_('em_votacao', membros);
+    limparCache_(true);
+    return { config: lerConfig_(), etapas: lerObjetos_(ABAS.ETAPAS).map(limparObj_) };
+  });
 };
 
 function slug_(txt) {

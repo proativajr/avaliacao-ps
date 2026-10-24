@@ -10,6 +10,7 @@ var ABAS = {
   ETAPAS: 'Config_Etapas',
   BLOCOS: 'Config_Blocos',
   CRITERIOS: 'Config_Criterios',
+  EQUIPES: 'Equipes',
   AVALIADORES: 'Avaliadores',
   CANDIDATOS: 'Candidatos',
   INSCRICOES: 'Inscricoes_Original',
@@ -26,7 +27,7 @@ var ABAS = {
 /** Ordem das abas na planilha. */
 var ORDEM_ABAS = [
   ABAS.GERAL, ABAS.INDIVIDUAL, ABAS.PROGRESSO, ABAS.CALIBRACAO,
-  ABAS.CONFIG, ABAS.ETAPAS, ABAS.BLOCOS, ABAS.CRITERIOS,
+  ABAS.CONFIG, ABAS.ETAPAS, ABAS.BLOCOS, ABAS.CRITERIOS, ABAS.EQUIPES,
   ABAS.AVALIADORES, ABAS.CANDIDATOS, ABAS.AVALIACOES, ABAS.OBSERVACOES,
   ABAS.INSCRICOES, ABAS.IMPORTACOES, ABAS.AUX,
 ];
@@ -36,6 +37,8 @@ var CABECALHOS = {};
 CABECALHOS[ABAS.CONFIG] = ['chave', 'valor', 'descricao'];
 CABECALHOS[ABAS.ETAPAS] = ['id', 'nome', 'ordem', 'aberta'];
 CABECALHOS[ABAS.BLOCOS] = ['id', 'nome', 'nome_curto', 'ordem', 'ativo'];
+/** Equipes de cada dinâmica (etapa). membros = IDs dos candidatos separados por vírgula. */
+CABECALHOS[ABAS.EQUIPES] = ['id', 'etapa', 'nome', 'ordem', 'membros'];
 CABECALHOS[ABAS.CRITERIOS] = ['id', 'bloco', 'ordem', 'sigla', 'nome', 'descricao', 'peso', 'ativo', 'etapas'];
 CABECALHOS[ABAS.AVALIADORES] = ['id', 'nome', 'email', 'area', 'token', 'ativo', 'criado_em', 'ultimo_acesso'];
 CABECALHOS[ABAS.CANDIDATOS] = ['id', 'nome_exibicao', 'nome_normalizado', 'email', 'telefone', 'curso', 'semestre',
@@ -48,7 +51,7 @@ CABECALHOS[ABAS.OBSERVACOES] = ['chave', 'etapa', 'avaliador_id', 'candidato_id'
 /** Abas que só o script escreve (protegidas para todos, exceto o dono). */
 var ABAS_DADOS = [ABAS.AVALIADORES, ABAS.CANDIDATOS, ABAS.INSCRICOES, ABAS.IMPORTACOES, ABAS.AVALIACOES, ABAS.OBSERVACOES];
 /** Abas de configuração: editadas pelo app; na planilha mostram aviso antes de editar. */
-var ABAS_CONFIG = [ABAS.CONFIG, ABAS.ETAPAS, ABAS.BLOCOS, ABAS.CRITERIOS];
+var ABAS_CONFIG = [ABAS.CONFIG, ABAS.ETAPAS, ABAS.BLOCOS, ABAS.CRITERIOS, ABAS.EQUIPES];
 /** Abas de fórmulas: protegidas, exceto as células de seleção (dropdowns). */
 var ABAS_FORMULAS = [ABAS.GERAL, ABAS.INDIVIDUAL, ABAS.PROGRESSO, ABAS.CALIBRACAO, ABAS.AUX];
 
@@ -68,9 +71,11 @@ var CONFIG_PADRAO = [
   ['modo', 'ENSAIO', 'ENSAIO (dados fictícios) ou PRODUCAO (processo real)'],
   ['url_app', '', 'Endereço do site do app (ex.: https://avaliacao-ps.vercel.app)'],
   ['em_votacao', '', 'IDs dos candidatos em votação agora, separados por vírgula (o app preenche)'],
+  ['dinamica_ativa', '', 'Dinâmica (etapa) que os avaliadores veem agora (o app preenche)'],
+  ['equipe_ativa', '', 'Equipe em avaliação agora (o app preenche)'],
 ];
 
-var ETAPAS_PADRAO = [['geral', 'Geral', 1, 'SIM']];
+var ETAPAS_PADRAO = [['geral', 'Dinâmica 1', 1, 'SIM']];
 
 var BLOCOS_PADRAO = [
   ['valores', 'Valores PREDADOR', 'PREDADOR', 1, 'SIM'],

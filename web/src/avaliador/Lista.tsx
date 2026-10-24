@@ -1,7 +1,6 @@
 // Lista de candidatos do avaliador: busca fixa, filtros, progresso e "em votação agora".
 import { useMemo, useState } from 'preact/hooks';
 import { normalizarNome } from '@shared/texto.js';
-import { gravar, ler } from '../api';
 import type { Contexto, Pacote } from './Avaliador';
 import type { EstadoFila } from './fila';
 import { Simbolo } from '../marca';
@@ -26,78 +25,76 @@ export function Iniciais({ nome, foto, tam = 40 }: { nome: string; foto?: string
   return <span class="avatar" style={{ width: tam, height: tam }} aria-hidden="true">{ini}</span>;
 }
 
-const FILTROS = [['todos', 'Todos'], ['pendente', 'Pendentes'], ['parcial', 'Parciais'], ['completo', 'Completos']] as const;
+function Linha({ c, s, abrir }: { c: Pacote['candidatos'][number]; s: ReturnType<Contexto['estado']>; abrir: (id: string) => void }) {
+  return (
+    <li>
+      <button onClick={() => abrir(c.id)}>
+        <Iniciais nome={c.nome} foto={c.foto_url} />
+        <span class="nome"><b>{c.nome_curto}</b></span>
+        <span class={'estado ' + s.tipo}>
+          {s.tipo === 'completo' ? (s.tudoNA ? 'Não avaliei' : '✓') : s.tipo === 'parcial' ? `${s.feitos}/${s.total}` : ''}
+        </span>
+      </button>
+    </li>
+  );
+}
 
 export function Lista({ ctx, estadoFila, semConexao, abertas, trocarEtapa, abrir, erro }: PropsTela) {
-  const { pacote } = ctx;
+  const { pacote, equipe } = ctx;
   const [busca, setBusca] = useState('');
-  const [filtro, setFiltroBruto] = useState<string>(ler('filtro') || 'todos');
-  const setFiltro = (f: string) => { setFiltroBruto(f); gravar('filtro', f); };
+  const [verTodos, setVerTodos] = useState(false);
 
   const estados = useMemo(() => Object.fromEntries(pacote.candidatos.map((c) => [c.id, ctx.estado(c.id)])), [pacote.candidatos, ctx]);
-  const completos = pacote.candidatos.filter((c) => estados[c.id].tipo === 'completo').length;
   const total = pacote.candidatos.length;
-  const visiveis = pacote.candidatos.filter((c) => (filtro === 'todos' || estados[c.id].tipo === filtro) &&
-    (!busca || normalizarNome(c.nome + ' ' + c.nome_curto).includes(normalizarNome(busca))));
-  const votacao = pacote.em_votacao.map((id) => pacote.candidatos.find((c) => c.id === id)).filter(Boolean) as Pacote['candidatos'];
+  const daEquipe = equipe ? equipe.ids.map((id) => pacote.candidatos.find((c) => c.id === id)!).filter(Boolean) : [];
+  const outros = pacote.candidatos.filter((c) => !equipe || !equipe.ids.includes(c.id));
+  const visiveis = outros.filter((c) => !busca || normalizarNome(c.nome + ' ' + c.nome_curto).includes(normalizarNome(busca)));
   const nomeEtapa = pacote.etapas.find((e) => e.id === ctx.etapa)?.nome || '';
-  const contagem = (f: string) => (f === 'todos' ? total : pacote.candidatos.filter((c) => estados[c.id].tipo === f).length);
+  const feitosEquipe = daEquipe.filter((c) => estados[c.id].tipo === 'completo').length;
+  const mostrarOutros = !equipe || verTodos;
 
   return (
     <>
       <header class="av-topo lista">
         <div class="av-linha">
           <Simbolo />
-          <div class="av-titulo">
-            <b>{pacote.processo.nome || 'Processo seletivo'}</b>
-            <small>Olá, {pacote.eu.nome.split(' ')[0]}</small>
-          </div>
+          <div class="av-titulo"><b>{nomeEtapa || pacote.processo.nome || 'Avaliação'}</b></div>
           <Salvamento e={estadoFila.e} n={estadoFila.n} semConexao={semConexao} />
         </div>
-        {abertas.length > 1 ? (
-          <div class="etapas" role="tablist" aria-label="Etapa">
+        {abertas.length > 1 && (
+          <div class="etapas" role="tablist" aria-label="Dinâmica">
             {abertas.map((e) => <button role="tab" aria-selected={e.id === ctx.etapa} onClick={() => trocarEtapa(e.id)}>{e.nome}</button>)}
           </div>
-        ) : <p class="etapa-unica">Etapa: <b>{nomeEtapa}</b>{!ctx.aberta && ' · avaliação fechada'}</p>}
-        <div class="progresso" aria-label={`Você avaliou ${completos} de ${total}`}>
-          <div class="barra"><span style={{ width: total ? `${(completos / total) * 100}%` : 0 }} /></div>
-          <span>Você avaliou <b>{completos}</b> de {total}</span>
-        </div>
-        <input class="entrada busca" type="search" placeholder="Buscar candidato" value={busca} onInput={(e) => setBusca((e.target as HTMLInputElement).value)} aria-label="Buscar candidato" />
-        <div class="filtros" role="radiogroup" aria-label="Filtro">
-          {FILTROS.map(([id, rot]) => <button role="radio" aria-checked={filtro === id} onClick={() => setFiltro(id)}>{rot} <small>{contagem(id)}</small></button>)}
-        </div>
+        )}
       </header>
 
       <main class="av-conteudo">
         {erro && <p class="aviso erro">{erro}</p>}
-        {!ctx.aberta && <p class="aviso alerta">A avaliação desta etapa está fechada. Você pode ver suas notas, mas não alterar.</p>}
-        {votacao.length > 0 && ctx.aberta && (
-          <section class="votacao" aria-label="Em votação agora">
-            <b>Em votação agora</b>
-            <div>{votacao.map((c) => (
-              <button class="botao principal" onClick={() => abrir(c.id)}>{c.nome_curto} {estados[c.id].tipo === 'completo' ? '✓' : ''}</button>
-            ))}</div>
+        {!ctx.aberta && <p class="aviso alerta">Avaliação fechada. Você só pode ver suas notas.</p>}
+        {!total && <p class="aviso">Ainda não há candidatos.</p>}
+
+        {equipe && (
+          <section class="equipe-agora" aria-label={`${equipe.nome}, avalie agora`}>
+            <h2><span>Avalie agora</span><b>{equipe.nome}</b><small>{feitosEquipe}/{daEquipe.length}</small></h2>
+            <ul class="cands">{daEquipe.map((c) => <Linha c={c} s={estados[c.id]} abrir={abrir} />)}</ul>
           </section>
         )}
-        {!total && <p class="aviso">Ainda não há candidatos cadastrados. Volte quando o admin avisar.</p>}
-        <ul class="cands">
-          {visiveis.map((c) => {
-            const s = estados[c.id];
-            return (
-              <li>
-                <button onClick={() => abrir(c.id)}>
-                  <Iniciais nome={c.nome} foto={c.foto_url} />
-                  <span class="nome"><b>{c.nome_curto}</b>{c.nome !== c.nome_curto && <small>{c.nome}</small>}</span>
-                  <span class={'estado ' + s.tipo}>
-                    {s.tipo === 'completo' ? (s.tudoNA ? 'Não avaliei' : 'Completo ✓') : s.tipo === 'parcial' ? `${s.feitos}/${s.total}` : 'Pendente'}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-          {total > 0 && !visiveis.length && <li class="vazio">Nenhum candidato neste filtro.</li>}
-        </ul>
+        {!equipe && total > 0 && <p class="esperando">Aguardando a próxima equipe. Você também pode avaliar qualquer candidato abaixo.</p>}
+
+        {equipe && outros.length > 0 && (
+          <button class="ver-todos" aria-expanded={verTodos} onClick={() => setVerTodos(!verTodos)}>
+            {verTodos ? 'Esconder outros candidatos' : `Outros candidatos (${outros.length})`}
+          </button>
+        )}
+        {mostrarOutros && outros.length > 0 && (
+          <>
+            {outros.length > 8 && <input class="entrada busca" type="search" placeholder="Buscar candidato" value={busca} onInput={(e) => setBusca((e.target as HTMLInputElement).value)} aria-label="Buscar candidato" />}
+            <ul class="cands">
+              {visiveis.map((c) => <Linha c={c} s={estados[c.id]} abrir={abrir} />)}
+              {!visiveis.length && <li class="vazio">Ninguém com esse nome.</li>}
+            </ul>
+          </>
+        )}
       </main>
     </>
   );

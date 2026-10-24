@@ -5,9 +5,9 @@ O painel do admin abre pelo link de admin (planilha → **PS Proativa → Mostra
 ## Antes do processo
 
 1. **Configuração → Processo:** nome, datas, nota de corte, vagas, mínimo de avaliadores por candidato e limite de divergência.
-2. **Configuração → Etapas:** crie as etapas (ex.: Dia 1, Dia 2, Desafio em Equipe). Cada etapa tem suas próprias notas.
-   Deixe **aberta** só a etapa que está acontecendo, para os avaliadores não errarem de etapa.
-3. **Configuração → Critérios:** textos, peso (padrão 1), ativo e em quais etapas cada critério vale.
+2. **Dinâmicas:** crie uma para cada momento avaliado (botão **+ Dinâmica** na aba **Ao vivo**, ou em **Configuração**).
+   Cada dinâmica tem suas próprias notas.
+3. **Configuração → Critérios:** textos, peso (padrão 1), ativo e em quais dinâmicas cada critério vale.
    O avaliador vê a primeira frase da descrição; o resto fica em "ver mais".
    Critério que já tem nota não pode ser apagado: desative.
 4. **Avaliadores → Colar lista**, depois envie os links (**WhatsApp** ou **Copiar todos os links**).
@@ -21,16 +21,20 @@ O painel do admin abre pelo link de admin (planilha → **PS Proativa → Mostra
 
 ## Durante o processo
 
-- **Votação:** ao fim de cada apresentação, marque quem apresentou e clique em **Abrir votação**. Em até 20 segundos
-  aparece um atalho no app de todos os avaliadores. A tela mostra quantos já completaram. Depois, **Encerrar votação**.
-- **Resultados:** ranking ao vivo (atualiza a cada 30 s), com filtro por etapa. Clique num candidato para ver
+- **Ao vivo** (funciona no celular):
+  1. Escolha a dinâmica no topo.
+  2. Use **+** para criar as equipes (3, 4…).
+  3. Toque no número da equipe ao lado de cada candidato presente, ou em **Sortear** para distribuir quem falta.
+  4. Quando uma equipe apresentar, toque em **Avaliar agora**. Em até 10 segundos os celulares mostram só essa equipe.
+     O cartão azul mostra quantos avaliadores já completaram cada membro. Depois, **Encerrar**.
+- **Resultados:** ranking ao vivo (atualiza a cada 30 s), com filtro por dinâmica. Clique num candidato para ver
   a média por critério contra o grupo, as notas de cada avaliador e as observações.
 - **Progresso dos avaliadores** (fim da página de Resultados): **Copiar lembrete** gera uma mensagem pronta para
   o WhatsApp de quem ainda tem pendências.
 - **Faltou, desistiu, foi eliminado?** Em **Candidatos**, mude o status. Ele sai do ranking e da lista dos avaliadores,
   mas as notas já dadas ficam guardadas.
 - **Avaliador perdeu o celular ou o link vazou?** **Avaliadores → Regerar link** (o antigo para de funcionar na hora).
-- **Fechar a avaliação:** desmarque a etapa em **Configuração → Etapas** (ou "Avaliação aberta" em Processo).
+- **Fechar a avaliação:** desmarque a dinâmica em **Configuração → Dinâmicas** (ou "Avaliação aberta" em Processo).
   O app fica somente leitura.
 
 ## Sinais para olhar

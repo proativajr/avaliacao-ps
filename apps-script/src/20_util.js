@@ -123,7 +123,7 @@ function lerConfig_() {
 }
 
 /** Chaves gravadas como texto puro (com apóstrofo), para a planilha não transformar em data. */
-var CONFIG_TEXTO = ['data_inicio', 'data_fim', 'em_votacao', 'url_app', 'nome_processo'];
+var CONFIG_TEXTO = ['data_inicio', 'data_fim', 'em_votacao', 'url_app', 'nome_processo', 'dinamica_ativa', 'equipe_ativa'];
 function valorConfigParaCelula_(chave, valor) {
   return CONFIG_TEXTO.indexOf(chave) >= 0 && valor !== '' ? "'" + String(valor) : valor;
 }

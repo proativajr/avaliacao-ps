@@ -28,7 +28,7 @@ export function Configuracao({ d, setD, acao }: PropsAba) {
     if (r) setD((x) => ({ ...x, config: r.config }));
   };
   const salvarEtapas = async () => {
-    const r = await acao<{ etapas: Etapa[] }>('admin.salvarEtapas', { lista: etapas }, 'Etapas salvas');
+    const r = await acao<{ etapas: Etapa[] }>('admin.salvarEtapas', { lista: etapas }, 'Dinâmicas salvas');
     if (r) { setD((x) => ({ ...x, etapas: r.etapas })); setEtapas(r.etapas.map((e) => ({ ...e }))); }
   };
   const salvarBlocos = async () => {
@@ -47,8 +47,8 @@ export function Configuracao({ d, setD, acao }: PropsAba) {
   };
   const removerEtapa = async (e: Etapa) => {
     if (!d.etapas.find((x) => x.id === e.id)) { setEtapas((l) => l.filter((x) => x !== e)); return; }
-    if (!confirm(`Apagar a etapa "${e.nome}"? Só é possível se não houver notas nela; senão, feche a etapa.`)) return;
-    const r = await acao<{ etapas: Etapa[] }>('admin.removerEtapas', { ids: [e.id] }, 'Etapa apagada');
+    if (!confirm(`Apagar "${e.nome}"? Só é possível se não houver notas nela; senão, feche a dinâmica.`)) return;
+    const r = await acao<{ etapas: Etapa[] }>('admin.removerEtapas', { ids: [e.id] }, 'Dinâmica apagada');
     if (r) { setD((x) => ({ ...x, etapas: r.etapas })); setEtapas(r.etapas.map((k) => ({ ...k }))); }
   };
   const mudarCrit = (c: Criterio, campo: keyof Criterio, v: any) => setCrits((l) => l.map((x) => (x === c ? { ...x, [campo]: v } : x)));
@@ -98,12 +98,12 @@ export function Configuracao({ d, setD, acao }: PropsAba) {
       </div>
 
       <div class="painel" style={{ marginBottom: 16 }}>
-        <h3>Etapas</h3>
-        <p class="ajuda">Cada etapa tem suas próprias notas. Com mais de uma aberta, o avaliador escolhe a etapa no topo do app.</p>
+        <h3>Dinâmicas</h3>
+        <p class="ajuda">Cada dinâmica tem suas próprias notas. Durante o PS, quem escolhe a dinâmica que os avaliadores veem é a aba Ao vivo.</p>
         <div class="tabela-box" style={{ margin: '8px 0' }}><table class="tabela"><thead><tr><th>Nome</th><th class="num">Ordem</th><th>Aberta</th><th></th></tr></thead><tbody>
           {etapas.map((e) => (
             <tr>
-              <td><input class="entrada" value={e.nome} onInput={(ev) => setEtapas((l) => l.map((x) => (x === e ? { ...x, nome: (ev.target as HTMLInputElement).value } : x)))} aria-label="Nome da etapa" /><small class="ajuda">{e.id || 'nova'}</small></td>
+              <td><input class="entrada" value={e.nome} onInput={(ev) => setEtapas((l) => l.map((x) => (x === e ? { ...x, nome: (ev.target as HTMLInputElement).value } : x)))} aria-label="Nome da dinâmica" /><small class="ajuda">{e.id || 'nova'}</small></td>
               <td class="num"><input class="entrada" style={{ width: 72 }} type="number" value={e.ordem} onInput={(ev) => setEtapas((l) => l.map((x) => (x === e ? { ...x, ordem: Number((ev.target as HTMLInputElement).value) } : x)))} aria-label="Ordem" /></td>
               <td><SimNao rotulo="Aberta" valor={String(e.aberta)} aoMudar={(v) => setEtapas((l) => l.map((x) => (x === e ? { ...x, aberta: v } : x)))} /></td>
               <td class="num"><button class="botao pequeno perigo" onClick={() => removerEtapa(e)}>Apagar</button></td>
@@ -111,8 +111,8 @@ export function Configuracao({ d, setD, acao }: PropsAba) {
           ))}
         </tbody></table></div>
         <div class="barra-acoes">
-          <button class="botao" onClick={() => setEtapas((l) => [...l, { id: '', nome: 'Nova etapa', ordem: l.length + 1, aberta: 'NÃO' }])}>Adicionar etapa</button>
-          <button class="botao principal" onClick={salvarEtapas}>Salvar etapas</button>
+          <button class="botao" onClick={() => setEtapas((l) => [...l, { id: '', nome: `Dinâmica ${l.length + 1}`, ordem: l.length + 1, aberta: 'NÃO' }])}>Adicionar dinâmica</button>
+          <button class="botao principal" onClick={salvarEtapas}>Salvar dinâmicas</button>
         </div>
       </div>
 
@@ -136,7 +136,7 @@ export function Configuracao({ d, setD, acao }: PropsAba) {
 
       <div class="painel">
         <h3>Critérios</h3>
-        <p class="ajuda">O cartão do avaliador mostra a primeira frase da descrição; o resto fica em "ver mais". Peso padrão 1 (com todos 1, a média é simples). "Etapas" vazio = vale em todas.</p>
+        <p class="ajuda">O avaliador vê a descrição ao tocar no critério. Peso padrão 1 (com todos 1, a média é simples). "Dinâmicas" vazio = vale em todas.</p>
         {d.blocos.map((b) => (
           <div style={{ marginTop: 16 }}>
             <h4 style={{ margin: '0 0 8px' }}>{b.nome}</h4>
@@ -150,7 +150,7 @@ export function Configuracao({ d, setD, acao }: PropsAba) {
                 <label class="campo"><span>Descrição</span><textarea value={c.descricao} onInput={(e) => mudarCrit(c, 'descricao', (e.target as HTMLTextAreaElement).value)} /></label>
                 <div class="barra-acoes" style={{ marginBottom: 0 }}>
                   <SimNao rotulo="Ativo" valor={String(c.ativo)} aoMudar={(v) => mudarCrit(c, 'ativo', v)} />
-                  <span class="ajuda">Etapas:</span>
+                  <span class="ajuda">Dinâmicas (IDs):</span>
                   {d.etapas.map((e) => {
                     const lista = String(c.etapas || '').split(',').map((s) => s.trim()).filter(Boolean);
                     const marcado = !lista.length || lista.includes(e.id);

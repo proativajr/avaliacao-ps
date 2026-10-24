@@ -99,3 +99,23 @@
 .av .faixa-teste { font-size: 11px; padding: 1px 8px; line-height: 14px; }
 .av .faixa-teste + .av-topo { top: 16px; }
 .faixa-offline { margin: 0; padding: 6px 12px; background: var(--alerta-suave); color: var(--alerta); font-size: 13px; font-weight: 700; text-align: center; }
+
+/* ---------- Versão mínima: equipe em avaliação ---------- */
+.equipe-agora { margin: 4px 0 12px; }
+.equipe-agora h2 {
+  display: flex; align-items: baseline; gap: 8px; margin: 0; padding: 10px 12px; font-size: 15px;
+  background: var(--cor-marca-azul); color: #FFFFFF; border-radius: var(--raio) var(--raio) 0 0; border-left: 4px solid var(--cor-marca-amarelo);
+}
+.equipe-agora h2 span { font-weight: 500; color: #C9CFDA; font-size: 13px; }
+.equipe-agora h2 b { font-size: 18px; flex: 1; }
+.equipe-agora h2 small { font-size: 14px; font-variant-numeric: tabular-nums; }
+.equipe-agora .cands { background: var(--superficie); border: 1px solid var(--linha); border-top: 0; border-radius: 0 0 var(--raio) var(--raio); padding: 0 8px; }
+.equipe-agora .cands li:last-child > button { border-bottom: 0; }
+.esperando { color: var(--suave); font-size: 14px; margin: 8px 0 12px; }
+.ver-todos { width: 100%; min-height: 44px; border: 1px dashed var(--linha); background: none; border-radius: var(--raio); color: var(--marca); font-weight: 600; cursor: pointer; margin-bottom: 8px; }
+.cands .estado:empty { display: none; }
+.crit-rotulo .mais { text-decoration: none; color: var(--suave); }
+.extras { grid-template-columns: 1fr 1fr; }
+.extras > .botao.principal, .extras > .campo { grid-column: 1 / -1; }
+.botao.leve.suave { color: var(--suave); font-weight: 500; white-space: normal; line-height: 1.2; font-size: 14px; }
+.extras .botao.leve { border: 1px solid var(--linha); }

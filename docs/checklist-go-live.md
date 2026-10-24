@@ -11,7 +11,7 @@
 - [ ] Dados fictícios gerados; **Conferir cálculos** = "Cálculos conferidos ✓"
 - [ ] Ensaio com a equipe: cada membro abre o próprio link e avalia 3 candidatos
 - [ ] Teste sem internet: modo avião → notas → fechar app → internet de volta → notas na aba Avaliacoes
-- [ ] Votação: abrir para 2 candidatos e conferir o atalho nos celulares
+- [ ] Ao vivo: criar 2 dinâmicas, montar 3 equipes, **Avaliar agora** e conferir nos celulares; notas de um candidato nas 2 dinâmicas aparecem separadas
 - [ ] (Opcional) `node scripts/teste-carga.mjs` no ensaio: "OK: nenhuma perda e nenhuma duplicata"
 - [ ] Ensaio zerado
 
@@ -19,8 +19,8 @@
 
 - [ ] Planilha **PRODUÇÃO** em branco, código colado, `setup` rodado
 - [ ] Config: `modo` = **PRODUCAO**, `nome_processo`, datas, `url_app`, nota de corte, vagas, mínimo de avaliadores
-- [ ] Etapas criadas; só a primeira etapa **aberta**
-- [ ] Critérios revisados (textos, pesos, etapas)
+- [ ] Dinâmicas criadas
+- [ ] Critérios revisados (textos, pesos, dinâmicas)
 - [ ] Web App de produção publicado como **Qualquer pessoa**; URL em `producao:` no `config.js`
 - [ ] Link do admin de produção guardado em local seguro (não no grupo do WhatsApp)
 - [ ] Avaliadores cadastrados na produção e **links novos** enviados com o guia do avaliador
@@ -31,11 +31,11 @@
 
 ## No dia (07/11)
 
-- [ ] Abrir a etapa do dia; fechar as outras
-- [ ] Ao fim de cada apresentação: **Votação → Abrir votação**
+- [ ] Em cada dinâmica: **Ao vivo** → montar equipes com quem está presente
+- [ ] A cada apresentação: **Avaliar agora** na equipe; **Encerrar** ao terminar
 - [ ] Acompanhar **Progresso** e mandar lembretes
 - [ ] Mudar status de quem faltou
-- [ ] Fechar a etapa ao terminar
+- [ ] Fechar as dinâmicas ao terminar
 
 ## Depois
 

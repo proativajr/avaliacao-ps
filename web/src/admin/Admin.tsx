@@ -9,14 +9,14 @@ import { Candidatos } from './Candidatos';
 import { Resultados } from './Resultados';
 import { Configuracao } from './Configuracao';
 import { EnsaioDados } from './EnsaioDados';
-import { Votacao } from './Votacao';
+import { AoVivo } from './AoVivo';
 
 export type Acao = <T = any>(nome: string, dados?: unknown, sucesso?: string) => Promise<T | null>;
 export interface PropsAba { d: AdminDados; setD: (f: (d: AdminDados) => AdminDados) => void; acao: Acao; sessao: Sessao; recarregar: () => Promise<void>; }
 
 const ABAS = [
+  ['aovivo', 'Ao vivo'],
   ['resultados', 'Resultados'],
-  ['votacao', 'Votação'],
   ['candidatos', 'Candidatos'],
   ['avaliadores', 'Avaliadores'],
   ['configuracao', 'Configuração'],
@@ -27,7 +27,7 @@ type Aba = typeof ABAS[number][0];
 export function Admin({ sessao, outras }: { sessao: Sessao; outras: Sessao[] }) {
   const [d, setDBruto] = useState<AdminDados | null>(null);
   const [erro, setErro] = useState('');
-  const [aba, setAba] = useState<Aba>('resultados');
+  const [aba, setAba] = useState<Aba>('aovivo');
   const [ocupado, setOcupado] = useState(false);
 
   const recarregar = useCallback(async () => {
@@ -72,7 +72,7 @@ export function Admin({ sessao, outras }: { sessao: Sessao; outras: Sessao[] }) 
       <header class="adm-topo">
         <div class="linha1">
           <Assinatura />
-          <h1>{d.config.nome_processo || 'Processo seletivo'} · Painel do admin</h1>
+          <h1>{d.config.nome_processo || 'Processo seletivo'}</h1>
           {ocupado && <span class="selo marca" role="status">Salvando…</span>}
           {d.planilha_url && <a class="botao pequeno" href={d.planilha_url} target="_blank" rel="noopener">Abrir planilha</a>}
           {outras.length > 0 && (
@@ -94,7 +94,7 @@ export function Admin({ sessao, outras }: { sessao: Sessao; outras: Sessao[] }) 
       </header>
       <main class="adm-conteudo">
         {aba === 'resultados' && <Resultados {...props} />}
-        {aba === 'votacao' && <Votacao {...props} />}
+        {aba === 'aovivo' && <AoVivo {...props} />}
         {aba === 'candidatos' && <Candidatos {...props} />}
         {aba === 'avaliadores' && <Avaliadores {...props} />}
         {aba === 'configuracao' && <Configuracao {...props} />}

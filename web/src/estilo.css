@@ -191,3 +191,49 @@ table.tabela { width: 100%; border-collapse: collapse; font-size: 15px; }
 .indicador.metrica span { color: #FFFFFF; }
 .indicador span { color: var(--suave); font-size: 14px; }
 .faixa-teste + .adm-topo { top: 24px; }
+
+/* ---------- Ao vivo (admin no celular) ---------- */
+.aovivo { max-width: 640px; }
+.av-dinamica { display: flex; gap: 8px; margin-bottom: 12px; }
+.av-dinamica select { flex: 1; font-weight: 600; }
+.agora { background: var(--cor-marca-azul); color: #FFFFFF; border-radius: var(--raio); padding: 12px 16px; margin-bottom: 12px; border-left: 4px solid var(--cor-marca-amarelo); }
+.agora-topo { display: flex; align-items: baseline; gap: 8px; }
+.agora-topo span { font-size: 13px; color: #C9CFDA; }
+.agora-topo b { font-size: 20px; color: var(--cor-marca-amarelo); }
+.agora ul { list-style: none; margin: 8px 0 12px; padding: 0; }
+.agora li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px solid #45527A; font-size: 15px; }
+.agora .cont { font-variant-numeric: tabular-nums; color: #C9CFDA; }
+.agora .botao { background: transparent; border-color: #FFFFFF !important; color: #FFFFFF !important; }
+.equipes { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); margin-bottom: 12px; }
+.equipe { background: var(--superficie); border: 1px solid var(--linha); border-radius: var(--raio); padding: 8px 12px; }
+.equipe.ativa { border-color: var(--marca); border-width: 2px; }
+.equipe-topo { display: flex; align-items: center; gap: 8px; min-height: 36px; }
+.equipe-topo b { color: var(--marca); }
+.equipe .cont { font-size: 13px; color: var(--suave); }
+.equipe .membros { margin: 2px 0 0; font-size: 14px; color: var(--suave); }
+.montar { margin-bottom: 8px; }
+.qtd { display: inline-flex; align-items: center; gap: 8px; }
+.qtd .botao { width: 40px; padding: 0; font-size: 20px; }
+.alocar { list-style: none; margin: 8px 0; padding: 0; }
+.alocar li { display: flex; align-items: center; gap: 8px; min-height: 52px; border-bottom: 1px solid var(--linha); }
+.alocar .nome { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.alocar li.sem .nome { color: var(--suave); }
+.alocar .nums { display: flex; gap: 4px; flex: none; }
+.alocar .nums button { width: 40px; height: 40px; border-radius: var(--raio-pequeno); border: 1.5px solid var(--linha); background: var(--superficie); font-weight: 600; cursor: pointer; color: var(--suave); padding: 0; }
+.alocar .nums button.marcada { background: var(--marca); border-color: var(--marca); color: var(--marca-texto); }
+@media (max-width: 400px) { .alocar .nums button { width: 34px; height: 40px; } }
+
+/* ---------- Admin no celular ---------- */
+@media (max-width: 640px) {
+  .adm-topo .linha1 { padding: 6px 12px 0; gap: 8px; }
+  .adm-topo .logo { height: 24px; }
+  .adm-topo h1 { font-size: 14px; }
+  .adm-topo .linha1 a.botao { display: none; }
+  .adm-abas { padding: 0 4px; }
+  .adm-abas button { padding: 8px 10px; }
+  .adm-conteudo { padding: 12px 12px 80px; }
+  .adm-conteudo h2 { font-size: 19px; }
+  .barra-acoes .entrada { max-width: none; }
+  .tabela th, .tabela td { padding: 8px; }
+  table.tabela { font-size: 14px; }
+}

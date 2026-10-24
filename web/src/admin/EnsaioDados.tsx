@@ -39,10 +39,10 @@ export function EnsaioDados({ d, acao, recarregar, sessao }: PropsAba) {
 
         <div class="painel">
           <h3>Conferir cálculos</h3>
-          <p class="ajuda">Recalcula a Tabela Geral por fora (mesmo código do app) e compara com as fórmulas da planilha, na etapa escolhida na célula B2 da Tabela Geral.</p>
+          <p class="ajuda">Recalcula a Tabela Geral por fora (mesmo código do app) e compara com as fórmulas da planilha, na dinâmica escolhida na célula B2 da Tabela Geral.</p>
           <button class="botao" onClick={async () => setConferencia(await acao('admin.conferir'))}>Conferir agora</button>
           {conferencia && (conferencia.ok
-            ? <p class="aviso ok" style={{ marginTop: 12 }}>Tudo certo: {conferencia.candidatos} candidatos conferidos (etapa {conferencia.etapa}).</p>
+            ? <p class="aviso ok" style={{ marginTop: 12 }}>Tudo certo: {conferencia.candidatos} candidatos conferidos (dinâmica {conferencia.etapa}).</p>
             : <div class="aviso erro" style={{ marginTop: 12 }}><b>Diferenças encontradas:</b><ul>{conferencia.diferencas.slice(0, 20).map((x: string) => <li>{x}</li>)}</ul></div>)}
         </div>
 

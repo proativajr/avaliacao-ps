@@ -75,7 +75,7 @@ export function Resultados({ d, setD, acao, sessao }: PropsAba) {
     const nomeAv = Object.fromEntries(d.avaliadores.map((a) => [a.id, a.nome]));
     const nomeC = Object.fromEntries(d.candidatos.map((c) => [c.id, c.nome_exibicao]));
     const nomeK = Object.fromEntries(d.criterios.map((k) => [k.id, k.nome]));
-    return [['Etapa', 'Avaliador ID', 'Avaliador', 'Candidato ID', 'Candidato', 'Critério ID', 'Critério', 'Nota'],
+    return [['Dinâmica', 'Avaliador ID', 'Avaliador', 'Candidato ID', 'Candidato', 'Critério ID', 'Critério', 'Nota'],
       ...d.avaliacoes.filter((a) => etapa === '*' || a.etapa === etapa).map((a) => [a.etapa, a.avaliador_id, nomeAv[a.avaliador_id], a.candidato_id, nomeC[a.candidato_id], a.criterio_id, nomeK[a.criterio_id], a.nota === 'NA' ? 'Não posso avaliar' : a.nota])];
   };
   const sufixo = `${etapa === '*' ? 'todas' : etapa}_${dataArquivo()}`;
@@ -83,16 +83,16 @@ export function Resultados({ d, setD, acao, sessao }: PropsAba) {
   const lembrete = (p: typeof progresso[number]) => {
     const faltam = p.pendentes + p.parciais;
     return `Oi, ${p.av.nome.split(' ')[0]}! Faltam ${faltam} candidato${faltam > 1 ? 's' : ''} para você avaliar no ${cfg.nome_processo || 'PS'}` +
-      `${etapa !== '*' ? ` (${nomeEtapa})` : ''}. Leva poucos minutos: abra seu link e use o filtro "Pendentes".\n${linkAvaliador(p.av.token, sessao.amb)}`;
+      `${etapa !== '*' ? ` (${nomeEtapa})` : ''}. Leva poucos minutos: é só abrir seu link.\n${linkAvaliador(p.av.token, sessao.amb)}`;
   };
 
   return (
     <section>
       <h2>Resultados</h2>
-      <p class="subtitulo">Ranking ao vivo, calculado com as mesmas regras da planilha. Atualizado {dataRelativa(atualizado.toISOString())}.</p>
+      <p class="subtitulo">Atualizado {dataRelativa(atualizado.toISOString())}.</p>
       <div class="barra-acoes">
-        <select class="entrada" style={{ width: 'auto' }} value={etapa} onChange={(e) => setEtapa((e.target as HTMLSelectElement).value)} aria-label="Etapa">
-          <option value="*">Todas as etapas</option>
+        <select class="entrada" style={{ width: 'auto' }} value={etapa} onChange={(e) => setEtapa((e.target as HTMLSelectElement).value)} aria-label="Dinâmica">
+          <option value="*">Todas as dinâmicas</option>
           {d.etapas.map((e) => <option value={e.id}>{e.nome}</option>)}
         </select>
         <input class="entrada" type="search" placeholder="Buscar candidato" value={busca} onInput={(e) => setBusca((e.target as HTMLInputElement).value)} aria-label="Buscar candidato" />
@@ -142,7 +142,7 @@ export function Resultados({ d, setD, acao, sessao }: PropsAba) {
       <div class="grade-2" style={{ marginBottom: 24 }}>
         <div class="painel">
           <h3>Exportar</h3>
-          <p class="ajuda">Etapa: {nomeEtapa}. O CSV abre direto no Excel em português.</p>
+          <p class="ajuda">Dinâmica: {nomeEtapa}. O CSV abre direto no Excel em português.</p>
           <div class="barra-acoes" style={{ marginTop: 8 }}>
             <button class="botao pequeno" onClick={() => baixarCsv(`ranking_${sufixo}.csv`, tabelaRanking())}>Ranking CSV</button>
             <button class="botao pequeno" onClick={() => baixarXlsx(`ranking_${sufixo}.xlsx`, 'Ranking', tabelaRanking())}>Ranking XLSX</button>
@@ -158,7 +158,7 @@ export function Resultados({ d, setD, acao, sessao }: PropsAba) {
       </div>
 
       <h2 style={{ fontSize: 19 }}>Progresso dos avaliadores</h2>
-      <p class="subtitulo">{etapa === '*' ? 'Somando as etapas abertas.' : `Etapa ${nomeEtapa}.`} "Não posso avaliar" conta como respondido.</p>
+      <p class="subtitulo">{etapa === '*' ? 'Somando as dinâmicas abertas.' : `${nomeEtapa}.`} "Não posso avaliar" conta como respondido.</p>
       <div class="tabela-box">
         <table class="tabela">
           <thead><tr><th>Avaliador</th><th class="num">Completos</th><th class="num">Parciais</th><th class="num">Pendentes</th><th>Progresso</th><th>Último acesso</th><th class="num">Lembrete</th></tr></thead>

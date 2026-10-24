@@ -6,7 +6,7 @@ que recebe as notas e calcula sozinha médias, ranking, progresso e calibração
 - **App do avaliador:** link pessoal (sem senha), um candidato por tela, notas de 1 a 5 ou "Não posso avaliar",
   salvamento automático que funciona até sem internet.
 - **Painel do admin:** importar inscrições do Google Forms, cadastrar avaliadores e mandar o link pelo WhatsApp,
-  abrir a votação depois de cada apresentação, ranking ao vivo, configuração dos critérios e exportação.
+  montar equipes por dinâmica e abrir a equipe que está apresentando (aba Ao vivo), ranking ao vivo, configuração dos critérios e exportação.
 - **Planilha:** é a fonte da verdade. Todas as estatísticas são fórmulas da própria planilha.
 
 Guias para enviar à equipe: [guia do avaliador](docs/guia-avaliador.md) · [guia do admin](docs/guia-admin.md) ·

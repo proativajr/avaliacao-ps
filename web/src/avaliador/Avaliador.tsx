@@ -14,6 +14,8 @@ export interface Pacote {
   avaliacao_aberta: boolean;
   veem_outros: boolean;
   em_votacao: string[];
+  dinamica_ativa?: string;
+  equipe?: { id: string; nome: string; etapa: string; membros: string[] } | null;
   etapas: { id: string; nome: string; ordem: number; aberta: boolean }[];
   blocos: { id: string; nome: string; nome_curto: string; ordem: number }[];
   criterios: { id: string; bloco: string; ordem: number; sigla: string; nome: string; descricao: string; etapas: string }[];
@@ -25,6 +27,8 @@ export interface Pacote {
 export type Valor = { nota: number | 'NA' | ''; ts: number };
 export interface Contexto {
   pacote: Pacote; etapa: string; aberta: boolean;
+  /** Membros da equipe em avaliação agora nesta dinâmica (vazio = nenhuma). */
+  equipe: { nome: string; ids: string[] } | null;
   criterios: Pacote['criterios'];
   notas: Record<string, Valor>;
   obs: Record<string, { texto: string; ts: number }>;
@@ -99,12 +103,13 @@ export function Avaliador({ sessao }: { sessao: Sessao; outras: Sessao[] }) {
     const id = setInterval(async () => {
       if (document.visibilityState !== 'visible') return;
       try {
-        const s = await chamar<{ versao: string; em_votacao: string[]; avaliacao_aberta: boolean; etapas: Pacote['etapas'] }>(sessao, 'av.sincronizar', {}, 15000);
+        const s = await chamar<Pick<Pacote, 'versao' | 'em_votacao' | 'avaliacao_aberta' | 'etapas' | 'dinamica_ativa' | 'equipe'>>(sessao, 'av.sincronizar', {}, 15000);
         setSemConexaoInicio(false);
+        // Só baixa tudo de novo quando candidatos ou critérios mudam; equipe e dinâmica vêm na consulta leve.
+        setPacote((p) => (p ? { ...p, em_votacao: s.em_votacao, avaliacao_aberta: s.avaliacao_aberta, etapas: s.etapas, dinamica_ativa: s.dinamica_ativa, equipe: s.equipe } : p));
         if (s.versao !== pacote.versao) carregar();
-        else setPacote((p) => (p ? { ...p, em_votacao: s.em_votacao, avaliacao_aberta: s.avaliacao_aberta, etapas: s.etapas } : p));
       } catch { /* sem internet: tenta na próxima */ }
-    }, 20000);
+    }, 10000);
     return () => clearInterval(id);
   }, [pacote?.versao, sessao]); // eslint-disable-line
 
@@ -124,7 +129,9 @@ export function Avaliador({ sessao }: { sessao: Sessao; outras: Sessao[] }) {
 
   const etapas = pacote?.etapas || [];
   const abertas = pacote?.avaliacao_aberta ? etapas.filter((e) => e.aberta) : [];
-  const etapa = (abertas.find((e) => e.id === etapaEscolhida) || abertas[0] || etapas.find((e) => e.id === etapaEscolhida) || etapas[0])?.id || '';
+  // A dinâmica ao vivo (escolhida pelo admin) manda; sem ela, vale a escolha do avaliador.
+  const aoVivo = abertas.find((e) => e.id === pacote?.dinamica_ativa);
+  const etapa = (aoVivo || abertas.find((e) => e.id === etapaEscolhida) || abertas[0] || etapas.find((e) => e.id === etapaEscolhida) || etapas[0])?.id || '';
   const aberta = !!abertas.find((e) => e.id === etapa);
   const criterios = useMemo(() => (pacote ? criteriosDaEtapa(pacote.criterios, etapa) : []), [pacote, etapa]);
 
@@ -141,8 +148,10 @@ export function Avaliador({ sessao }: { sessao: Sessao; outras: Sessao[] }) {
     const registrar = (candId: string, critId: string, nota: number | 'NA', ts: number) => {
       filaRef.current!.adicionar({ tipo: 'nota', etapa, candidato_id: candId, criterio_id: critId, nota, cliente_ts: ts });
     };
+    const eq = pacote.equipe && pacote.equipe.etapa === etapa
+      ? { nome: pacote.equipe.nome, ids: pacote.equipe.membros.filter((id) => pacote.candidatos.some((c) => c.id === id)) } : null;
     return {
-      pacote, etapa, aberta, criterios, notas, obs, estado,
+      pacote, etapa, aberta, criterios, notas, obs, estado, equipe: eq && eq.ids.length ? eq : null,
       darNota: (candId, critId, nota) => {
         if (!aberta) return;
         const ts = agoraTs();
@@ -177,7 +186,7 @@ export function Avaliador({ sessao }: { sessao: Sessao; outras: Sessao[] }) {
 
   const ensaio = sessao.amb === 'ensaio' || ctx.pacote.processo.modo === 'ENSAIO';
   const trocarEtapa = (id: string) => { setEtapaEscolhida(id); gravar(`${sessao.amb}:etapa`, id); };
-  const props = { ctx, estadoFila, semConexao: semConexaoInicio, abertas, trocarEtapa, abrir, erro };
+  const props = { ctx, estadoFila, semConexao: semConexaoInicio, abertas: aoVivo ? [] : abertas, trocarEtapa, abrir, erro };
   return (
     <div class="av">
       {ensaio && <FaixaTeste />}
