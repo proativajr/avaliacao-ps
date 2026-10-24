@@ -457,4 +457,5 @@ table.tabela { width: 100%; border-collapse: collapse; font-size: var(--fs-legen
 .grade-blocos > .bloco { margin-top: 0; }
 .form-grade { align-items: start; }
 .campo { align-content: start; }
-.cabeca-pagina > div { display: grid; gap: var(--e1); }
+.cabeca-pagina > div:not(.segmentado) { display: grid; gap: var(--e1); }
+.ranking-grade > .bloco, .aovivo-grade .bloco { margin-top: 0; }
