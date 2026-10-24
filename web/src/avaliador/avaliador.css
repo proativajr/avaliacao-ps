@@ -68,7 +68,8 @@
 .blocos button span { font-weight: 400; color: var(--suave); }
 .blocos button span.ok { color: var(--ok); }
 
-.crits { background: var(--superficie); border: 1px solid var(--linha-suave); border-radius: var(--raio); box-shadow: var(--sombra-1); padding: var(--e1) var(--e4) var(--e3); }
+.crits { background: var(--superficie); border: 1px solid var(--linha-suave); border-radius: var(--raio); box-shadow: var(--sombra-1); padding: var(--e1) var(--e3) var(--e3); }
+@media (min-width: 640px) { .crits { padding: var(--e2) var(--e5) var(--e4); } }
 .crit { padding: var(--e1) 0 var(--e2); border-bottom: 1px solid var(--linha-suave); }
 .crit:last-child { border-bottom: 0; }
 .crit-rotulo { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: 0; background: none; padding: 0; cursor: pointer; min-height: var(--toque); color: var(--texto); }
@@ -79,7 +80,9 @@
 .crit-rotulo .ponto { width: 6px; height: 6px; border-radius: 50%; background: var(--destaque); } /* o amarelo da tela: critério da vez */
 .desc-completa { margin: 0 0 8px; font-size: var(--fs-legenda); color: var(--suave); }
 
-.notas { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(56px, 72px); gap: 6px; }
+.notas { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(56px, 64px); gap: 6px; }
+/* Celulares bem estreitos (< 375 px): N/A desce para uma linha própria, para 1–5 terem 44 px. */
+@media (max-width: 374px) { .notas { grid-template-columns: repeat(5, minmax(0, 1fr)); } .notas button.na { grid-column: 1 / -1; height: 44px; } }
 .notas button {
   height: 48px; border-radius: var(--raio); border: 1px solid var(--linha); background: var(--superficie);
   font-size: 16px; font-weight: 500; cursor: pointer; color: var(--texto); padding: 0; transition: background-color 0.12s, transform 0.12s;

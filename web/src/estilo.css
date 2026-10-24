@@ -410,9 +410,9 @@ table.tabela { width: 100%; border-collapse: collapse; font-size: var(--fs-legen
 .mais { position: relative; }
 .mais summary { list-style: none; }
 .mais summary::-webkit-details-marker { display: none; }
-.mais-menu { position: absolute; z-index: 20; top: 52px; left: 0; background: var(--superficie); border: 1px solid var(--linha); border-radius: var(--raio); padding: var(--e1); display: grid; min-width: 220px; box-shadow: var(--sombra-2); }
+.mais-menu { position: absolute; z-index: 20; top: 52px; right: 0; background: var(--superficie); border: 1px solid var(--linha); border-radius: var(--raio); padding: var(--e1); display: grid; min-width: 220px; box-shadow: var(--sombra-2); }
 .mais-menu .botao { justify-content: flex-start; color: var(--marca); }
-@media (max-width: 639px) { .mais-menu { position: static; margin-top: var(--e2); box-shadow: none; } }
+
 .progresso-av { list-style: none; margin: 0; padding: 0; }
 .progresso-av li { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'n acao' 'barra barra'; align-items: center; gap: var(--e1) var(--e3); padding: var(--e3) 0; border-bottom: 1px solid var(--linha-suave); }
 .progresso-av li:last-child { border-bottom: 0; padding-bottom: 0; }
@@ -437,7 +437,7 @@ table.tabela { width: 100%; border-collapse: collapse; font-size: var(--fs-legen
 .linha-form { display: grid; gap: var(--e2) var(--e3); grid-template-columns: minmax(0, 1fr) 96px; align-items: end; padding: var(--e3) 0; border-bottom: 1px solid var(--linha-suave); }
 .linha-form .campo { margin: 0; }
 .linha-form .linha-fim { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--e2); align-items: center; justify-content: space-between; }
-@media (min-width: 640px) { .linha-form { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) 96px auto; } .linha-form.duas { grid-template-columns: minmax(0, 1fr) 96px auto; } .linha-form .linha-fim { grid-column: auto; } }
+.linha-form:not(.duas) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 88px; }
 .crit-form { padding: var(--e4); border: 1px solid var(--linha-suave); border-radius: var(--raio); margin-bottom: var(--e3); background: var(--superficie); }
 .crit-form.inativo { background: var(--fundo); }
 .crit-form .topo { display: grid; grid-template-columns: 72px minmax(0, 1fr) 88px; gap: var(--e3); }
@@ -448,3 +448,13 @@ table.tabela { width: 100%; border-collapse: collapse; font-size: var(--fs-legen
 .bloco h3.grupo { font-size: var(--fs-forte); font-weight: 600; color: var(--marca); margin: var(--e5) 0 var(--e3); }
 .link-linha { border: 0; background: none; padding: 0; text-align: left; cursor: pointer; color: inherit; font: inherit; min-height: var(--toque); display: inline-flex; align-items: center; }
 .link-linha b { font-weight: 600; }
+@media (max-width: 639px) {
+  /* No celular o menu "Outros arquivos" vira uma folha presa embaixo, sempre dentro da tela. */
+  .mais-menu { position: fixed; top: auto; left: var(--margem); right: var(--margem); bottom: calc(88px + env(safe-area-inset-bottom)); z-index: 60; }
+  .crit-form { padding: var(--e3); }
+  .crit-form .topo { grid-template-columns: 64px minmax(0, 1fr) 72px; gap: var(--e2); }
+}
+.grade-blocos > .bloco { margin-top: 0; }
+.form-grade { align-items: start; }
+.campo { align-content: start; }
+.cabeca-pagina > div { display: grid; gap: var(--e1); }
