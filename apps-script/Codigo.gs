@@ -891,8 +891,12 @@ function montarAbasDeCalculo_() {
     var sh = aba_(d[0]);
     var regra = SpreadsheetApp.newDataValidation()
       .requireValueInRange(planilha_().getRange(d[2]), true).setAllowInvalid(false).build();
-    sh.getRange(d[1]).setDataValidation(regra).setValue(escolhas[d[0] + d[1]])
+    // Grava o valor ANTES de ligar a validação: a lista de opções (aba _Aux) ainda está sendo calculada
+    // e, se a validação já estivesse ativa, o Google recusaria o valor.
+    sh.getRange(d[1]).clearDataValidations().setValue(escolhas[d[0] + d[1]])
       .setBackground('#fff8e1').setFontWeight('bold');
+    SpreadsheetApp.flush();
+    sh.getRange(d[1]).setDataValidation(regra);
   });
 
   formatarTabelaGeral_();
