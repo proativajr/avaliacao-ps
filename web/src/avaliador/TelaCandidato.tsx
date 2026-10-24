@@ -1,16 +1,10 @@
-// Um candidato por tela: blocos recolhíveis, critérios com botões 1–5 e "Não posso avaliar".
+// Um candidato por tela: blocos em abas, critérios com 1–5 e N/A, e um rodapé com "Próximo" e "⋯".
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { toast } from '../ui';
 import { chaveNota, chaveObs } from './fila';
-import { Iniciais, PropsTela, Salvamento } from './Lista';
+import { PropsTela, Salvamento } from './Lista';
 
 const NOTAS = [1, 2, 3, 4, 5] as const;
-
-/** Primeira frase da descrição (o resto fica no "ver mais"). */
-export function primeiraFrase(t: string) {
-  const m = String(t || '').match(/^.*?[.!?](?=\s|$)/);
-  return m ? m[0] : String(t || '');
-}
 
 export function TelaCandidato({ ctx, estadoFila, semConexao, abrir, candId }: PropsTela & { candId: string }) {
   const { pacote, etapa, aberta, criterios, notas } = ctx;
@@ -26,6 +20,7 @@ export function TelaCandidato({ ctx, estadoFila, semConexao, abrir, candId }: Pr
   const [blocoAberto, setBlocoAberto] = useState<string>(() => (blocos.find((b) => faltando(b.id) > 0) || blocos[0])?.id || '');
   const [ativo, setAtivo] = useState<string>('');
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>({});
+  const [menu, setMenu] = useState(false);
   const [obsAberta, setObsAberta] = useState(false);
   const textoObs = ctx.obs[chaveObs(etapa, candId)]?.texto || '';
   const [rascunho, setRascunho] = useState(textoObs);
@@ -34,26 +29,12 @@ export function TelaCandidato({ ctx, estadoFila, semConexao, abrir, candId }: Pr
   // Ao trocar de candidato: volta para o primeiro bloco com pendência
   useEffect(() => {
     setBlocoAberto((blocos.find((b) => faltando(b.id) > 0) || blocos[0])?.id || '');
-    setAtivo(''); setExpandidos({}); setRascunho(ctx.obs[chaveObs(etapa, candId)]?.texto || ''); setObsAberta(false);
+    setAtivo(''); setExpandidos({}); setRascunho(ctx.obs[chaveObs(etapa, candId)]?.texto || ''); setObsAberta(false); setMenu(false);
   }, [candId, etapa]); // eslint-disable-line
 
   const critsBloco = criterios.filter((k) => k.bloco === blocoAberto);
-  const critAtivo = ativo || critsBloco.find((k) => valor(k.id) === '')?.id || critsBloco[0]?.id || '';
+  const critAtivo = ativo || critsBloco.find((k) => valor(k.id) === '')?.id || '';
   const est = ctx.estado(candId);
-  // Quando o candidato fica completo NESTA visita, mostra por alguns segundos a barra "Pronto ✓"
-  const [mostrarPronto, setMostrarPronto] = useState(false);
-  const tipoAnterior = useRef(est.tipo);
-  useEffect(() => {
-    if (tipoAnterior.current !== 'completo' && est.tipo === 'completo') {
-      setMostrarPronto(true);
-      const t = setTimeout(() => setMostrarPronto(false), 6000);
-      tipoAnterior.current = est.tipo;
-      return () => clearTimeout(t);
-    }
-    tipoAnterior.current = est.tipo;
-    if (est.tipo !== 'completo') setMostrarPronto(false);
-  }, [est.tipo]);
-  useEffect(() => { tipoAnterior.current = ctx.estado(candId).tipo; setMostrarPronto(false); }, [candId]); // eslint-disable-line
 
   const proximoPendente = () => {
     for (let j = 1; j <= cands.length; j++) {
@@ -62,7 +43,7 @@ export function TelaCandidato({ ctx, estadoFila, semConexao, abrir, candId }: Pr
     }
     return null;
   };
-  const irProximoPendente = () => {
+  const irProximo = () => {
     const p = proximoPendente();
     if (p) abrir(p);
     else { toast(naEquipe ? `${ctx.equipe!.nome} avaliada ✓` : 'Você avaliou todos os candidatos.'); abrir(null); }
@@ -72,15 +53,16 @@ export function TelaCandidato({ ctx, estadoFila, semConexao, abrir, candId }: Pr
     if (!aberta) return;
     ctx.darNota(candId, critId, nota);
     setAtivo(''); // o destaque passa para o próximo critério sem nota
-    // Quando o bloco aberto fica completo, abre o próximo bloco com pendência
+    // Quando o bloco aberto fica completo, passa para o próximo bloco com pendência
     const restantes = criterios.filter((k) => k.bloco === blocoAberto && k.id !== critId && valor(k.id) === '').length;
     if (restantes === 0) {
       const prox = blocos.find((b) => b.id !== blocoAberto && criterios.some((k) => k.bloco === b.id && k.id !== critId && valor(k.id) === ''));
-      if (prox) setTimeout(() => { setBlocoAberto(prox.id); setAtivo(''); }, 350);
+      if (prox) setTimeout(() => { setBlocoAberto(prox.id); setAtivo(''); scrollTo({ top: 0, behavior: 'smooth' }); }, 350);
     }
   };
 
   const naoPossoTodos = () => {
+    setMenu(false);
     if (!aberta) return;
     const dadas = criterios.filter((k) => typeof valor(k.id) === 'number').length;
     if (dadas && !confirm(`Marcar todos os critérios como "não posso avaliar"? As ${dadas} nota(s) já dadas serão substituídas.`)) return;
@@ -96,97 +78,103 @@ export function TelaCandidato({ ctx, estadoFila, semConexao, abrir, candId }: Pr
       const alvo = e.target as HTMLElement;
       if (alvo && (alvo.tagName === 'TEXTAREA' || alvo.tagName === 'INPUT' || e.ctrlKey || e.metaKey || e.altKey)) return;
       const idx = critsBloco.findIndex((k) => k.id === critAtivo);
-      if (/^[1-5]$/.test(e.key) && critAtivo) { e.preventDefault(); marcar(critAtivo, Number(e.key)); if (idx < critsBloco.length - 1) setAtivo(critsBloco[idx + 1].id); }
-      else if ((e.key === 'n' || e.key === 'N') && critAtivo) { e.preventDefault(); marcar(critAtivo, 'NA'); if (idx < critsBloco.length - 1) setAtivo(critsBloco[idx + 1].id); }
+      if (/^[1-5]$/.test(e.key) && critAtivo) { e.preventDefault(); marcar(critAtivo, Number(e.key)); }
+      else if ((e.key === 'n' || e.key === 'N') && critAtivo) { e.preventDefault(); marcar(critAtivo, 'NA'); }
       else if (e.key === 'ArrowDown' && idx < critsBloco.length - 1) { e.preventDefault(); setAtivo(critsBloco[idx + 1].id); }
       else if (e.key === 'ArrowUp' && idx > 0) { e.preventDefault(); setAtivo(critsBloco[idx - 1].id); }
       else if (e.key === 'ArrowRight' && i < cands.length - 1) { e.preventDefault(); abrir(cands[i + 1].id); }
       else if (e.key === 'ArrowLeft' && i > 0) { e.preventDefault(); abrir(cands[i - 1].id); }
-      else if (e.key === 'Escape') abrir(null);
+      else if (e.key === 'Escape') { if (menu) setMenu(false); else abrir(null); }
     };
     addEventListener('keydown', f);
     return () => removeEventListener('keydown', f);
   });
 
   const contexto = naEquipe ? ctx.equipe!.nome : pacote.etapas.find((e) => e.id === etapa)?.nome || '';
+  const offline = estadoFila.e === 'offline' || (semConexao && estadoFila.n > 0);
 
   return (
     <>
       <header class="av-topo cand">
         <div class="av-linha">
-          <button class="icone" onClick={() => abrir(null)} aria-label="Voltar para a lista">‹</button>
-          <Iniciais nome={cand.nome} foto={cand.foto_url} tam={34} />
-          <div class="av-titulo">
-            <b>{cand.nome_curto}</b>
-            <small>{contexto} · {i + 1}/{cands.length} · <Salvamento curto e={estadoFila.e} n={estadoFila.n} semConexao={semConexao} /></small>
-          </div>
-          <button class="icone" disabled={i === 0} onClick={() => abrir(cands[i - 1].id)} aria-label="Candidato anterior">‹‹</button>
-          <button class="icone" disabled={i === cands.length - 1} onClick={() => abrir(cands[i + 1].id)} aria-label="Próximo candidato">››</button>
+          <button class="icone" onClick={() => abrir(null)} aria-label="Voltar para a lista">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+          </button>
+          <span class="av-titulo">{contexto} · {i + 1} de {cands.length}</span>
+          <Salvamento curto e={estadoFila.e} n={estadoFila.n} semConexao={semConexao} />
         </div>
       </header>
+      {offline && <p class="faixa-offline" role="status">Sem conexão: {estadoFila.n} {estadoFila.n === 1 ? 'nota guardada' : 'notas guardadas'} no celular, enviadas quando a internet voltar.</p>}
 
-      {(estadoFila.e === 'offline' || (semConexao && estadoFila.n > 0)) && (
-        <p class="faixa-offline" role="status">Sem conexão. {estadoFila.n} {estadoFila.n === 1 ? 'item guardado' : 'itens guardados'} neste aparelho, {estadoFila.n === 1 ? 'será enviado' : 'serão enviados'} quando a internet voltar.</p>
-      )}
       <main class="av-conteudo cand">
+        <h1 class="cand-nome">{cand.nome}</h1>
         {!aberta && <p class="aviso alerta">Avaliação fechada: somente leitura.</p>}
-        {blocos.map((b) => {
-          const aberto = b.id === blocoAberto;
-          const ks = criterios.filter((k) => k.bloco === b.id);
-          const feitos = ks.length - faltando(b.id);
-          return (
-            <section class={'bloco' + (aberto ? ' aberto' : '')}>
-              <h2>
-                <button aria-expanded={aberto} onClick={() => { setBlocoAberto(aberto ? '' : b.id); setAtivo(''); }}>
-                  <span>{b.nome}</span><span class={'cont' + (feitos === ks.length ? ' ok' : '')}>{feitos}/{ks.length}</span><span class="seta" aria-hidden="true">{aberto ? '▾' : '▸'}</span>
-                </button>
-              </h2>
-              {aberto && ks.map((k) => {
-                const v = valor(k.id);
-                const exp = expandidos[k.id];
-                const col = pacote.veem_outros ? pacote.colegas?.[`${etapa}|${candId}|${k.id}`] : undefined;
-                return (
-                  <div class={'crit' + (k.id === critAtivo ? ' ativo' : '')} onFocusCapture={() => setAtivo(k.id)}>
-                    <button class="crit-rotulo" aria-expanded={exp} onClick={() => setExpandidos((x) => ({ ...x, [k.id]: !x[k.id] }))}>
-                      {k.sigla && <span class="sigla">{k.sigla}</span>}
-                      <b>{k.nome}</b>
-                      {col && <span class="colegas"> · colegas {col.media.toFixed(1).replace('.', ',')}</span>}
-                      {k.descricao && <span class="mais" aria-hidden="true">{exp ? '−' : 'ⓘ'}</span>}
-                    </button>
-                    {exp && <p class="desc-completa">{k.descricao}</p>}
-                    <div class="notas" role="radiogroup" aria-label={`Nota para ${k.nome}`}>
-                      {NOTAS.map((n) => (
-                        <button role="radio" aria-checked={v === n} class={v === n ? 'marcada' : ''} disabled={!aberta && v !== n} onClick={() => marcar(k.id, n)}>{n}</button>
-                      ))}
-                      <button role="radio" aria-checked={v === 'NA'} class={'na' + (v === 'NA' ? ' marcada' : '')} disabled={!aberta && v !== 'NA'} onClick={() => marcar(k.id, 'NA')}>Não posso avaliar</button>
-                    </div>
-                  </div>
-                );
-              })}
-            </section>
-          );
-        })}
 
-        <div class="extras">
-          <button class="botao principal" onClick={irProximoPendente}>{naEquipe ? 'Próximo da equipe' : 'Próximo pendente'}</button>
-          {obsAberta || textoObs ? (
-            <label class="campo">
-              <span>Observação</span>
-              <textarea value={rascunho} disabled={!aberta} maxLength={2000} placeholder="Opcional"
-                onInput={(e) => { const t = (e.target as HTMLTextAreaElement).value; setRascunho(t); clearTimeout(timerObs.current); timerObs.current = setTimeout(() => salvarObs(t), 1500); }}
-                onBlur={(e) => salvarObs((e.target as HTMLTextAreaElement).value)} />
-            </label>
-          ) : (
-            <button class="botao leve" disabled={!aberta} onClick={() => setObsAberta(true)}>+ Observação</button>
-          )}
-          <button class="botao leve suave" disabled={!aberta} onClick={naoPossoTodos}>Não posso avaliar este candidato</button>
+        {blocos.length > 1 && (
+          <nav class="blocos" role="tablist" aria-label="Blocos de critérios">
+            {blocos.map((b) => {
+              const ks = criterios.filter((k) => k.bloco === b.id);
+              const feitos = ks.length - faltando(b.id);
+              return (
+                <button role="tab" aria-selected={b.id === blocoAberto} onClick={() => { setBlocoAberto(b.id); setAtivo(''); }}>
+                  {b.nome_curto || b.nome} <span class={feitos === ks.length ? 'ok' : ''}>{feitos}/{ks.length}</span>
+                </button>
+              );
+            })}
+          </nav>
+        )}
+
+        <div class="crits">
+          {critsBloco.map((k) => {
+            const v = valor(k.id);
+            const exp = expandidos[k.id];
+            const col = pacote.veem_outros ? pacote.colegas?.[`${etapa}|${candId}|${k.id}`] : undefined;
+            return (
+              <div class={'crit' + (k.id === critAtivo ? ' ativo' : '') + (v !== '' ? ' feito' : '')} onFocusCapture={() => setAtivo(k.id)}>
+                <button class="crit-rotulo" aria-expanded={exp} onClick={() => setExpandidos((x) => ({ ...x, [k.id]: !x[k.id] }))}>
+                  {k.sigla && <span class="sigla">{k.sigla}</span>}
+                  <span class="nome">{k.nome}</span>
+                  {col && <span class="colegas">colegas {col.media.toFixed(1).replace('.', ',')}</span>}
+                  {k.id === critAtivo && <i class="ponto" aria-hidden="true" />}
+                </button>
+                {exp && k.descricao && <p class="desc-completa">{k.descricao}</p>}
+                <div class="notas" role="radiogroup" aria-label={`Nota para ${k.nome}`}>
+                  {NOTAS.map((n) => (
+                    <button role="radio" aria-checked={v === n} class={v === n ? 'marcada' : ''} disabled={!aberta && v !== n} onClick={() => marcar(k.id, n)}>{n}</button>
+                  ))}
+                  <button role="radio" aria-checked={v === 'NA'} aria-label="Não posso avaliar" class={'na' + (v === 'NA' ? ' marcada' : '')} disabled={!aberta && v !== 'NA'} onClick={() => marcar(k.id, 'NA')}>N/A</button>
+                </div>
+              </div>
+            );
+          })}
         </div>
+
+        {(obsAberta || textoObs) && (
+          <label class="campo obs">
+            <span>Observação</span>
+            <textarea value={rascunho} disabled={!aberta} maxLength={2000} placeholder="Opcional"
+              onInput={(e) => { const t = (e.target as HTMLTextAreaElement).value; setRascunho(t); clearTimeout(timerObs.current); timerObs.current = setTimeout(() => salvarObs(t), 1500); }}
+              onBlur={(e) => salvarObs((e.target as HTMLTextAreaElement).value)} />
+          </label>
+        )}
       </main>
 
-      {mostrarPronto && (
-        <div class="av-rodape" role="status" onClick={() => setMostrarPronto(false)}>
-          <span>{est.tudoNA ? 'Marcado: não posso avaliar' : 'Pronto ✓'}</span>
-          <button class="botao principal" onClick={irProximoPendente}>{naEquipe ? 'Próximo da equipe' : 'Próximo pendente'}</button>
+      <footer class="av-rodape">
+        <button class="botao principal" onClick={irProximo}>{est.tipo === 'completo' && !est.tudoNA ? 'Pronto ✓  Próximo' : 'Próximo'}</button>
+        <button class="botao mais" aria-label="Mais opções" aria-expanded={menu} onClick={() => setMenu(!menu)}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>
+        </button>
+      </footer>
+
+      {menu && (
+        <div class="folha-fundo" onClick={() => setMenu(false)}>
+          <div class="folha" role="menu" onClick={(e) => e.stopPropagation()}>
+            <button role="menuitem" disabled={!aberta} onClick={() => { setMenu(false); setObsAberta(true); setTimeout(() => (document.querySelector('.obs textarea') as HTMLElement | null)?.focus(), 50); }}>
+              {textoObs ? 'Editar observação' : 'Adicionar observação'}
+            </button>
+            <button role="menuitem" disabled={!aberta} onClick={naoPossoTodos}>Não posso avaliar este candidato</button>
+            <button role="menuitem" class="cancelar" onClick={() => setMenu(false)}>Cancelar</button>
+          </div>
         </div>
       )}
     </>

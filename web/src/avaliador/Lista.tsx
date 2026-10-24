@@ -11,7 +11,10 @@ export interface PropsTela {
 }
 
 export function Salvamento({ e, n, semConexao, curto }: { e: EstadoFila; n: number; semConexao?: boolean; curto?: boolean }) {
-  if (curto && (e === 'offline' || (semConexao && n > 0))) return <span class="salv offline" role="status">Sem conexão</span>;
+  if (curto && (e === 'offline' || (semConexao && n > 0))) return <span class="salv offline" role="status"><i />Sem conexão</span>;
+  if (curto && e === 'erro') return <span class="salv erro" role="status"><i />Erro, tentando</span>;
+  if (curto && (e === 'salvando' || e === 'pendente')) return <span class="salv" role="status"><i />Salvando</span>;
+  if (curto) return <span class="salv ok" role="status"><i />{semConexao ? 'Sem conexão' : 'Salvo'}</span>;
   if (e === 'offline' || (semConexao && n > 0)) return <span class="salv offline" role="status">Sem conexão: {n > 1 ? `${n} itens serão enviados` : 'será enviado'}</span>;
   if (e === 'erro') return <span class="salv erro" role="status">Erro ao salvar: tentando de novo</span>;
   if (e === 'salvando' || e === 'pendente') return <span class="salv" role="status">Salvando…</span>;
@@ -25,17 +28,34 @@ export function Iniciais({ nome, foto, tam = 40 }: { nome: string; foto?: string
   return <span class="avatar" style={{ width: tam, height: tam }} aria-hidden="true">{ini}</span>;
 }
 
+const CHECK = <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Avaliado"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>;
+const SETA = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>;
+
 function Linha({ c, s, abrir }: { c: Pacote['candidatos'][number]; s: ReturnType<Contexto['estado']>; abrir: (id: string) => void }) {
+  const feito = s.tipo === 'completo';
   return (
     <li>
       <button onClick={() => abrir(c.id)}>
-        <Iniciais nome={c.nome} foto={c.foto_url} />
-        <span class="nome"><b>{c.nome_curto}</b></span>
+        <span class={'av-ini' + (feito ? ' feito' : '')}><Iniciais nome={c.nome} foto={c.foto_url} tam={44} /></span>
+        <span class="nome">{c.nome_curto}</span>
         <span class={'estado ' + s.tipo}>
-          {s.tipo === 'completo' ? (s.tudoNA ? 'Não avaliei' : '✓') : s.tipo === 'parcial' ? `${s.feitos}/${s.total}` : ''}
+          {feito ? (s.tudoNA ? 'Não avaliei' : CHECK) : s.tipo === 'parcial' ? `${s.feitos} de ${s.total}` : SETA}
         </span>
       </button>
     </li>
+  );
+}
+
+/** Topo comum: símbolo, nome da dinâmica e o estado de salvamento. */
+export function Topo({ titulo, estadoFila, semConexao }: { titulo: string; estadoFila: PropsTela['estadoFila']; semConexao: boolean }) {
+  return (
+    <header class="av-topo">
+      <div class="av-linha">
+        <Simbolo />
+        <span class="av-titulo">{titulo}</span>
+        <Salvamento e={estadoFila.e} n={estadoFila.n} semConexao={semConexao} curto />
+      </div>
+    </header>
   );
 }
 
@@ -55,45 +75,51 @@ export function Lista({ ctx, estadoFila, semConexao, abertas, trocarEtapa, abrir
 
   return (
     <>
-      <header class="av-topo lista">
-        <div class="av-linha">
-          <Simbolo />
-          <div class="av-titulo"><b>{nomeEtapa || pacote.processo.nome || 'Avaliação'}</b></div>
-          <Salvamento e={estadoFila.e} n={estadoFila.n} semConexao={semConexao} />
+      <Topo titulo={nomeEtapa || pacote.processo.nome || 'Avaliação'} estadoFila={estadoFila} semConexao={semConexao} />
+      {abertas.length > 1 && (
+        <div class="etapas" role="tablist" aria-label="Dinâmica">
+          {abertas.map((e) => <button role="tab" aria-selected={e.id === ctx.etapa} onClick={() => trocarEtapa(e.id)}>{e.nome}</button>)}
         </div>
-        {abertas.length > 1 && (
-          <div class="etapas" role="tablist" aria-label="Dinâmica">
-            {abertas.map((e) => <button role="tab" aria-selected={e.id === ctx.etapa} onClick={() => trocarEtapa(e.id)}>{e.nome}</button>)}
-          </div>
-        )}
-      </header>
+      )}
 
       <main class="av-conteudo">
         {erro && <p class="aviso erro">{erro}</p>}
         {!ctx.aberta && <p class="aviso alerta">Avaliação fechada. Você só pode ver suas notas.</p>}
         {!total && <p class="aviso">Ainda não há candidatos.</p>}
 
-        {equipe && (
+        {equipe ? (
           <section class="equipe-agora" aria-label={`${equipe.nome}, avalie agora`}>
-            <h2><span>Avalie agora</span><b>{equipe.nome}</b><small>{feitosEquipe}/{daEquipe.length}</small></h2>
-            <ul class="cands">{daEquipe.map((c) => <Linha c={c} s={estados[c.id]} abrir={abrir} />)}</ul>
+            <span class="sobrelinha">Avalie agora</span>
+            <div class="eq-titulo"><h1>{equipe.nome}</h1><span>{feitosEquipe} de {daEquipe.length}</span></div>
+            <div class="segmentos" aria-hidden="true">{daEquipe.map((c) => <span class={estados[c.id].tipo === 'completo' ? 'ok' : ''} />)}</div>
+            <ul class="cands grande">{daEquipe.map((c) => <Linha c={c} s={estados[c.id]} abrir={abrir} />)}</ul>
+          </section>
+        ) : total > 0 && (
+          <section class="espera">
+            <span class="sobrelinha"><i />Aguardando</span>
+            <h1>A próxima equipe aparece aqui sozinha.</h1>
+            <p>Enquanto isso, você pode revisar qualquer candidato.</p>
           </section>
         )}
-        {!equipe && total > 0 && <p class="esperando">Aguardando a próxima equipe. Você também pode avaliar qualquer candidato abaixo.</p>}
 
-        {equipe && outros.length > 0 && (
-          <button class="ver-todos" aria-expanded={verTodos} onClick={() => setVerTodos(!verTodos)}>
-            {verTodos ? 'Esconder outros candidatos' : `Outros candidatos (${outros.length})`}
-          </button>
-        )}
         {mostrarOutros && outros.length > 0 && (
           <>
-            {outros.length > 8 && <input class="entrada busca" type="search" placeholder="Buscar candidato" value={busca} onInput={(e) => setBusca((e.target as HTMLInputElement).value)} aria-label="Buscar candidato" />}
+            {outros.length > 8 && (
+              <label class="busca">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4 4" /></svg>
+                <input type="search" placeholder="Buscar candidato" value={busca} onInput={(e) => setBusca((e.target as HTMLInputElement).value)} aria-label="Buscar candidato" />
+              </label>
+            )}
             <ul class="cands">
               {visiveis.map((c) => <Linha c={c} s={estados[c.id]} abrir={abrir} />)}
               {!visiveis.length && <li class="vazio">Ninguém com esse nome.</li>}
             </ul>
           </>
+        )}
+        {equipe && outros.length > 0 && (
+          <button class="ver-todos" aria-expanded={verTodos} onClick={() => setVerTodos(!verTodos)}>
+            {verTodos ? 'Esconder outros candidatos' : `Outros candidatos · ${outros.length}`}
+          </button>
         )}
       </main>
     </>

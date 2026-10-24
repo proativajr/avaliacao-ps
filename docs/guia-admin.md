@@ -21,11 +21,11 @@ O painel do admin abre pelo link de admin (planilha → **PS Proativa → Mostra
 
 ## Durante o processo
 
-- **Ao vivo** (funciona no celular):
+- **Ao vivo** (no celular, as seções ficam na barra de baixo: Ao vivo, Ranking, Pessoas, Ajustes):
   1. Escolha a dinâmica no topo.
-  2. Use **+** para criar as equipes (3, 4…).
+  2. Toque em **Montar** e use **+** para criar as equipes (3, 4…).
   3. Toque no número da equipe ao lado de cada candidato presente, ou em **Sortear** para distribuir quem falta.
-  4. Quando uma equipe apresentar, toque em **Avaliar agora**. Em até 10 segundos os celulares mostram só essa equipe.
+  4. Volte e, quando uma equipe apresentar, toque em **Avaliar**. Em até 10 segundos os celulares mostram só essa equipe.
      O cartão azul mostra quantos avaliadores já completaram cada membro. Depois, **Encerrar**.
 - **Resultados:** ranking ao vivo (atualiza a cada 30 s), com filtro por dinâmica. Clique num candidato para ver
   a média por critério contra o grupo, as notas de cada avaliador e as observações.

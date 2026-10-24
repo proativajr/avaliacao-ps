@@ -14,6 +14,7 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
   const ativaEquipe = String(d.config.equipe_ativa || '');
   const [etapa, setEtapa] = useState(etapas.find((e) => e.id === ativaEtapa)?.id || etapas[0]?.id || '');
   const [busca, setBusca] = useState('');
+  const [montar, setMontar] = useState(false);
 
   // Equipes da dinâmica escolhida, editadas aqui e salvas sozinhas
   const doServidor = (et: string) => (d.equipes || []).filter((q) => q.etapa === et).sort((a, b) => a.ordem - b.ordem).map((q) => q.membros);
@@ -105,57 +106,29 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
 
   const ativaAqui = ativaEtapa === etapa && ativaEquipe.startsWith(etapa + '_eq') ? Number(ativaEquipe.slice(etapa.length + 3)) - 1 : -1;
   const visiveis = presentes.filter((c) => !busca || normalizarNome(c.nome_exibicao).includes(normalizarNome(busca)));
+  const curto = (id: string) => nome(id).split(' ')[0];
+  const nomeEtapa = etapas.find((e) => e.id === etapa)?.nome || '';
 
-  return (
+  // Tela de montar equipes (aberta pelo "Montar")
+  if (montar) return (
     <section class="aovivo">
-      <div class="av-dinamica">
-        <select class="entrada" value={etapa} onChange={(e) => setEtapa((e.target as HTMLSelectElement).value)} aria-label="Dinâmica">
-          {etapas.map((e) => <option value={e.id}>{e.nome}{e.id === ativaEtapa ? ' ●' : ''}</option>)}
-        </select>
-        <button class="botao" onClick={novaDinamica}>+ Dinâmica</button>
+      <div class="volta">
+        <button class="icone" onClick={() => { salvarAgora(); setMontar(false); }} aria-label="Voltar para Ao vivo">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+        </button>
+        <span>{nomeEtapa}</span>
       </div>
-
-      {ativaAqui >= 0 && grupos[ativaAqui] && (
-        <div class="agora" role="status">
-          <div class="agora-topo"><span>Avaliando agora</span><b>Equipe {ativaAqui + 1}</b></div>
-          <ul>{grupos[ativaAqui].map((cid) => (
-            <li><span>{nome(cid)}</span><span class="cont">{completos[cid] || 0}/{totalAv}</span></li>
-          ))}</ul>
-          <button class="botao" onClick={() => aoVivo('', 'Avaliação encerrada')}>Encerrar</button>
-        </div>
-      )}
-
-      <div class="equipes">
-        {grupos.map((g, i) => (
-          <div class={'equipe' + (i === ativaAqui ? ' ativa' : '')}>
-            <div class="equipe-topo">
-              <b>Equipe {i + 1}</b><span class="cont">{g.length}</span>
-              <span class="espaco" />
-              {i === ativaAqui
-                ? <span class="selo marca">ao vivo</span>
-                : <button class="botao principal pequeno" disabled={!g.length} onClick={() => aoVivo(idEquipe(etapa, i), `Equipe ${i + 1} aberta: os avaliadores veem em até 10 s`)}>Avaliar agora</button>}
-            </div>
-            <p class="membros">{g.length ? g.map(nome).join(', ') : 'Ninguém ainda'}</p>
-          </div>
-        ))}
-      </div>
-
-      <div class="barra-acoes montar">
-        <span class="qtd" aria-label="Quantidade de equipes">
-          <button class="botao pequeno" onClick={() => qtd(grupos.length - 1)} disabled={grupos.length < 1} aria-label="Menos uma equipe">−</button>
-          <b>{grupos.length} equipe{grupos.length === 1 ? '' : 's'}</b>
-          <button class="botao pequeno" onClick={() => qtd(grupos.length + 1)} aria-label="Mais uma equipe">+</button>
-        </span>
+      <h1 class="titulo">Equipes</h1>
+      <div class="montar">
+        <button class="passo" onClick={() => qtd(grupos.length - 1)} disabled={grupos.length < 1} aria-label="Menos uma equipe">−</button>
+        <b class="qtd">{grupos.length} equipe{grupos.length === 1 ? '' : 's'}</b>
+        <button class="passo" onClick={() => qtd(grupos.length + 1)} aria-label="Mais uma equipe">+</button>
         <span class="espaco" />
-        {grupos.length > 0 && semEquipe.length > 0 && <button class="botao pequeno" onClick={sortear}>Sortear {semEquipe.length}</button>}
-        {grupos.some((g) => g.length) && <button class="botao pequeno leve" onClick={limpar}>Limpar</button>}
+        {grupos.length > 0 && semEquipe.length > 0 && <button class="botao destaque" onClick={sortear}>Sortear {semEquipe.length}</button>}
       </div>
-
-      {grupos.length === 0 ? (
-        <p class="ajuda">Toque em + para criar as equipes desta dinâmica.</p>
-      ) : (
+      {grupos.length === 0 ? <p class="vazio">Toque em + para criar a primeira equipe.</p> : (
         <>
-          <input class="entrada" type="search" placeholder={`Buscar · ${semEquipe.length} sem equipe`} value={busca} onInput={(e) => setBusca((e.target as HTMLInputElement).value)} aria-label="Buscar candidato" />
+          {presentes.length > 10 && <input class="entrada busca" type="search" placeholder="Buscar candidato" value={busca} onInput={(e) => setBusca((e.target as HTMLInputElement).value)} aria-label="Buscar candidato" />}
           <ul class="alocar">
             {visiveis.map((c) => {
               const eq = equipeDe(c.id);
@@ -164,15 +137,66 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
                   <span class="nome">{c.nome_exibicao}</span>
                   <span class="nums" role="radiogroup" aria-label={`Equipe de ${c.nome_exibicao}`}>
                     {grupos.map((_, i) => (
-                      <button role="radio" aria-checked={eq === i} class={eq === i ? 'marcada' : ''} onClick={() => atribuir(c.id, i)}>{i + 1}</button>
+                      <button role="radio" aria-checked={eq === i} onClick={() => atribuir(c.id, i)}>{i + 1}</button>
                     ))}
                   </span>
                 </li>
               );
             })}
           </ul>
-          <p class="ajuda">Toque de novo no número para tirar da equipe.</p>
+          <p class="nota-rodape">Toque no número de novo para tirar da equipe.{grupos.some((g) => g.length) && <> <button class="link" onClick={limpar}>Limpar tudo</button></>}</p>
         </>
+      )}
+    </section>
+  );
+
+  const membrosAtivos = ativaAqui >= 0 ? grupos[ativaAqui] || [] : [];
+  const feitos = membrosAtivos.reduce((s, cid) => s + (completos[cid] || 0), 0);
+  return (
+    <section class="aovivo">
+      <select class="titulo-select" value={etapa} aria-label="Dinâmica"
+        onChange={(e) => { const v = (e.target as HTMLSelectElement).value; if (v === '__nova') { (e.target as HTMLSelectElement).value = etapa; novaDinamica(); } else setEtapa(v); }}>
+        {etapas.map((e) => <option value={e.id}>{e.nome}</option>)}
+        <option value="__nova">+ Nova dinâmica</option>
+      </select>
+
+      {ativaAqui >= 0 && (
+        <div class="agora" role="status">
+          <div class="agora-topo">
+            <div><small>Avaliando agora</small><b>Equipe {ativaAqui + 1}</b></div>
+            <span>{feitos} de {membrosAtivos.length * totalAv}</span>
+          </div>
+          <ul>{membrosAtivos.map((cid) => (
+            <li>
+              <span class="n">{nome(cid)}</span>
+              <span class="barra" aria-hidden="true"><span style={{ width: `${totalAv ? ((completos[cid] || 0) / totalAv) * 100 : 0}%` }} /></span>
+              <span class="cont">{completos[cid] || 0}/{totalAv}</span>
+            </li>
+          ))}</ul>
+          <button class="botao" onClick={() => aoVivo('', 'Avaliação encerrada')}>Encerrar</button>
+        </div>
+      )}
+
+      <div class="rotulo-linha">
+        <span class="sobrelinha">Equipes</span>
+        <button class="link" onClick={() => setMontar(true)}>Montar</button>
+      </div>
+      {grupos.length === 0 ? (
+        <div class="vazio">
+          <p>Nenhuma equipe nesta dinâmica.</p>
+          <button class="botao principal" onClick={() => { setMontar(true); if (!grupos.length) qtd(3); }}>Montar equipes</button>
+        </div>
+      ) : (
+        <ul class="equipes">
+          {grupos.map((g, i) => (
+            <li>
+              <div class="eq-txt"><b>Equipe {i + 1}</b><small>{g.length ? g.map(curto).join(', ') : 'Ninguém ainda'}</small></div>
+              {i === ativaAqui
+                ? <span class="ao-vivo">Ao vivo</span>
+                : <button class="botao" disabled={!g.length} onClick={() => aoVivo(idEquipe(etapa, i), `Equipe ${i + 1} aberta`)}>Avaliar</button>}
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   );

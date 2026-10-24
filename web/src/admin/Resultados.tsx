@@ -86,95 +86,103 @@ export function Resultados({ d, setD, acao, sessao }: PropsAba) {
       `${etapa !== '*' ? ` (${nomeEtapa})` : ''}. Leva poucos minutos: é só abrir seu link.\n${linkAvaliador(p.av.token, sessao.amb)}`;
   };
 
+  const situacao = (l: Linha) => {
+    if (l.alertas.includes('Divergência')) return ['Divergência', 'alerta'];
+    if (l.alertas.includes('Dados insuficientes')) return ['Dados insuficientes', 'vazio'];
+    if (l.situacao === 'Classificado') return ['Classificado', 'ok'];
+    if (l.situacao) return [l.situacao, 'neutro'];
+    if (l.status !== 'ATIVO') return [l.status.toLowerCase(), 'neutro'];
+    return l.media == null ? ['Sem notas', 'vazio'] : ['', 'neutro'];
+  };
+  const pct = totalPossivel ? Math.round((totalCompletos / totalPossivel) * 100) : 0;
+  const ativosN = d.candidatos.filter((c) => c.status === 'ATIVO').length;
+
   return (
-    <section>
-      <h2>Resultados</h2>
-      <p class="subtitulo">Atualizado {dataRelativa(atualizado.toISOString())}.</p>
-      <div class="barra-acoes">
-        <select class="entrada" style={{ width: 'auto' }} value={etapa} onChange={(e) => setEtapa((e.target as HTMLSelectElement).value)} aria-label="Dinâmica">
-          <option value="*">Todas as dinâmicas</option>
-          {d.etapas.map((e) => <option value={e.id}>{e.nome}</option>)}
-        </select>
+    <section class="ranking">
+      <div class="cabeca">
+        <div>
+          <h1 class="titulo">Ranking</h1>
+          <span class="sub">Atualizado {dataRelativa(atualizado.toISOString())} · <button class="link" onClick={() => atualizar(false)}>atualizar</button></span>
+        </div>
+        <div class="segmentado" role="radiogroup" aria-label="Dinâmica">
+          {[['*', 'Todas'], ...d.etapas.map((e) => [e.id, e.nome])].map(([id, rot]) => (
+            <button role="radio" aria-checked={etapa === id} onClick={() => setEtapa(id)}>{rot}</button>
+          ))}
+        </div>
+      </div>
+
+      <div class="metricas">
+        <div class="metrica destaque"><b>{pct}%</b><span>de conclusão</span></div>
+        <div class="metrica"><b>{ativosN}</b><span>candidatos</span></div>
+        <div class="metrica"><b>{cfg.nota_de_corte === '' ? notasNaEtapa.length : acima}</b><span>{cfg.nota_de_corte === '' ? 'notas' : `acima do corte (${num2(Number(cfg.nota_de_corte))})`}</span></div>
+        <div class="metrica"><b>{diverg + insuf}</b><span>com alerta</span></div>
+      </div>
+
+      <div class="filtros-linha">
         <input class="entrada" type="search" placeholder="Buscar candidato" value={busca} onInput={(e) => setBusca((e.target as HTMLInputElement).value)} aria-label="Buscar candidato" />
-        <select class="entrada" style={{ width: 'auto' }} value={ordem} onChange={(e) => setOrdem((e.target as HTMLSelectElement).value)} aria-label="Ordenar por">
-          {ORDENS.map(([v, r]) => <option value={v}>Ordenar: {r}</option>)}
+        <select class="entrada" value={ordem} onChange={(e) => setOrdem((e.target as HTMLSelectElement).value)} aria-label="Ordenar por">
+          {ORDENS.map(([v, r]) => <option value={v}>{r}</option>)}
         </select>
-        <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={porCriterio} onChange={() => setPorCriterio(!porCriterio)} /> Por critério</label>
-        <span class="espaco" />
-        <button class="botao" onClick={() => atualizar(false)}>Atualizar</button>
+        <label class="check"><input type="checkbox" checked={porCriterio} onChange={() => setPorCriterio(!porCriterio)} /> Por critério</label>
       </div>
 
-      <div class="indicadores">
-        <div class="indicador"><b>{notasNaEtapa.length}</b><span>notas registradas</span></div>
-        <div class="indicador metrica"><b>{totalPossivel ? Math.round((totalCompletos / totalPossivel) * 100) : 0}%</b><span>de conclusão ({totalCompletos}/{totalPossivel})</span></div>
-        <div class="indicador"><b>{cfg.nota_de_corte === '' ? '—' : acima}</b><span>acima do corte{cfg.nota_de_corte !== '' ? ` (${num2(Number(cfg.nota_de_corte))})` : ''}</span></div>
-        <div class="indicador"><b>{insuf}</b><span>com dados insuficientes</span></div>
-        <div class="indicador"><b>{diverg}</b><span>com divergência</span></div>
-      </div>
-
-      {!d.candidatos.length ? <p class="aviso">Nenhum candidato ainda. Comece pela aba Candidatos.</p> : (
-        <div class="tabela-box" style={{ marginBottom: 24 }}>
-          <table class="tabela">
+      {!d.candidatos.length ? <p class="vazio">Nenhum candidato ainda. Comece por Pessoas.</p> : (
+        <div class="tabela-box">
+          <table class={'tabela' + (porCriterio ? '' : ' compacta')}>
             <thead><tr>
-              <th class="num">#</th><th>Candidato</th><th class="num">Média</th><th>Situação</th><th class="num">Avaliadores</th><th class="num">Desvio</th><th>Alertas</th>
-              {res.blocos.map((b) => <th class="num">{b.nome_curto}</th>)}
+              <th class="num">#</th><th>Candidato</th>
+              {res.blocos.map((b) => <th class="num bl">{b.nome_curto}</th>)}
               {porCriterio && res.criterios.map((k) => <th class="num" title={k.nome}>{k.sigla || k.nome.slice(0, 6)}</th>)}
+              <th class="num">Média</th><th class="num bl">Avaliadores</th><th>Situação</th>
             </tr></thead>
             <tbody>
-              {linhas.map((l) => (
-                <tr class={l.status !== 'ATIVO' ? 'inativo' : ''} style={{ cursor: 'pointer', background: l.situacao === 'Classificado' ? 'var(--ok-suave)' : undefined }} onClick={() => setDetalhe(l.id)}>
-                  <td class="num"><b>{l.ranking ?? '—'}</b></td>
-                  <td><b>{l.nome}</b>{l.status !== 'ATIVO' && <> <span class="selo">{l.status.toLowerCase()}</span></>}</td>
-                  <td class="num"><b>{num2(l.media)}</b></td>
-                  <td>{l.situacao || '—'}</td>
-                  <td class="num">{l.nAvaliadores}</td>
-                  <td class="num">{num2(l.desvio)}</td>
-                  <td>{l.alertas.map((a) => <span class={'selo ' + (a === 'Divergência' ? 'erro' : 'alerta')} style={{ marginRight: 4 }}>{a}</span>)}</td>
-                  {res.blocos.map((b) => <td class="num">{num2(l.porBloco[b.id])}</td>)}
-                  {porCriterio && res.criterios.map((k) => <td class="num">{num2(l.porCriterio[k.id])}</td>)}
-                </tr>
-              ))}
+              {linhas.map((l) => {
+                const [rot, cor] = situacao(l);
+                return (
+                  <tr class={l.status !== 'ATIVO' ? 'inativo' : ''} style={{ cursor: 'pointer' }} onClick={() => setDetalhe(l.id)}>
+                    <td class="num suave">{l.ranking ?? '—'}</td>
+                    <td><b class="nome-c">{l.nome}</b></td>
+                    {res.blocos.map((b) => <td class="num bl">{num2(l.porBloco[b.id])}</td>)}
+                    {porCriterio && res.criterios.map((k) => <td class="num">{num2(l.porCriterio[k.id])}</td>)}
+                    <td class="num media">{num2(l.media)}</td>
+                    <td class="num suave bl">{l.nAvaliadores}</td>
+                    <td>{rot && <span class={'situ ' + cor}><i />{rot}</span>}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
 
-      <div class="grade-2" style={{ marginBottom: 24 }}>
-        <div class="painel">
-          <h3>Exportar</h3>
-          <p class="ajuda">Dinâmica: {nomeEtapa}. O CSV abre direto no Excel em português.</p>
-          <div class="barra-acoes" style={{ marginTop: 8 }}>
-            <button class="botao pequeno" onClick={() => baixarCsv(`ranking_${sufixo}.csv`, tabelaRanking())}>Ranking CSV</button>
-            <button class="botao pequeno" onClick={() => baixarXlsx(`ranking_${sufixo}.xlsx`, 'Ranking', tabelaRanking())}>Ranking XLSX</button>
-            <button class="botao pequeno" onClick={() => baixarCsv(`avaliacoes_${sufixo}.csv`, tabelaAvaliacoes())}>Avaliações CSV</button>
-            <button class="botao pequeno" onClick={() => baixarXlsx(`avaliacoes_${sufixo}.xlsx`, 'Avaliações', tabelaAvaliacoes())}>Avaliações XLSX</button>
-            <button class="botao pequeno" onClick={async () => { const r = await acao('admin.backup', {}, 'Backup gerado'); if (r) baixarJson(`backup_${dataArquivo()}.json`, r); }}>Backup completo</button>
+      <div class="acoes-rodape">
+        <button class="botao" onClick={() => baixarXlsx(`ranking_${sufixo}.xlsx`, 'Ranking', tabelaRanking())}>Baixar ranking</button>
+        <details class="mais">
+          <summary class="botao leve">Outros arquivos</summary>
+          <div class="mais-menu">
+            <button class="botao leve" onClick={() => baixarCsv(`ranking_${sufixo}.csv`, tabelaRanking())}>Ranking CSV</button>
+            <button class="botao leve" onClick={() => baixarXlsx(`avaliacoes_${sufixo}.xlsx`, 'Avaliações', tabelaAvaliacoes())}>Avaliações XLSX</button>
+            <button class="botao leve" onClick={() => baixarCsv(`avaliacoes_${sufixo}.csv`, tabelaAvaliacoes())}>Avaliações CSV</button>
+            <button class="botao leve" onClick={async () => { const r = await acao('admin.backup', {}, 'Backup gerado'); if (r) baixarJson(`backup_${dataArquivo()}.json`, r); }}>Backup completo</button>
           </div>
-        </div>
-        <div class="painel">
-          <h3>Regras</h3>
-          <p class="ajuda">"Não posso avaliar" e vazio não entram nas médias. Média geral ponderada pelos pesos; empate divide a posição; status diferente de ATIVO fica fora do ranking. Dados insuficientes: menos de {cfg.min_avaliadores_por_candidato || '—'} avaliadores. Divergência: desvio entre avaliadores acima de {cfg.limite_divergencia || '—'}.</p>
-        </div>
+        </details>
       </div>
 
-      <h2 style={{ fontSize: 19 }}>Progresso dos avaliadores</h2>
-      <p class="subtitulo">{etapa === '*' ? 'Somando as dinâmicas abertas.' : `${nomeEtapa}.`} "Não posso avaliar" conta como respondido.</p>
-      <div class="tabela-box">
-        <table class="tabela">
-          <thead><tr><th>Avaliador</th><th class="num">Completos</th><th class="num">Parciais</th><th class="num">Pendentes</th><th>Progresso</th><th>Último acesso</th><th class="num">Lembrete</th></tr></thead>
-          <tbody>
-            {progresso.map((p) => (
-              <tr>
-                <td><b>{p.av.nome}</b></td>
-                <td class="num">{p.completos}</td><td class="num">{p.parciais}</td><td class="num">{p.pendentes}</td>
-                <td style={{ minWidth: 120 }}><div class="progresso" style={{ margin: 0 }}><div class="barra" style={{ height: 8, flex: 1, background: 'var(--superficie-2)', borderRadius: 99, overflow: 'hidden' }}><span style={{ display: 'block', height: '100%', width: `${p.pct * 100}%`, background: 'var(--ok)' }} /></div><small>{Math.round(p.pct * 100)}%</small></div></td>
-                <td>{dataRelativa(p.av.ultimo_acesso)}</td>
-                <td class="num">{p.pendentes + p.parciais > 0 ? <button class="botao pequeno" onClick={() => copiar(lembrete(p), 'Lembrete copiado: cole no WhatsApp')}>Copiar lembrete</button> : <span class="selo ok">em dia</span>}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <h2 class="secao">Avaliadores</h2>
+      <ul class="progresso-av">
+        {progresso.map((p) => (
+          <li>
+            <span class="n"><b>{p.av.nome}</b><small>{dataRelativa(p.av.ultimo_acesso)}</small></span>
+            <span class="barra" aria-hidden="true"><span style={{ width: `${p.pct * 100}%` }} /></span>
+            <span class="pct">{Math.round(p.pct * 100)}%</span>
+            {p.pendentes + p.parciais > 0
+              ? <button class="botao leve pequeno" onClick={() => copiar(lembrete(p), 'Lembrete copiado: cole no WhatsApp')} aria-label={`Copiar lembrete para ${p.av.nome}`}>Lembrete</button>
+              : <span class="em-dia">em dia</span>}
+          </li>
+        ))}
+      </ul>
+
+      <p class="regras">"Não posso avaliar" e vazio não entram nas médias. Média ponderada pelos pesos; empate divide a posição. Dados insuficientes: menos de {cfg.min_avaliadores_por_candidato || '—'} avaliadores. Divergência: desvio acima de {cfg.limite_divergencia || '—'}.</p>
 
       {detalhe && <Detalhe id={detalhe} res={res} props={{ d, etapa }} aoFechar={() => setDetalhe(null)} />}
     </section>
