@@ -17,7 +17,7 @@ await api(ADM, 'admin.salvarEquipes', { etapa: 'dinamica_2', equipes: [0, 1, 2].
 const LARGURAS = [320, 375, 768, 1024, 1440, 1920];
 const medir = () => {
   const W = innerWidth;
-  const vis = (el) => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && !el.closest('[aria-hidden="true"]'); };
+  const vis = (el) => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && !el.closest('[aria-hidden="true"]') && !el.closest('details:not([open]) > :not(summary)'); };
   const dentroDeRolagem = (el) => { for (let p = el.parentElement; p; p = p.parentElement) { const o = getComputedStyle(p).overflowX; if ((o === 'auto' || o === 'scroll') && p !== document.documentElement && p !== document.body) return true; } return false; };
   const rgb = (c) => (c.match(/[\d.]+/g) || []).map(Number);
   const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
