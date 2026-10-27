@@ -19,8 +19,8 @@
  *  A:B  parâmetros (etapa filtrada, etapa do progresso, contagens, config)
  *  D:L  critérios ativos  (id, bloco, peso, sigla, nome, ordem_bloco, ordem, etapas, rótulo)
  *  N:Q  blocos ativos     (id, nome, nome_curto, ordem)
- *  S:W  avaliações filtradas pela etapa da Tabela Geral (etapa, avaliador, candidato, critério, nota)
- *  Y:AC só as notas numéricas de S:W
+ *  S:X  avaliações filtradas pela etapa da Tabela Geral (etapa, avaliador, candidato, critério, nota, momento)
+ *  Y:AD só as notas numéricas de S:X (momento = construcao ou apresentacao; vazio nas linhas antigas vale apresentacao)
  *  AE:AG respostas da etapa do Progresso (avaliador, candidato, critério)
  *  AI   critérios exigidos na etapa do Progresso
  *  AK:AL candidatos para o dropdown da Tabela Individual (id, rótulo)
@@ -38,6 +38,8 @@ var AUX = {
   LIMITE: "'_Aux'!$B$8",
   NOME_PROC: "'_Aux'!$B$9",
   CAND_SEL: "'_Aux'!$B$10",
+  PESO_CONSTRUCAO: "'_Aux'!$B$11",
+  PESO_APRESENTACAO: "'_Aux'!$B$12",
 };
 
 function formulasDasAbas() {
@@ -64,6 +66,11 @@ function formulasDasAbas() {
   add(ABAS.AUX, 'B7', cfg('min_avaliadores_por_candidato'));
   add(ABAS.AUX, 'B8', cfg('limite_divergencia'));
   add(ABAS.AUX, 'B9', cfg('nome_processo'));
+  var cfgPeso = function (chave) {
+    return '=LET(v,IFERROR(XLOOKUP("' + chave + '",Config!$A$2:$A,Config!$B$2:$B,""),""),IF(AND(ISNUMBER(v),v>=0),v,1))';
+  };
+  add(ABAS.AUX, 'B11', cfgPeso('peso_construcao'));
+  add(ABAS.AUX, 'B12', cfgPeso('peso_apresentacao'));
   add(ABAS.AUX, 'B10', '=IFERROR(REGEXEXTRACT(' + TI + '$B$2,"\\(([^()]+)\\)$"),"")');
 
   // ---------------- _Aux: critérios ativos (critério SIM e bloco SIM), ordenados ----------------
@@ -83,13 +90,13 @@ function formulasDasAbas() {
     'Config_Blocos!$A$2:$A<>"",UPPER(TRIM(Config_Blocos!$E$2:$E))="SIM",COUNTIF($E$2:$E,Config_Blocos!$A$2:$A)>0),4,TRUE),""))');
 
   // ---------------- _Aux: avaliações da etapa selecionada (só critérios ativos) ----------------
-  add(ABAS.AUX, 'S2', '=ARRAYFORMULA(IFERROR(FILTER(Avaliacoes!$B$2:$F,Avaliacoes!$B$2:$B<>"",' +
+  add(ABAS.AUX, 'S2', '=ARRAYFORMULA(IFERROR(FILTER(HSTACK(Avaliacoes!$B$2:$F,IF(Avaliacoes!$I$2:$I="construcao","construcao","apresentacao")),Avaliacoes!$B$2:$B<>"",' +
     '($B$1="*")+(Avaliacoes!$B$2:$B=$B$1),ISNUMBER(MATCH(Avaliacoes!$E$2:$E,$D$2:$D,0)),Avaliacoes!$F$2:$F<>""),""))');
-  add(ABAS.AUX, 'Y2', '=IFERROR(FILTER($S$2:$W,ISNUMBER($W$2:$W)),"")');
+  add(ABAS.AUX, 'Y2', '=IFERROR(FILTER($S$2:$X,ISNUMBER($W$2:$W)),"")');
 
   // ---------------- _Aux: progresso ----------------
   add(ABAS.AUX, 'AI2', '=ARRAYFORMULA(IFERROR(FILTER($D$2:$D,$D$2:$D<>"",($K$2:$K="")+ISNUMBER(SEARCH(","&$B$2&",",","&SUBSTITUTE($K$2:$K," ","")&","))),""))');
-  add(ABAS.AUX, 'AE2', '=ARRAYFORMULA(IFERROR(FILTER(Avaliacoes!$C$2:$E,Avaliacoes!$B$2:$B=$B$2,Avaliacoes!$F$2:$F<>"",ISNUMBER(MATCH(Avaliacoes!$E$2:$E,$AI$2:$AI,0))),""))');
+  add(ABAS.AUX, 'AE2', '=ARRAYFORMULA(IFERROR(FILTER(Avaliacoes!$C$2:$E,Avaliacoes!$B$2:$B=$B$2,Avaliacoes!$F$2:$F<>"",Avaliacoes!$I$2:$I<>"construcao",ISNUMBER(MATCH(Avaliacoes!$E$2:$E,$AI$2:$AI,0))),""))');
 
   // ---------------- _Aux: listas para dropdowns ----------------
   add(ABAS.AUX, 'AK2', '=ARRAYFORMULA(IFERROR(SORT(FILTER(HSTACK(Candidatos!$A$2:$A,Candidatos!$B$2:$B&" ("&Candidatos!$A$2:$A&")"),Candidatos!$A$2:$A<>""),2,TRUE),""))');
@@ -101,12 +108,12 @@ function formulasDasAbas() {
   add(ABAS.GERAL, 'D2', '="Nota de corte: "&IF(' + AUX.CORTE + '="","—",' + AUX.CORTE + ')&"   ·   Vagas: "&IF(' + AUX.VAGAS + '="","—",' + AUX.VAGAS +
     ')&"   ·   Mín. avaliadores: "&' + AUX.MIN_AVAL + '&"   ·   Limite de divergência: "&' + AUX.LIMITE);
   // Linha 3: IDs das colunas (usada pela Tabela Individual e pelo script para conferir os cálculos)
-  add(ABAS.GERAL, 'A3', '=ARRAYFORMULA(IFERROR(HSTACK("id","nome","status","ranking","media","situacao","n_avaliadores","desvio","alertas",' +
+  add(ABAS.GERAL, 'A3', '=ARRAYFORMULA(IFERROR(HSTACK("id","nome","status","ranking","media","situacao","n_avaliadores","desvio","alertas","media_construcao","media_apresentacao",' +
     'TRANSPOSE("bloco:"&FILTER(' + A + '$N$2:$N,' + A + '$N$2:$N<>"")),TRANSPOSE(' + CRIT + ')),' +
-    'HSTACK("id","nome","status","ranking","media","situacao","n_avaliadores","desvio","alertas")))');
-  add(ABAS.GERAL, 'A4', '=ARRAYFORMULA(IFERROR(HSTACK("ID","Candidato","Status","Ranking","Média geral","Situação","Nº avaliadores","Desvio padrão","Alertas",' +
+    'HSTACK("id","nome","status","ranking","media","situacao","n_avaliadores","desvio","alertas","media_construcao","media_apresentacao")))');
+  add(ABAS.GERAL, 'A4', '=ARRAYFORMULA(IFERROR(HSTACK("ID","Candidato","Status","Ranking","Média geral","Situação","Nº avaliadores","Desvio padrão","Alertas","Média Construção","Média Apresentação",' +
     'TRANSPOSE("Média "&FILTER(' + A + '$P$2:$P,' + A + '$N$2:$N<>"")),TRANSPOSE(' + ROT + ')),' +
-    'HSTACK("ID","Candidato","Status","Ranking","Média geral","Situação","Nº avaliadores","Desvio padrão","Alertas")))');
+    'HSTACK("ID","Candidato","Status","Ranking","Média geral","Situação","Nº avaliadores","Desvio padrão","Alertas","Média Construção","Média Apresentação")))');
   add(ABAS.GERAL, 'A5', '=ARRAYFORMULA(IFERROR(LET(' +
     'ids,FILTER(Candidatos!$A$2:$A,Candidatos!$A$2:$A<>""),' +
     'nomes,XLOOKUP(ids,Candidatos!$A$2:$A,Candidatos!$B$2:$B),' +
@@ -115,12 +122,17 @@ function formulasDasAbas() {
     'cbT,TRANSPOSE(FILTER(' + A + '$E$2:$E,' + A + '$D$2:$D<>"")),' +
     'w,TRANSPOSE(FILTER(' + A + '$F$2:$F,' + A + '$D$2:$D<>"")),' +
     'bls,FILTER(' + A + '$N$2:$N,' + A + '$N$2:$N<>""),' +
-    'bA,' + A + '$Z$2:$Z,bC,' + A + '$AA$2:$AA,bK,' + A + '$AB$2:$AB,bN,' + A + '$AC$2:$AC,' +
+    'bM,' + A + '$AD$2:$AD,wC,' + AUX.PESO_CONSTRUCAO + ',wA,' + AUX.PESO_APRESENTACAO + ',bA,' + A + '$Z$2:$Z,bC,' + A + '$AA$2:$AA,bK,' + A + '$AB$2:$AB,bN,' + A + '$AC$2:$AC,' +
     'nC,ROWS(ids),nK,ROWS(crit),nB,ROWS(bls),' +
-    'M,MAKEARRAY(nC,nK,LAMBDA(i,j,IFERROR(AVERAGEIFS(bN,bC,INDEX(ids,i),bK,INDEX(crit,j)),""))),' +
+    'MC,MAKEARRAY(nC,nK,LAMBDA(i,j,IFERROR(AVERAGEIFS(bN,bC,INDEX(ids,i),bK,INDEX(crit,j),bM,"construcao"),""))),' +
+    'MA,MAKEARRAY(nC,nK,LAMBDA(i,j,IFERROR(AVERAGEIFS(bN,bC,INDEX(ids,i),bK,INDEX(crit,j),bM,"apresentacao"),""))),' +
+    'M,MAKEARRAY(nC,nK,LAMBDA(i,j,LET(c,INDEX(MC,i,j),a,INDEX(MA,i,j),' +
+    'IF(AND(ISNUMBER(c),ISNUMBER(a)),IF(wC+wA=0,"",(c*wC+a*wA)/(wC+wA)),IF(ISNUMBER(c),c,IF(ISNUMBER(a),a,"")))))),' +
     'pond,LAMBDA(lin,pes,LET(num,SUMPRODUCT(IF(ISNUMBER(lin),lin,0)*pes),den,SUMPRODUCT(ISNUMBER(lin)*pes),IF(den=0,"",num/den))),' +
     'MB,MAKEARRAY(nC,nB,LAMBDA(i,j,pond(INDEX(M,i,0),w*(cbT=INDEX(bls,j))))),' +
     'MG,MAKEARRAY(nC,1,LAMBDA(i,j,pond(INDEX(M,i,0),w))),' +
+    'MGC,MAKEARRAY(nC,1,LAMBDA(i,j,pond(INDEX(MC,i,0),w))),' +
+    'MGA,MAKEARRAY(nC,1,LAMBDA(i,j,pond(INDEX(MA,i,0),w))),' +
     'NAV,MAP(ids,LAMBDA(c,IFERROR(ROWS(UNIQUE(FILTER(bA,bC=c))),0))),' +
     'DP,MAP(ids,NAV,LAMBDA(c,n,IF(n<2,"",STDEV(MAP(UNIQUE(FILTER(bA,bC=c)),LAMBDA(a,AVERAGEIFS(bN,bC,c,bA,a))))))),' +
     'mR,IF(ISNUMBER(MG),ROUND(MG,9),-1),' +
@@ -130,7 +142,7 @@ function formulasDasAbas() {
     'IF(AND(corte="",vagas=""),"",LET(dc,OR(corte="",IFERROR(m>=corte,TRUE)),dv,OR(vagas="",IFERROR(r<=vagas,TRUE)),' +
     'IF(AND(dc,dv),"Classificado",IF(NOT(dc),"Abaixo do corte","Fora das vagas")))))))),' +
     'AL,MAP(NAV,DP,LAMBDA(n,d,TEXTJOIN(" · ",TRUE,IF(AND(ISNUMBER(minA),n<minA),"Dados insuficientes",""),IF(AND(ISNUMBER(d),ISNUMBER(lim),d>lim),"Divergência","")))),' +
-    'T,HSTACK(ids,nomes,st,RK,MG,SIT,NAV,DP,AL,MB,M),' +
+    'T,HSTACK(ids,nomes,st,RK,MG,SIT,NAV,DP,AL,MGC,MGA,MB,M),' +
     'SORT(T,IF(RK="",1000000,RK),TRUE,nomes,TRUE)),' +
     '"Nenhum candidato cadastrado ainda."))');
 
@@ -214,11 +226,11 @@ function rotulosDasAbas() {
   var r = [];
   var add = function (aba, celula, valores) { r.push({ aba: aba, celula: celula, valores: valores }); };
   add(ABAS.AUX, 'A1', [['etapa_filtro'], ['etapa_progresso'], ['n_crit_progresso'], ['n_crit_ativos'], ['nota_de_corte'],
-    ['vagas'], ['min_avaliadores'], ['limite_divergencia'], ['nome_processo'], ['candidato_individual']]);
+    ['vagas'], ['min_avaliadores'], ['limite_divergencia'], ['nome_processo'], ['candidato_individual'], ['peso_construcao'], ['peso_apresentacao']]);
   add(ABAS.AUX, 'D1', [['crit_id', 'bloco_id', 'peso', 'sigla', 'nome', 'ordem_bloco', 'ordem', 'etapas', 'rotulo']]);
   add(ABAS.AUX, 'N1', [['bloco_id', 'bloco_nome', 'bloco_curto', 'ordem']]);
-  add(ABAS.AUX, 'S1', [['etapa', 'avaliador_id', 'candidato_id', 'criterio_id', 'nota']]);
-  add(ABAS.AUX, 'Y1', [['etapa', 'avaliador_id', 'candidato_id', 'criterio_id', 'nota_num']]);
+  add(ABAS.AUX, 'S1', [['etapa', 'avaliador_id', 'candidato_id', 'criterio_id', 'nota', 'momento']]);
+  add(ABAS.AUX, 'Y1', [['etapa', 'avaliador_id', 'candidato_id', 'criterio_id', 'nota_num', 'momento']]);
   add(ABAS.AUX, 'AE1', [['avaliador_id', 'candidato_id', 'criterio_id']]);
   add(ABAS.AUX, 'AI1', [['crit_progresso']]);
   add(ABAS.AUX, 'AK1', [['cand_id', 'rotulo']]);

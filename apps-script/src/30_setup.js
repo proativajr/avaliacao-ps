@@ -165,6 +165,7 @@ function formatarTabelaGeral_() {
   sh.getRange('E5:E').setNumberFormat('0.00');
   sh.getRange('H5:H').setNumberFormat('0.00');
   sh.getRange('J5:BH').setNumberFormat('0.00');
+  sh.setColumnWidth(10, 90); sh.setColumnWidth(11, 90);
   sh.setColumnWidth(1, 60); sh.setColumnWidth(2, 200); sh.setColumnWidth(6, 130); sh.setColumnWidth(9, 190);
 
   var faixa = sh.getRange('A5:BH1000');
