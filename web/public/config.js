@@ -3,6 +3,6 @@
 window.PS_CONFIG = {
   api: {
     producao: '',
-    ensaio: 'https://script.google.com/macros/s/AKfycbxfQd4vsaSa341cBUxAps6jnM0B3J8tGG1eTxVcUSNv_CHTfG4BvHr--bWxlsMwGgmOHw/exec',
+    ensaio: 'https://script.google.com/macros/s/AKfycbwG1xw9KWrT6LiBgG-TqHpZjiY6HXesjKywcoYuJ9_B7sfpFALZFcdbeOPdHTc9QYFeSA/exec',
   },
 };
