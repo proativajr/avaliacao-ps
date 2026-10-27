@@ -3,14 +3,17 @@
 // Nunca duplica: o servidor faz upsert pela chave e "vale a mais recente" (cliente_ts).
 import { chamar, ErroApi, ErroRede, gravar, ler, Sessao } from '../api';
 
-export interface ItemNota { tipo: 'nota'; etapa: string; candidato_id: string; criterio_id: string; nota: number | 'NA' | ''; cliente_ts: number; }
-export interface ItemObs { tipo: 'obs'; etapa: string; candidato_id: string; texto: string; cliente_ts: number; }
+/** Momento da dinâmica em equipe. Ausente = Apresentação (a chave antiga continua a mesma). */
+export type Momento = 'construcao';
+export interface ItemNota { tipo: 'nota'; etapa: string; candidato_id: string; criterio_id: string; nota: number | 'NA' | ''; cliente_ts: number; momento?: Momento; }
+export interface ItemObs { tipo: 'obs'; etapa: string; candidato_id: string; texto: string; cliente_ts: number; momento?: Momento; }
 export type Item = ItemNota | ItemObs;
 export type EstadoFila = 'salvo' | 'salvando' | 'pendente' | 'offline' | 'erro';
 
-export function chaveNota(etapa: string, cand: string, crit: string) { return `${etapa}|${cand}|${crit}`; }
-export function chaveObs(etapa: string, cand: string) { return `obs:${etapa}|${cand}`; }
-function chaveItem(i: Item) { return i.tipo === 'nota' ? chaveNota(i.etapa, i.candidato_id, i.criterio_id) : chaveObs(i.etapa, i.candidato_id); }
+const sufixo = (m?: string) => (m === 'construcao' ? '|construcao' : '');
+export function chaveNota(etapa: string, cand: string, crit: string, momento?: string) { return `${etapa}|${cand}|${crit}${sufixo(momento)}`; }
+export function chaveObs(etapa: string, cand: string, momento?: string) { return `obs:${etapa}|${cand}${sufixo(momento)}`; }
+function chaveItem(i: Item) { return i.tipo === 'nota' ? chaveNota(i.etapa, i.candidato_id, i.criterio_id, i.momento) : chaveObs(i.etapa, i.candidato_id, i.momento); }
 
 /** Relógio que nunca anda para trás (dois toques no mesmo milissegundo ganham ts diferentes). */
 let ultimoTs = 0;
@@ -68,7 +71,7 @@ export class Fila {
         notas: lote.filter((i) => i.tipo === 'nota').map(({ tipo, ...n }) => n),
         observacoes: lote.filter((i) => i.tipo === 'obs').map(({ tipo, ...o }) => o),
       }, 25000);
-      // O servidor devolve a chave com o id do avaliador no meio: "etapa|aNNN|cand|crit"
+      // O servidor devolve a chave com o id do avaliador no meio: "etapa|aNNN|cand|crit" (+ "|construcao")
       const tirarAvaliador = (k: string) => {
         const obs = k.startsWith('obs:');
         const p = (obs ? k.slice(4) : k).split('|');

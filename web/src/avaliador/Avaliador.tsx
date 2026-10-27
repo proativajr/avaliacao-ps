@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { chamar, ErroApi, gravar, ler, sair, Sessao } from '../api';
 import { criteriosDaEtapa, estadoCandidato } from '@shared/calc.js';
 import { FaixaTeste, toast } from '../ui';
-import { agoraTs, chaveNota, chaveObs, EstadoFila, Fila, Item } from './fila';
+import { agoraTs, chaveNota, chaveObs, EstadoFila, Fila, Item, Momento } from './fila';
 import { Lista } from './Lista';
 import { TelaCandidato } from './TelaCandidato';
 import './avaliador.css';
@@ -16,12 +16,14 @@ export interface Pacote {
   em_votacao: string[];
   dinamica_ativa?: string;
   equipe?: { id: string; nome: string; etapa: string; membros: string[] } | null;
+  /** Equipes em Construção em que este avaliador foi designado. */
+  construcao?: { id: string; nome: string; etapa: string; membros: string[] }[];
   etapas: { id: string; nome: string; ordem: number; aberta: boolean }[];
   blocos: { id: string; nome: string; nome_curto: string; ordem: number }[];
   criterios: { id: string; bloco: string; ordem: number; sigla: string; nome: string; descricao: string; etapas: string }[];
   candidatos: { id: string; nome: string; nome_curto: string; foto_url: string }[];
   eu: { id: string; nome: string };
-  minhas: { notas: { etapa: string; candidato_id: string; criterio_id: string; nota: number | 'NA' | ''; cliente_ts: number }[]; observacoes: { etapa: string; candidato_id: string; texto: string; cliente_ts: number }[] };
+  minhas: { notas: { etapa: string; candidato_id: string; criterio_id: string; nota: number | 'NA' | ''; cliente_ts: number; momento?: string }[]; observacoes: { etapa: string; candidato_id: string; texto: string; cliente_ts: number; momento?: string }[] };
   colegas?: Record<string, { media: number; n: number }>;
 }
 export type Valor = { nota: number | 'NA' | ''; ts: number };
@@ -29,26 +31,28 @@ export interface Contexto {
   pacote: Pacote; etapa: string; aberta: boolean;
   /** Membros da equipe em avaliação agora nesta dinâmica (vazio = nenhuma). */
   equipe: { nome: string; ids: string[] } | null;
+  /** Equipes em Construção designadas a este avaliador nesta dinâmica. */
+  construcao: { id: string; nome: string; ids: string[] }[];
   criterios: Pacote['criterios'];
   notas: Record<string, Valor>;
   obs: Record<string, { texto: string; ts: number }>;
-  estado: (candId: string) => { feitos: number; total: number; tipo: 'pendente' | 'parcial' | 'completo'; tudoNA: boolean };
-  darNota: (candId: string, critId: string, nota: number | 'NA') => void;
-  darVarias: (candId: string, nota: 'NA') => void;
-  salvarObs: (candId: string, texto: string) => void;
+  estado: (candId: string, momento?: Momento) => { feitos: number; total: number; tipo: 'pendente' | 'parcial' | 'completo'; tudoNA: boolean };
+  darNota: (candId: string, critId: string, nota: number | 'NA', momento?: Momento) => void;
+  darVarias: (candId: string, nota: 'NA', momento?: Momento) => void;
+  salvarObs: (candId: string, texto: string, momento?: Momento) => void;
 }
 
 /** Junta as notas do servidor com as que ainda estão na fila (a fila é mais nova). */
 function montarNotas(p: Pacote, fila: Item[]) {
   const notas: Record<string, Valor> = {}, obs: Record<string, { texto: string; ts: number }> = {};
-  p.minhas.notas.forEach((n) => { notas[chaveNota(n.etapa, n.candidato_id, n.criterio_id)] = { nota: n.nota, ts: n.cliente_ts }; });
-  p.minhas.observacoes.forEach((o) => { obs[chaveObs(o.etapa, o.candidato_id)] = { texto: o.texto, ts: o.cliente_ts }; });
+  p.minhas.notas.forEach((n) => { notas[chaveNota(n.etapa, n.candidato_id, n.criterio_id, n.momento)] = { nota: n.nota, ts: n.cliente_ts }; });
+  p.minhas.observacoes.forEach((o) => { obs[chaveObs(o.etapa, o.candidato_id, o.momento)] = { texto: o.texto, ts: o.cliente_ts }; });
   fila.forEach((i) => {
     if (i.tipo === 'nota') {
-      const k = chaveNota(i.etapa, i.candidato_id, i.criterio_id);
+      const k = chaveNota(i.etapa, i.candidato_id, i.criterio_id, i.momento);
       if (!notas[k] || notas[k].ts <= i.cliente_ts) notas[k] = { nota: i.nota, ts: i.cliente_ts };
     } else {
-      const k = chaveObs(i.etapa, i.candidato_id);
+      const k = chaveObs(i.etapa, i.candidato_id, i.momento);
       if (!obs[k] || obs[k].ts <= i.cliente_ts) obs[k] = { texto: i.texto, ts: i.cliente_ts };
     }
   });
@@ -64,6 +68,7 @@ export function Avaliador({ sessao }: { sessao: Sessao; outras: Sessao[] }) {
   const [obs, setObs] = useState<Record<string, { texto: string; ts: number }>>({});
   const [estadoFila, setEstadoFila] = useState<{ e: EstadoFila; n: number }>({ e: 'salvo', n: 0 });
   const [etapaEscolhida, setEtapaEscolhida] = useState(ler(`${sessao.amb}:etapa`) || '');
+  // "c001" = Apresentação (ou dinâmica sem equipe); "c001@construcao" = Construção.
   const [aberto, setAberto] = useState<string | null>(() => (history.state && history.state.cand) || null);
   const filaRef = useRef<Fila | null>(null);
 
@@ -103,10 +108,10 @@ export function Avaliador({ sessao }: { sessao: Sessao; outras: Sessao[] }) {
     const id = setInterval(async () => {
       if (document.visibilityState !== 'visible') return;
       try {
-        const s = await chamar<Pick<Pacote, 'versao' | 'em_votacao' | 'avaliacao_aberta' | 'etapas' | 'dinamica_ativa' | 'equipe'>>(sessao, 'av.sincronizar', {}, 15000);
+        const s = await chamar<Pick<Pacote, 'versao' | 'em_votacao' | 'avaliacao_aberta' | 'etapas' | 'dinamica_ativa' | 'equipe' | 'construcao'>>(sessao, 'av.sincronizar', {}, 15000);
         setSemConexaoInicio(false);
         // Só baixa tudo de novo quando candidatos ou critérios mudam; equipe e dinâmica vêm na consulta leve.
-        setPacote((p) => (p ? { ...p, em_votacao: s.em_votacao, avaliacao_aberta: s.avaliacao_aberta, etapas: s.etapas, dinamica_ativa: s.dinamica_ativa, equipe: s.equipe } : p));
+        setPacote((p) => (p ? { ...p, em_votacao: s.em_votacao, avaliacao_aberta: s.avaliacao_aberta, etapas: s.etapas, dinamica_ativa: s.dinamica_ativa, equipe: s.equipe, construcao: s.construcao } : p));
         if (s.versao !== pacote.versao) carregar();
       } catch { /* sem internet: tenta na próxima */ }
     }, 10000);
@@ -137,40 +142,43 @@ export function Avaliador({ sessao }: { sessao: Sessao; outras: Sessao[] }) {
 
   const ctx: Contexto | null = useMemo(() => {
     if (!pacote) return null;
-    const estado = (candId: string) => {
+    const estado = (candId: string, momento?: Momento) => {
       let feitos = 0, na = 0;
       criterios.forEach((k) => {
-        const v = notas[chaveNota(etapa, candId, k.id)];
+        const v = notas[chaveNota(etapa, candId, k.id, momento)];
         if (v && v.nota !== '') { feitos++; if (v.nota === 'NA') na++; }
       });
       return { feitos, total: criterios.length, tipo: estadoCandidato(feitos, criterios.length) as any, tudoNA: feitos > 0 && na === feitos };
     };
-    const registrar = (candId: string, critId: string, nota: number | 'NA', ts: number) => {
-      filaRef.current!.adicionar({ tipo: 'nota', etapa, candidato_id: candId, criterio_id: critId, nota, cliente_ts: ts });
+    const registrar = (candId: string, critId: string, nota: number | 'NA', ts: number, momento?: Momento) => {
+      filaRef.current!.adicionar({ tipo: 'nota', etapa, candidato_id: candId, criterio_id: critId, nota, cliente_ts: ts, ...(momento ? { momento } : {}) });
     };
+    const noPacote = (id: string) => pacote.candidatos.some((c) => c.id === id);
+    const construcao = (pacote.construcao || []).filter((q) => q.etapa === etapa)
+      .map((q) => ({ id: q.id, nome: q.nome, ids: q.membros.filter(noPacote) })).filter((q) => q.ids.length);
     const eq = pacote.equipe && pacote.equipe.etapa === etapa
       ? { nome: pacote.equipe.nome, ids: pacote.equipe.membros.filter((id) => pacote.candidatos.some((c) => c.id === id)) } : null;
     return {
-      pacote, etapa, aberta, criterios, notas, obs, estado, equipe: eq && eq.ids.length ? eq : null,
-      darNota: (candId, critId, nota) => {
+      pacote, etapa, aberta, criterios, notas, obs, estado, construcao, equipe: eq && eq.ids.length ? eq : null,
+      darNota: (candId, critId, nota, momento) => {
         if (!aberta) return;
         const ts = agoraTs();
-        setNotas((m) => ({ ...m, [chaveNota(etapa, candId, critId)]: { nota, ts } }));
-        registrar(candId, critId, nota, ts);
+        setNotas((m) => ({ ...m, [chaveNota(etapa, candId, critId, momento)]: { nota, ts } }));
+        registrar(candId, critId, nota, ts, momento);
       },
-      darVarias: (candId, nota) => {
+      darVarias: (candId, nota, momento) => {
         if (!aberta) return;
         const novos: Record<string, Valor> = {};
-        criterios.forEach((k) => { const ts = agoraTs(); novos[chaveNota(etapa, candId, k.id)] = { nota, ts }; registrar(candId, k.id, nota, ts); });
+        criterios.forEach((k) => { const ts = agoraTs(); novos[chaveNota(etapa, candId, k.id, momento)] = { nota, ts }; registrar(candId, k.id, nota, ts, momento); });
         setNotas((m) => ({ ...m, ...novos }));
       },
-      salvarObs: (candId, texto) => {
+      salvarObs: (candId, texto, momento) => {
         if (!aberta) return;
-        const k = chaveObs(etapa, candId);
+        const k = chaveObs(etapa, candId, momento);
         if ((obs[k]?.texto || '') === texto) return;
         const ts = agoraTs();
         setObs((m) => ({ ...m, [k]: { texto, ts } }));
-        filaRef.current!.adicionar({ tipo: 'obs', etapa, candidato_id: candId, texto, cliente_ts: ts });
+        filaRef.current!.adicionar({ tipo: 'obs', etapa, candidato_id: candId, texto, cliente_ts: ts, ...(momento ? { momento } : {}) });
       },
     };
   }, [pacote, etapa, aberta, criterios, notas, obs]);
@@ -190,8 +198,8 @@ export function Avaliador({ sessao }: { sessao: Sessao; outras: Sessao[] }) {
   return (
     <div class="av">
       {ensaio && <FaixaTeste />}
-      {aberto && ctx.pacote.candidatos.find((c) => c.id === aberto)
-        ? <TelaCandidato {...props} candId={aberto} />
+      {aberto && ctx.pacote.candidatos.find((c) => c.id === aberto.split('@')[0])
+        ? <TelaCandidato {...props} candId={aberto.split('@')[0]} momento={aberto.endsWith('@construcao') ? 'construcao' : undefined} />
         : <Lista {...props} />}
     </div>
   );

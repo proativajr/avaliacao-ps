@@ -2,57 +2,61 @@
 // Observação e "Não posso avaliar" abrem em folhas que sobem de baixo.
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { toast } from '../ui';
-import { chaveNota, chaveObs } from './fila';
+import { chaveNota, chaveObs, Momento } from './fila';
 import { PropsTela, Salvamento } from './Lista';
 
 const NOTAS = [1, 2, 3, 4, 5] as const;
 
-export function TelaCandidato({ ctx, estadoFila, semConexao, abrir, candId }: PropsTela & { candId: string }) {
+export function TelaCandidato({ ctx, estadoFila, semConexao, abrir, candId, momento }: PropsTela & { candId: string; momento?: Momento }) {
   const { pacote, etapa, aberta, criterios, notas } = ctx;
   // Navegação dentro da equipe em avaliação (se o candidato for dela); senão, entre todos.
-  const naEquipe = !!ctx.equipe && ctx.equipe.ids.includes(candId);
-  const cands = naEquipe ? ctx.equipe!.ids.map((id) => pacote.candidatos.find((c) => c.id === id)!).filter(Boolean) : pacote.candidatos;
+  // Na Construção, só dentro da equipe designada ao avaliador.
+  const eqConstrucao = momento ? ctx.construcao.find((q) => q.ids.includes(candId)) : undefined;
+  const equipeDaTela = momento ? eqConstrucao : ctx.equipe;
+  const naEquipe = !!equipeDaTela && equipeDaTela.ids.includes(candId);
+  const sufixo = momento ? '@construcao' : '';
+  const cands = naEquipe ? equipeDaTela!.ids.map((id) => pacote.candidatos.find((c) => c.id === id)!).filter(Boolean) : pacote.candidatos;
   const i = cands.findIndex((c) => c.id === candId);
   const cand = cands[i];
   const blocos = useMemo(() => pacote.blocos.filter((b) => criterios.some((k) => k.bloco === b.id)), [pacote.blocos, criterios]);
-  const valor = (critId: string) => notas[chaveNota(etapa, candId, critId)]?.nota ?? '';
+  const valor = (critId: string) => notas[chaveNota(etapa, candId, critId, momento)]?.nota ?? '';
   const faltando = (blocoId: string) => criterios.filter((k) => k.bloco === blocoId && valor(k.id) === '').length;
 
   const [blocoAberto, setBlocoAberto] = useState<string>(() => (blocos.find((b) => faltando(b.id) > 0) || blocos[0])?.id || '');
   const [ativo, setAtivo] = useState<string>('');
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>({});
   const [folha, setFolha] = useState<null | 'menu' | 'obs' | 'naoPosso'>(null);
-  const textoObs = ctx.obs[chaveObs(etapa, candId)]?.texto || '';
+  const textoObs = ctx.obs[chaveObs(etapa, candId, momento)]?.texto || '';
   const [rascunho, setRascunho] = useState(textoObs);
   const timerObs = useRef<any>(null);
 
   // Ao trocar de candidato: volta para o primeiro bloco com pendência
   useEffect(() => {
     setBlocoAberto((blocos.find((b) => faltando(b.id) > 0) || blocos[0])?.id || '');
-    setAtivo(''); setExpandidos({}); setRascunho(ctx.obs[chaveObs(etapa, candId)]?.texto || ''); setFolha(null);
-  }, [candId, etapa]); // eslint-disable-line
+    setAtivo(''); setExpandidos({}); setRascunho(ctx.obs[chaveObs(etapa, candId, momento)]?.texto || ''); setFolha(null);
+  }, [candId, etapa, momento]); // eslint-disable-line
 
   const critsBloco = criterios.filter((k) => k.bloco === blocoAberto);
   const critAtivo = ativo || critsBloco.find((k) => valor(k.id) === '')?.id || '';
-  const est = ctx.estado(candId);
+  const est = ctx.estado(candId, momento);
   const completo = est.tipo === 'completo' && !est.tudoNA;
 
   const proximoPendente = () => {
     for (let j = 1; j <= cands.length; j++) {
       const c = cands[(i + j) % cands.length];
-      if (c.id !== candId && ctx.estado(c.id).tipo !== 'completo') return c.id;
+      if (c.id !== candId && ctx.estado(c.id, momento).tipo !== 'completo') return c.id;
     }
     return null;
   };
   const irProximo = () => {
     const p = proximoPendente();
-    if (p) abrir(p);
-    else { toast(naEquipe ? `${ctx.equipe!.nome} avaliada ✓` : 'Você avaliou todos os candidatos.'); abrir(null); }
+    if (p) abrir(p + sufixo);
+    else { toast(naEquipe ? `${equipeDaTela!.nome}${momento ? ' (construção)' : ''} avaliada ✓` : 'Você avaliou todos os candidatos.'); abrir(null); }
   };
 
   const marcar = (critId: string, nota: number | 'NA') => {
     if (!aberta) return;
-    ctx.darNota(candId, critId, nota);
+    ctx.darNota(candId, critId, nota, momento);
     setAtivo(''); // o destaque passa para o próximo critério sem nota
     // Quando o bloco aberto fica completo, passa para o próximo bloco com pendência
     const restantes = criterios.filter((k) => k.bloco === blocoAberto && k.id !== critId && valor(k.id) === '').length;
@@ -66,13 +70,13 @@ export function TelaCandidato({ ctx, estadoFila, semConexao, abrir, candId }: Pr
   const naoPossoTodos = () => {
     setFolha(null);
     if (!aberta) return;
-    ctx.darVarias(candId, 'NA');
+    ctx.darVarias(candId, 'NA', momento);
     toast('Marcado como "não posso avaliar"');
   };
   // Sem notas dadas, aplica direto; com notas, confirma numa folha antes de substituir.
   const pedirNaoPosso = () => (dadas ? setFolha('naoPosso') : naoPossoTodos());
 
-  const salvarObs = (t: string) => { clearTimeout(timerObs.current); ctx.salvarObs(candId, t.trim()); };
+  const salvarObs = (t: string) => { clearTimeout(timerObs.current); ctx.salvarObs(candId, t.trim(), momento); };
   const abrirObs = () => { setFolha('obs'); setTimeout(() => (document.querySelector('.folha textarea') as HTMLElement | null)?.focus(), 60); };
   const fecharFolha = () => { if (folha === 'obs') salvarObs(rascunho); setFolha(null); };
 
@@ -87,15 +91,15 @@ export function TelaCandidato({ ctx, estadoFila, semConexao, abrir, candId }: Pr
       else if ((e.key === 'n' || e.key === 'N') && critAtivo) { e.preventDefault(); marcar(critAtivo, 'NA'); }
       else if (e.key === 'ArrowDown' && idx < critsBloco.length - 1) { e.preventDefault(); setAtivo(critsBloco[idx + 1].id); }
       else if (e.key === 'ArrowUp' && idx > 0) { e.preventDefault(); setAtivo(critsBloco[idx - 1].id); }
-      else if (e.key === 'ArrowRight' && i < cands.length - 1) { e.preventDefault(); abrir(cands[i + 1].id); }
-      else if (e.key === 'ArrowLeft' && i > 0) { e.preventDefault(); abrir(cands[i - 1].id); }
+      else if (e.key === 'ArrowRight' && i < cands.length - 1) { e.preventDefault(); abrir(cands[i + 1].id + sufixo); }
+      else if (e.key === 'ArrowLeft' && i > 0) { e.preventDefault(); abrir(cands[i - 1].id + sufixo); }
       else if (e.key === 'Escape') abrir(null);
     };
     addEventListener('keydown', f);
     return () => removeEventListener('keydown', f);
   });
 
-  const contexto = naEquipe ? ctx.equipe!.nome : pacote.etapas.find((e) => e.id === etapa)?.nome || '';
+  const contexto = naEquipe ? `${equipeDaTela!.nome}${momento ? ' · Construção' : ''}` : pacote.etapas.find((e) => e.id === etapa)?.nome || '';
   const offline = estadoFila.e === 'offline' || (semConexao && estadoFila.n > 0);
 
   return (
@@ -133,7 +137,7 @@ export function TelaCandidato({ ctx, estadoFila, semConexao, abrir, candId }: Pr
           {critsBloco.map((k) => {
             const v = valor(k.id);
             const exp = expandidos[k.id];
-            const col = pacote.veem_outros ? pacote.colegas?.[`${etapa}|${candId}|${k.id}`] : undefined;
+            const col = pacote.veem_outros && !momento ? pacote.colegas?.[`${etapa}|${candId}|${k.id}`] : undefined;
             return (
               <div class={'crit' + (k.id === critAtivo ? ' ativo' : '') + (v !== '' ? ' feito' : '')} role="radiogroup" aria-label={`Nota para ${k.nome}`} onFocusCapture={() => setAtivo(k.id)}>
                 <div class="crit-topo">

@@ -31,11 +31,11 @@ export function Iniciais({ nome, foto, tam = 40 }: { nome: string; foto?: string
 const CHECK = <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Avaliado"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>;
 const SETA = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>;
 
-function Linha({ c, s, abrir }: { c: Pacote['candidatos'][number]; s: ReturnType<Contexto['estado']>; abrir: (id: string) => void }) {
+function Linha({ c, s, abrir, sufixo = '' }: { c: Pacote['candidatos'][number]; s: ReturnType<Contexto['estado']>; abrir: (id: string) => void; sufixo?: string }) {
   const feito = s.tipo === 'completo';
   return (
     <li>
-      <button onClick={() => abrir(c.id)}>
+      <button onClick={() => abrir(c.id + sufixo)}>
         <span class={'av-ini' + (feito ? ' feito' : '')}><Iniciais nome={c.nome} foto={c.foto_url} tam={44} /></span>
         <span class="nome">{c.nome_curto}</span>
         <span class={'estado ' + s.tipo}>
@@ -60,18 +60,20 @@ export function Topo({ titulo, estadoFila, semConexao }: { titulo: string; estad
 }
 
 export function Lista({ ctx, estadoFila, semConexao, abertas, trocarEtapa, abrir, erro }: PropsTela) {
-  const { pacote, equipe } = ctx;
+  const { pacote, equipe, construcao } = ctx;
   const [busca, setBusca] = useState('');
   const [verTodos, setVerTodos] = useState(false);
 
   const estados = useMemo(() => Object.fromEntries(pacote.candidatos.map((c) => [c.id, ctx.estado(c.id)])), [pacote.candidatos, ctx]);
   const total = pacote.candidatos.length;
   const daEquipe = equipe ? equipe.ids.map((id) => pacote.candidatos.find((c) => c.id === id)!).filter(Boolean) : [];
-  const outros = pacote.candidatos.filter((c) => !equipe || !equipe.ids.includes(c.id));
+  const emEquipe = new Set([...(equipe ? equipe.ids : []), ...construcao.flatMap((q) => q.ids)]);
+  const destaque = !!equipe || construcao.length > 0;
+  const outros = pacote.candidatos.filter((c) => !destaque || !emEquipe.has(c.id));
   const visiveis = outros.filter((c) => !busca || normalizarNome(c.nome + ' ' + c.nome_curto).includes(normalizarNome(busca)));
   const nomeEtapa = pacote.etapas.find((e) => e.id === ctx.etapa)?.nome || '';
   const feitosEquipe = daEquipe.filter((c) => estados[c.id].tipo === 'completo').length;
-  const mostrarOutros = !equipe || verTodos;
+  const mostrarOutros = !destaque || verTodos;
 
   return (
     <>
@@ -94,13 +96,26 @@ export function Lista({ ctx, estadoFila, semConexao, abertas, trocarEtapa, abrir
             <div class="segmentos" aria-hidden="true">{daEquipe.map((c) => <span class={estados[c.id].tipo === 'completo' ? 'ok' : ''} />)}</div>
             <ul class="cands grande">{daEquipe.map((c) => <Linha c={c} s={estados[c.id]} abrir={abrir} />)}</ul>
           </section>
-        ) : total > 0 && (
+        ) : total > 0 && !construcao.length && (
           <section class="espera">
             <span class="sobrelinha"><i />Aguardando</span>
             <h1>A próxima equipe aparece aqui sozinha.</h1>
             <p>Enquanto isso, você pode revisar qualquer candidato.</p>
           </section>
         )}
+
+        {construcao.map((q) => {
+          const cs = q.ids.map((id) => pacote.candidatos.find((c) => c.id === id)!).filter(Boolean);
+          const feitos = cs.filter((c) => ctx.estado(c.id, 'construcao').tipo === 'completo').length;
+          return (
+            <section class="equipe-agora construcao" aria-label={`${q.nome}, construção, avalie agora`}>
+              <span class="sobrelinha">Construção · você acompanha</span>
+              <div class="eq-titulo"><h1>{q.nome}</h1><span>{feitos} de {cs.length}</span></div>
+              <div class="segmentos" aria-hidden="true">{cs.map((c) => <span class={ctx.estado(c.id, 'construcao').tipo === 'completo' ? 'ok' : ''} />)}</div>
+              <ul class="cands grande">{cs.map((c) => <Linha c={c} s={ctx.estado(c.id, 'construcao')} abrir={abrir} sufixo="@construcao" />)}</ul>
+            </section>
+          );
+        })}
 
         {mostrarOutros && outros.length > 0 && (
           <>
@@ -116,7 +131,7 @@ export function Lista({ ctx, estadoFila, semConexao, abertas, trocarEtapa, abrir
             </ul>
           </>
         )}
-        {equipe && outros.length > 0 && (
+        {destaque && outros.length > 0 && (
           <button class="ver-todos" aria-expanded={verTodos} onClick={() => setVerTodos(!verTodos)}>
             {verTodos ? 'Esconder outros candidatos' : `Outros candidatos · ${outros.length}`}
           </button>
