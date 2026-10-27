@@ -30,7 +30,14 @@ Decisões não óbvias:
   contadores) ficam em 14 px para não competir com o conteúdo. Nada no app fica abaixo de 14 px.
 - **`--alerta` escurecido** de #9A6B00 para #8A5F00 para passar 4,5:1 sobre o fundo de alerta.
 - **#8C94A3 só em bordas e ícones**: ele dá 3:1 sobre branco e não serve para texto.
-- **Celular abaixo de 375 px:** o botão "N/A" desce para uma linha própria, para as notas 1–5 manterem 44 px.
+- **Avaliador com tokens próprios** (`--av-*` em `avaliador.css`): fundo off-white quente #F7F5F0, grupos brancos
+  com contorno fino e sem sombra, separadores recuados depois do avatar. No tema escuro voltam para os neutros azuis.
+- **Nota 1–5 é um controle segmentado** (`.seg`, 52 px de altura) e o **N/A fica na linha do nome do critério**, discreto,
+  para as cinco notas ocuparem a largura toda (≥ 50 px cada já em 320 px).
+- **Um amarelo por tela no avaliador:** o ponto do critério da vez; quando o candidato fica completo, o ponto some e o
+  botão vira **Pronto, Próximo** em amarelo.
+- **Folhas (bottom sheet)** para Mais opções, Observação e a confirmação de "Não posso avaliar" (sem `confirm()` do navegador).
+  Sobem em 220 ms; com `prefers-reduced-motion`, aparecem sem movimento.
 
 ## Componentes (classes)
 
@@ -63,8 +70,8 @@ Na tela do candidato:
 1. Nome.
 2. Abas dos blocos de critérios.
 3. Bloco de critérios, com as notas.
-4. Observação.
-5. Rodapé fixo com **Próximo** e **⋯**.
+4. Observação já escrita (linha tocável; editar abre a folha).
+5. Barra fixa com **Próximo** / **Pronto, Próximo** e **⋯**, e uma linha de progresso de 2 px na borda de cima.
 
 **Ao vivo:**
 - Cabeçalho com a dinâmica.
