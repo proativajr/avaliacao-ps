@@ -9,7 +9,7 @@ function avaliacoesParaCalculo_() {
     var n = a.nota;
     return {
       etapa: String(a.etapa), avaliador_id: String(a.avaliador_id), candidato_id: String(a.candidato_id),
-      criterio_id: String(a.criterio_id), nota: typeof n === 'number' ? n : String(n).toUpperCase(),
+      criterio_id: String(a.criterio_id), nota: typeof n === 'number' ? n : String(n).toUpperCase(), momento: momentoDe_(a.momento),
     };
   });
 }
@@ -19,6 +19,7 @@ function configParaCalculo_() {
   return {
     nota_de_corte: c.nota_de_corte, vagas: c.vagas,
     min_avaliadores_por_candidato: c.min_avaliadores_por_candidato, limite_divergencia: c.limite_divergencia,
+    peso_construcao: c.peso_construcao, peso_apresentacao: c.peso_apresentacao,
   };
 }
 
@@ -56,6 +57,8 @@ function conferirCalculos_() {
     if (!p) { dif.push(l.id + ': não aparece na Tabela Geral'); return; }
     if (!perto(p.media, l.media)) dif.push(l.id + ' média: planilha ' + p.media + ' × cálculo ' + l.media);
     if (!perto(p.ranking, l.ranking)) dif.push(l.id + ' ranking: planilha ' + p.ranking + ' × cálculo ' + l.ranking);
+    if (!perto(p.media_construcao, l.mediaConstrucao)) dif.push(l.id + ' média construção: planilha ' + p.media_construcao + ' × cálculo ' + l.mediaConstrucao);
+    if (!perto(p.media_apresentacao, l.mediaApresentacao)) dif.push(l.id + ' média apresentação: planilha ' + p.media_apresentacao + ' × cálculo ' + l.mediaApresentacao);
     if (Number(p.n_avaliadores) !== l.nAvaliadores) dif.push(l.id + ' nº avaliadores: planilha ' + p.n_avaliadores + ' × cálculo ' + l.nAvaliadores);
     if (!perto(p.desvio, l.desvio)) dif.push(l.id + ' desvio: planilha ' + p.desvio + ' × cálculo ' + l.desvio);
     if (String(p.situacao) !== String(l.situacao)) dif.push(l.id + ' situação: planilha "' + p.situacao + '" × cálculo "' + l.situacao + '"');

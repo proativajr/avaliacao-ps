@@ -3,7 +3,7 @@
  * Mexer aqui muda a estrutura criada pelo setup().
  * ===================================================================== */
 
-var VERSAO_SISTEMA = '1.0.0';
+var VERSAO_SISTEMA = '1.1.0';
 
 var ABAS = {
   CONFIG: 'Config',
@@ -37,16 +37,17 @@ var CABECALHOS = {};
 CABECALHOS[ABAS.CONFIG] = ['chave', 'valor', 'descricao'];
 CABECALHOS[ABAS.ETAPAS] = ['id', 'nome', 'ordem', 'aberta'];
 CABECALHOS[ABAS.BLOCOS] = ['id', 'nome', 'nome_curto', 'ordem', 'ativo'];
-/** Equipes de cada dinâmica (etapa). membros = IDs dos candidatos separados por vírgula. */
-CABECALHOS[ABAS.EQUIPES] = ['id', 'etapa', 'nome', 'ordem', 'membros'];
+/** Equipes de cada dinâmica (etapa). membros e avaliadores = IDs separados por vírgula.
+ *  avaliadores = quem acompanha a equipe na Construção. construcao/apresentacao = '', 'ANDAMENTO' ou 'CONCLUIDO'. */
+CABECALHOS[ABAS.EQUIPES] = ['id', 'etapa', 'nome', 'ordem', 'membros', 'avaliadores', 'construcao', 'apresentacao'];
 CABECALHOS[ABAS.CRITERIOS] = ['id', 'bloco', 'ordem', 'sigla', 'nome', 'descricao', 'peso', 'ativo', 'etapas'];
 CABECALHOS[ABAS.AVALIADORES] = ['id', 'nome', 'email', 'area', 'token', 'ativo', 'criado_em', 'ultimo_acesso'];
 CABECALHOS[ABAS.CANDIDATOS] = ['id', 'nome_exibicao', 'nome_normalizado', 'email', 'telefone', 'curso', 'semestre',
   'foto_url', 'status', 'origem', 'importado_em', 'chave_inscricao', 'criado_em', 'atualizado_em'];
 CABECALHOS[ABAS.INSCRICOES] = ['candidato_id', 'lote_id', 'importado_em', 'hash_linha', 'dados_json'];
 CABECALHOS[ABAS.IMPORTACOES] = ['lote_id', 'em', 'origem', 'nome_arquivo', 'linhas', 'criados', 'atualizados', 'ignorados'];
-CABECALHOS[ABAS.AVALIACOES] = ['chave', 'etapa', 'avaliador_id', 'candidato_id', 'criterio_id', 'nota', 'atualizado_em', 'cliente_ts'];
-CABECALHOS[ABAS.OBSERVACOES] = ['chave', 'etapa', 'avaliador_id', 'candidato_id', 'texto', 'atualizado_em', 'cliente_ts'];
+CABECALHOS[ABAS.AVALIACOES] = ['chave', 'etapa', 'avaliador_id', 'candidato_id', 'criterio_id', 'nota', 'atualizado_em', 'cliente_ts', 'momento'];
+CABECALHOS[ABAS.OBSERVACOES] = ['chave', 'etapa', 'avaliador_id', 'candidato_id', 'texto', 'atualizado_em', 'cliente_ts', 'momento'];
 
 /** Abas que só o script escreve (protegidas para todos, exceto o dono). */
 var ABAS_DADOS = [ABAS.AVALIADORES, ABAS.CANDIDATOS, ABAS.INSCRICOES, ABAS.IMPORTACOES, ABAS.AVALIACOES, ABAS.OBSERVACOES];
@@ -73,6 +74,8 @@ var CONFIG_PADRAO = [
   ['em_votacao', '', 'IDs dos candidatos em votação agora, separados por vírgula (o app preenche)'],
   ['dinamica_ativa', '', 'Dinâmica (etapa) que os avaliadores veem agora (o app preenche)'],
   ['equipe_ativa', '', 'Equipe em avaliação agora (o app preenche)'],
+  ['peso_construcao', 1, 'Peso da Construção na nota da dinâmica em equipe'],
+  ['peso_apresentacao', 1, 'Peso da Apresentação na nota da dinâmica em equipe'],
 ];
 
 var ETAPAS_PADRAO = [['geral', 'Dinâmica 1', 1, 'SIM']];

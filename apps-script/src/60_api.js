@@ -57,6 +57,7 @@ function executarAcao_(corpo) {
   if (acao === 'ping') return { versao: VERSAO_SISTEMA, modo: modo_() };
 
   var quem = identificar_(String(corpo.token || ''));
+  migrarEsquema_();
   if (acao.indexOf('admin.') === 0) {
     if (quem.perfil !== 'admin') throw erroApi_('SEM_PERMISSAO', 'Este link não tem acesso de administrador.');
     var fa = ACOES_ADMIN[acao];
@@ -70,6 +71,17 @@ function executarAcao_(corpo) {
     return fv(quem.avaliador, dados);
   }
   throw erroApi_('ACAO', 'Ação desconhecida: ' + acao);
+}
+
+/** Depois de colar uma versão nova do script: completa cabeçalhos/colunas novas uma única vez (não apaga nada). */
+function migrarEsquema_() {
+  if (props_().getProperty('versao') === VERSAO_SISTEMA) return;
+  comTrava_(function () {
+    Object.keys(CABECALHOS).forEach(function (nome) { garantirCabecalho_(nome); });
+    preencherPadroes_();
+    props_().setProperty('versao', VERSAO_SISTEMA);
+    limparCache_();
+  });
 }
 
 function identificar_(token) {
@@ -115,6 +127,7 @@ function pacotePublico_() {
     em_votacao: listaIds_(cfg.em_votacao),
     dinamica_ativa: String(cfg.dinamica_ativa || ''),
     equipe: equipeAtiva_(cfg),
+    equipes_construcao: equipesEmConstrucao_(),
     etapas: lerObjetos_(ABAS.ETAPAS).map(function (e) { return { id: String(e.id), nome: String(e.nome), ordem: Number(e.ordem) || 0, aberta: ehSim_(e.aberta) }; })
       .sort(function (a, b) { return a.ordem - b.ordem; }),
     blocos: blocosAtivos(blocos, criterios).map(function (b) { return { id: b.id, nome: b.nome, nome_curto: b.nome_curto, ordem: b.ordem }; }),
@@ -139,6 +152,17 @@ function equipeAtiva_(cfg) {
   return e ? { id: id, nome: String(e.nome), etapa: String(e.etapa), membros: listaIds_(e.membros) } : null;
 }
 
+/** Equipes com a Construção em andamento (com os avaliadores designados). Só vai ao cache; cada avaliador recebe o seu recorte. */
+function equipesEmConstrucao_() {
+  return lerEquipes_().filter(function (q) { return q.construcao === 'ANDAMENTO'; });
+}
+
+/** Recorte para um avaliador: só as equipes em construção em que ele foi designado (sem a lista de designados). */
+function construcaoDoAvaliador_(equipes, avId) {
+  return (equipes || []).filter(function (q) { return q.avaliadores.indexOf(avId) >= 0; })
+    .map(function (q) { return { id: q.id, nome: q.nome, etapa: q.etapa, membros: q.membros }; });
+}
+
 /** Tira _linha e converte datas em texto ISO (para JSON). */
 function limparObj_(o) {
   var r = {};
@@ -159,16 +183,21 @@ function lerAvaliacoes_(avaliadorId) {
     return {
       etapa: String(a.etapa), avaliador_id: String(a.avaliador_id), candidato_id: String(a.candidato_id),
       criterio_id: String(a.criterio_id), nota: typeof n === 'number' ? n : (String(n).toUpperCase() === 'NA' ? 'NA' : ''),
-      cliente_ts: Number(a.cliente_ts) || 0,
+      cliente_ts: Number(a.cliente_ts) || 0, momento: momentoDe_(a.momento),
     };
   });
+}
+
+/** Linhas antigas (sem a coluna momento) valem como Apresentação. */
+function momentoDe_(v) {
+  return String(v || '').trim().toLowerCase() === 'construcao' ? 'construcao' : 'apresentacao';
 }
 
 function lerObservacoes_(avaliadorId) {
   return lerObjetos_(ABAS.OBSERVACOES).filter(function (o) {
     return !avaliadorId || String(o.avaliador_id) === avaliadorId;
   }).map(function (o) {
-    return { etapa: String(o.etapa), avaliador_id: String(o.avaliador_id), candidato_id: String(o.candidato_id), texto: String(o.texto || ''), cliente_ts: Number(o.cliente_ts) || 0 };
+    return { etapa: String(o.etapa), avaliador_id: String(o.avaliador_id), candidato_id: String(o.candidato_id), texto: String(o.texto || ''), cliente_ts: Number(o.cliente_ts) || 0, momento: momentoDe_(o.momento) };
   });
 }
 
@@ -193,6 +222,8 @@ ACOES_AVALIADOR['av.iniciar'] = function (av) {
   registrarAcesso_(av);
   var pub = pacotePublico_();
   var r = JSON.parse(JSON.stringify(pub));
+  r.construcao = construcaoDoAvaliador_(pub.equipes_construcao, av.id);
+  delete r.equipes_construcao;
   r.eu = { id: av.id, nome: av.nome };
   r.minhas = { notas: lerAvaliacoes_(av.id), observacoes: lerObservacoes_(av.id) };
   if (pub.veem_outros) r.colegas = mediasDosColegas_(av.id);
@@ -203,14 +234,14 @@ ACOES_AVALIADOR['av.iniciar'] = function (av) {
 ACOES_AVALIADOR['av.sincronizar'] = function (av) {
   var pub = pacotePublico_();
   return { versao: pub.versao, em_votacao: pub.em_votacao, avaliacao_aberta: pub.avaliacao_aberta, etapas: pub.etapas,
-    dinamica_ativa: pub.dinamica_ativa, equipe: pub.equipe };
+    dinamica_ativa: pub.dinamica_ativa, equipe: pub.equipe, construcao: construcaoDoAvaliador_(pub.equipes_construcao, av.id) };
 };
 
 /** Média dos colegas por etapa|candidato|critério (só quando a configuração permite). */
 function mediasDosColegas_(meuId) {
   var soma = {};
   lerAvaliacoes_().forEach(function (a) {
-    if (a.avaliador_id === meuId || typeof a.nota !== 'number') return;
+    if (a.avaliador_id === meuId || typeof a.nota !== 'number' || a.momento === 'construcao') return;
     var k = a.etapa + '|' + a.candidato_id + '|' + a.criterio_id;
     var s = soma[k] || (soma[k] = [0, 0]);
     s[0] += a.nota; s[1]++;
@@ -238,11 +269,20 @@ ACOES_AVALIADOR['av.salvar'] = function (av, dados) {
   pub.criterios.forEach(function (c) { crits[c.id] = c; });
 
   var salvos = [], recusados = [];
+  var equipes = null;
+  // Construção: só vale para quem foi designado à equipe do candidato (não exige o momento aberto, para a fila offline poder enviar depois).
+  var designado = function (item) {
+    if (!equipes) equipes = lerEquipes_();
+    return equipes.some(function (q) {
+      return q.etapa === item.etapa && q.membros.indexOf(item.candidato_id) >= 0 && q.avaliadores.indexOf(av.id) >= 0;
+    });
+  };
   var validar = function (item, ehNota) {
     var e = etapas[item.etapa];
     if (!e) return 'Etapa inexistente.';
     if (!pub.avaliacao_aberta || !e.aberta) return 'A avaliação desta etapa está fechada.';
     if (!cands[item.candidato_id]) return 'Candidato não está ativo.';
+    if (item.momento === 'construcao' && !designado(item)) return 'Você não é avaliador desta equipe na construção.';
     if (ehNota) {
       var k = crits[item.criterio_id];
       if (!k) return 'Critério inativo.';
@@ -255,18 +295,18 @@ ACOES_AVALIADOR['av.salvar'] = function (av, dados) {
 
   var notasOk = [], obsOk = [];
   notas.forEach(function (n) {
-    var chave = [n.etapa, av.id, n.candidato_id, n.criterio_id].join('|');
+    var chave = [n.etapa, av.id, n.candidato_id, n.criterio_id].concat(n.momento === 'construcao' ? ['construcao'] : []).join('|');
     var motivo = validar(n, true);
     if (motivo) recusados.push({ chave: chave, motivo: motivo });
     else notasOk.push({ chave: chave, etapa: n.etapa, avaliador_id: av.id, candidato_id: n.candidato_id, criterio_id: n.criterio_id,
-      nota: n.nota === null ? '' : n.nota, cliente_ts: Number(n.cliente_ts) || Date.now() });
+      nota: n.nota === null ? '' : n.nota, cliente_ts: Number(n.cliente_ts) || Date.now(), momento: n.momento === 'construcao' ? 'construcao' : '' });
   });
   obs.forEach(function (o) {
-    var chave = [o.etapa, av.id, o.candidato_id].join('|');
+    var chave = [o.etapa, av.id, o.candidato_id].concat(o.momento === 'construcao' ? ['construcao'] : []).join('|');
     var motivo = validar(o, false);
     if (motivo) recusados.push({ chave: 'obs:' + chave, motivo: motivo });
     else obsOk.push({ chave: chave, etapa: o.etapa, avaliador_id: av.id, candidato_id: o.candidato_id,
-      texto: String(o.texto || '').slice(0, 2000), cliente_ts: Number(o.cliente_ts) || Date.now() });
+      texto: String(o.texto || '').slice(0, 2000), cliente_ts: Number(o.cliente_ts) || Date.now(), momento: o.momento === 'construcao' ? 'construcao' : '' });
   });
 
   if (notasOk.length || obsOk.length) {
@@ -359,6 +399,8 @@ var VALIDA_CONFIG = {
     if (m !== 'ENSAIO' && m !== 'PRODUCAO') throw erroApi_('VALIDACAO', 'Modo deve ser ENSAIO ou PRODUCAO.');
     return m;
   },
+  peso_construcao: function (v) { return numeroOuVazio_(v, 0, 10); },
+  peso_apresentacao: function (v) { return numeroOuVazio_(v, 0, 10); },
   url_app: function (v) { return String(v).trim().replace(/\/+$/, ''); },
 };
 
@@ -411,13 +453,27 @@ ACOES_ADMIN['admin.emVotacao'] = function (dados) {
 
 function lerEquipes_() {
   return lerObjetos_(ABAS.EQUIPES).map(function (e) {
-    return { id: String(e.id), etapa: String(e.etapa), nome: String(e.nome), ordem: Number(e.ordem) || 0, membros: listaIds_(e.membros) };
+    return { id: String(e.id), etapa: String(e.etapa), nome: String(e.nome), ordem: Number(e.ordem) || 0, membros: listaIds_(e.membros),
+      avaliadores: listaIds_(e.avaliadores), construcao: estadoMomento_(e.construcao), apresentacao: estadoMomento_(e.apresentacao) };
   }).sort(function (a, b) { return a.ordem - b.ordem; });
+}
+
+/** '' (pendente), 'ANDAMENTO' ou 'CONCLUIDO'. */
+function estadoMomento_(v) {
+  var s = String(v || '').trim().toUpperCase();
+  return s === 'ANDAMENTO' || s === 'CONCLUIDO' ? s : '';
+}
+
+/** Equipe no formato da planilha (membros e avaliadores viram texto). */
+function linhaEquipe_(q) {
+  return { id: q.id, etapa: q.etapa, nome: q.nome, ordem: q.ordem, membros: q.membros.join(','), avaliadores: q.avaliadores.join(','),
+    construcao: q.construcao, apresentacao: q.apresentacao };
 }
 
 /**
  * Substitui todas as equipes de uma dinâmica.
- * dados: {etapa, equipes: [{nome, membros: [ids]}]}. Um candidato fica em no máximo uma equipe.
+ * dados: {etapa, equipes: [{nome, membros: [ids], avaliadores?: [ids]}]}. Um candidato fica em no máximo uma equipe.
+ * Sem "avaliadores" no item, mantém os designados atuais da equipe de mesma posição. Os estados dos momentos também são mantidos.
  */
 ACOES_ADMIN['admin.salvarEquipes'] = function (dados) {
   var etapa = String(dados.etapa || '');
@@ -425,51 +481,97 @@ ACOES_ADMIN['admin.salvarEquipes'] = function (dados) {
     if (!lerObjetos_(ABAS.ETAPAS).some(function (e) { return String(e.id) === etapa; })) throw erroApi_('VALIDACAO', 'Dinâmica inexistente.');
     var cands = {};
     lerObjetos_(ABAS.CANDIDATOS).forEach(function (c) { cands[String(c.id)] = true; });
+    var avs = {};
+    lerObjetos_(ABAS.AVALIADORES).forEach(function (a) { avs[String(a.id)] = true; });
+    var atuais = {};
+    lerEquipes_().forEach(function (q) { atuais[q.id] = q; });
     var usado = {};
     var novas = (dados.equipes || []).slice(0, 30).map(function (q, i) {
       var membros = (q.membros || []).map(String).filter(function (id) {
         if (!cands[id] || usado[id]) return false;
         usado[id] = true; return true;
       });
-      return { id: etapa + '_eq' + (i + 1), etapa: etapa, nome: String(q.nome || ('Equipe ' + (i + 1))).trim().slice(0, 40), ordem: i + 1, membros: membros.join(',') };
+      var id = etapa + '_eq' + (i + 1);
+      var antiga = atuais[id];
+      var avaliadores = q.avaliadores === undefined ? (antiga ? antiga.avaliadores : [])
+        : q.avaliadores.map(String).filter(function (a, k, arr) { return avs[a] && arr.indexOf(a) === k; });
+      return { id: id, etapa: etapa, nome: String(q.nome || ('Equipe ' + (i + 1))).trim().slice(0, 40), ordem: i + 1, membros: membros,
+        avaliadores: avaliadores, construcao: antiga ? antiga.construcao : '', apresentacao: antiga ? antiga.apresentacao : '' };
     });
-    var outras = lerObjetos_(ABAS.EQUIPES).filter(function (e) { return String(e.etapa) !== etapa; })
-      .map(function (e) { return { id: e.id, etapa: e.etapa, nome: e.nome, ordem: e.ordem, membros: e.membros }; });
+    var outras = lerEquipes_().filter(function (e) { return e.etapa !== etapa; });
     limparDados_(ABAS.EQUIPES);
-    acrescentar_(ABAS.EQUIPES, outras.concat(novas));
+    acrescentar_(ABAS.EQUIPES, outras.concat(novas).map(linhaEquipe_));
     // Se a equipe ativa deixou de existir ou mudou, atualiza quem está em votação
     var cfg = lerConfig_();
     var ativa = novas.filter(function (q) { return q.id === String(cfg.equipe_ativa); })[0];
-    if (ativa) gravarConfig_('em_votacao', ativa.membros);
+    if (ativa) gravarConfig_('em_votacao', ativa.membros.join(','));
     else if (String(cfg.equipe_ativa).indexOf(etapa + '_eq') === 0) { gravarConfig_('equipe_ativa', ''); gravarConfig_('em_votacao', ''); }
     limparCache_(true);
     return { equipes: lerEquipes_(), config: lerConfig_() };
   });
 };
 
+/** Abre a dinâmica (se estiver fechada) e a deixa como a dinâmica ao vivo dos celulares. */
+function abrirDinamica_(etapa) {
+  var et = lerObjetos_(ABAS.ETAPAS).filter(function (e) { return String(e.id) === etapa; })[0];
+  if (!et) throw erroApi_('VALIDACAO', 'Dinâmica inexistente.');
+  if (!ehSim_(et.aberta)) aba_(ABAS.ETAPAS).getRange(et._linha, CABECALHOS[ABAS.ETAPAS].indexOf('aberta') + 1).setValue('SIM');
+  gravarConfig_('dinamica_ativa', etapa);
+}
+
+/** Muda um campo de estado (construcao/apresentacao) de uma equipe na planilha. */
+function gravarEstadoEquipe_(equipeId, campo, valor) {
+  var linha = lerObjetos_(ABAS.EQUIPES).filter(function (e) { return String(e.id) === equipeId; })[0];
+  if (!linha) return;
+  linha[campo] = valor;
+  reescrever_(ABAS.EQUIPES, [linha]);
+}
+
 /**
- * Momento ao vivo, controlado pelo admin.
+ * Apresentação ao vivo, controlada pelo admin (uma equipe por vez; todos os avaliadores veem).
  * dados: {etapa, equipe}. etapa = dinâmica que os avaliadores veem (abre ela, se estiver fechada).
- * equipe = ID da equipe em avaliação agora ('' encerra).
+ * equipe = ID da equipe em avaliação agora ('' encerra). A equipe que sai fica "concluída" na Apresentação.
  */
 ACOES_ADMIN['admin.aoVivo'] = function (dados) {
   var etapa = String(dados.etapa || '');
   var equipeId = String(dados.equipe || '');
   return comTrava_(function () {
-    var et = lerObjetos_(ABAS.ETAPAS).filter(function (e) { return String(e.id) === etapa; })[0];
-    if (!et) throw erroApi_('VALIDACAO', 'Dinâmica inexistente.');
-    if (!ehSim_(et.aberta)) aba_(ABAS.ETAPAS).getRange(et._linha, CABECALHOS[ABAS.ETAPAS].indexOf('aberta') + 1).setValue('SIM');
+    if (!lerObjetos_(ABAS.ETAPAS).some(function (e) { return String(e.id) === etapa; })) throw erroApi_('VALIDACAO', 'Dinâmica inexistente.');
     var membros = '';
     if (equipeId) {
       var q = lerEquipes_().filter(function (x) { return x.id === equipeId && x.etapa === etapa; })[0];
       if (!q) throw erroApi_('VALIDACAO', 'Equipe inexistente nesta dinâmica.');
       membros = q.membros.join(',');
     }
-    gravarConfig_('dinamica_ativa', etapa);
+    var anterior = String(lerConfig_().equipe_ativa || '');
+    if (anterior && anterior !== equipeId) gravarEstadoEquipe_(anterior, 'apresentacao', 'CONCLUIDO');
+    if (equipeId) gravarEstadoEquipe_(equipeId, 'apresentacao', 'ANDAMENTO');
+    abrirDinamica_(etapa);
     gravarConfig_('equipe_ativa', equipeId);
     gravarConfig_('em_votacao', membros);
     limparCache_(true);
-    return { config: lerConfig_(), etapas: lerObjetos_(ABAS.ETAPAS).map(limparObj_) };
+    return { config: lerConfig_(), etapas: lerObjetos_(ABAS.ETAPAS).map(limparObj_), equipes: lerEquipes_() };
+  });
+};
+
+/**
+ * Construção: várias equipes podem estar em andamento ao mesmo tempo; só os avaliadores designados à equipe a veem.
+ * dados: {etapa, equipe, estado: 'ANDAMENTO' | 'CONCLUIDO' | ''}. Para começar, a equipe precisa ter ao menos um avaliador.
+ */
+ACOES_ADMIN['admin.construcao'] = function (dados) {
+  var etapa = String(dados.etapa || '');
+  var equipeId = String(dados.equipe || '');
+  var estado = estadoMomento_(dados.estado);
+  return comTrava_(function () {
+    var q = lerEquipes_().filter(function (x) { return x.id === equipeId && x.etapa === etapa; })[0];
+    if (!q) throw erroApi_('VALIDACAO', 'Equipe inexistente nesta dinâmica.');
+    if (estado === 'ANDAMENTO') {
+      if (!q.avaliadores.length) throw erroApi_('VALIDACAO', 'Escolha ao menos um avaliador para acompanhar a construção desta equipe.');
+      abrirDinamica_(etapa);
+    }
+    gravarEstadoEquipe_(equipeId, 'construcao', estado);
+    limparCache_(true);
+    return { config: lerConfig_(), etapas: lerObjetos_(ABAS.ETAPAS).map(limparObj_), equipes: lerEquipes_() };
   });
 };
 

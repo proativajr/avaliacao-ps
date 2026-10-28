@@ -57,6 +57,8 @@ export function Resultados({ d, setD, acao, sessao }: PropsAba) {
     return l;
   }, [res, busca, ordem]);
 
+  // Só mostra as colunas por momento quando alguma dinâmica em equipe já tem nota de Construção
+  const temMomentos = d.avaliacoes.some((a) => a.momento === 'construcao' && (etapa === '*' || a.etapa === etapa));
   const notasNaEtapa = d.avaliacoes.filter((a) => a.nota !== '' && (etapa === '*' || a.etapa === etapa));
   const totalPossivel = progresso.reduce((s, p) => s + p.total, 0);
   const totalCompletos = progresso.reduce((s, p) => s + p.completos, 0);
@@ -66,17 +68,17 @@ export function Resultados({ d, setD, acao, sessao }: PropsAba) {
   const nomeEtapa = etapa === '*' ? 'Todas' : d.etapas.find((e) => e.id === etapa)?.nome || etapa;
 
   const tabelaRanking = (): Celula[][] => [
-    ['Ranking', 'ID', 'Candidato', 'Status', 'Média geral', 'Situação', 'Nº avaliadores', 'Desvio padrão', 'Alertas',
+    ['Ranking', 'ID', 'Candidato', 'Status', 'Média geral', 'Média Construção', 'Média Apresentação', 'Situação', 'Nº avaliadores', 'Desvio padrão', 'Alertas',
       ...res.blocos.map((b) => 'Média ' + b.nome_curto), ...res.criterios.map((k) => `${k.sigla ? k.sigla + ' ' : ''}${k.nome} (${k.bloco})`)],
-    ...res.linhas.map((l) => [l.ranking ?? '', l.id, l.nome, l.status, l.media, l.situacao, l.nAvaliadores, l.desvio, l.alertas.join(' · '),
+    ...res.linhas.map((l) => [l.ranking ?? '', l.id, l.nome, l.status, l.media, l.mediaConstrucao, l.mediaApresentacao, l.situacao, l.nAvaliadores, l.desvio, l.alertas.join(' · '),
       ...res.blocos.map((b) => l.porBloco[b.id]), ...res.criterios.map((k) => l.porCriterio[k.id])]),
   ];
   const tabelaAvaliacoes = (): Celula[][] => {
     const nomeAv = Object.fromEntries(d.avaliadores.map((a) => [a.id, a.nome]));
     const nomeC = Object.fromEntries(d.candidatos.map((c) => [c.id, c.nome_exibicao]));
     const nomeK = Object.fromEntries(d.criterios.map((k) => [k.id, k.nome]));
-    return [['Dinâmica', 'Avaliador ID', 'Avaliador', 'Candidato ID', 'Candidato', 'Critério ID', 'Critério', 'Nota'],
-      ...d.avaliacoes.filter((a) => etapa === '*' || a.etapa === etapa).map((a) => [a.etapa, a.avaliador_id, nomeAv[a.avaliador_id], a.candidato_id, nomeC[a.candidato_id], a.criterio_id, nomeK[a.criterio_id], a.nota === 'NA' ? 'Não posso avaliar' : a.nota])];
+    return [['Dinâmica', 'Avaliador ID', 'Avaliador', 'Candidato ID', 'Candidato', 'Critério ID', 'Critério', 'Momento', 'Nota'],
+      ...d.avaliacoes.filter((a) => etapa === '*' || a.etapa === etapa).map((a) => [a.etapa, a.avaliador_id, nomeAv[a.avaliador_id], a.candidato_id, nomeC[a.candidato_id], a.criterio_id, nomeK[a.criterio_id], a.momento === 'construcao' ? 'Construção' : 'Apresentação', a.nota === 'NA' ? 'Não posso avaliar' : a.nota])];
   };
   const sufixo = `${etapa === '*' ? 'todas' : etapa}_${dataArquivo()}`;
 
@@ -150,6 +152,8 @@ export function Resultados({ d, setD, acao, sessao }: PropsAba) {
                   <th class="num">#</th><th>Candidato</th>
                   {res.blocos.map((b) => <th class="num">{b.nome_curto}</th>)}
                   {porCriterio && res.criterios.map((k) => <th class="num" title={k.nome}>{k.sigla || k.nome.slice(0, 6)}</th>)}
+                  {temMomentos && <th class="num" title="Nota dada pelos avaliadores designados à equipe, enquanto construía">Construção</th>}
+                  {temMomentos && <th class="num">Apresentação</th>}
                   <th class="num">Média</th><th class="num">Avaliadores</th><th>Situação</th>
                 </tr></thead>
                 <tbody>
@@ -161,6 +165,8 @@ export function Resultados({ d, setD, acao, sessao }: PropsAba) {
                         <td class="titulo-cel"><button class="link-linha" onClick={(e) => { e.stopPropagation(); setDetalhe(l.id); }}><span class="pos">{l.ranking ?? '—'}º</span><b>{l.nome}</b></button></td>
                         {res.blocos.map((b) => <td class="num" data-rotulo={b.nome_curto}>{num2(l.porBloco[b.id])}</td>)}
                         {porCriterio && res.criterios.map((k) => <td class="num">{num2(l.porCriterio[k.id])}</td>)}
+                        {temMomentos && <td class="num" data-rotulo="Construção">{num2(l.mediaConstrucao)}</td>}
+                        {temMomentos && <td class="num" data-rotulo="Apresentação">{num2(l.mediaApresentacao)}</td>}
                         <td class="num media lado-cel">{num2(l.media)}</td>
                         <td class="num suave" data-rotulo="Avaliadores">{l.nAvaliadores}</td>
                         <td data-rotulo={rot ? 'Situação' : undefined} class={rot ? '' : 'esconde-cartao'}>{rot && <span class={'situ ' + cor}><i aria-hidden="true" />{rot}</span>}</td>
@@ -194,7 +200,7 @@ export function Resultados({ d, setD, acao, sessao }: PropsAba) {
         </div>
       </div>
 
-      <p class="regras">"Não posso avaliar" e vazio não entram nas médias. Média ponderada pelos pesos; empate divide a posição. Dados insuficientes: menos de {cfg.min_avaliadores_por_candidato || '—'} avaliadores. Divergência: desvio acima de {cfg.limite_divergencia || '—'}.</p>
+      <p class="regras">"Não posso avaliar" e vazio não entram nas médias. Média ponderada pelos pesos; em dinâmicas em equipe, a nota é a média da Construção (dada pelos avaliadores designados à equipe) e da Apresentação, com os pesos da Config. Empate divide a posição. Dados insuficientes: menos de {cfg.min_avaliadores_por_candidato || '—'} avaliadores. Divergência: desvio acima de {cfg.limite_divergencia || '—'}.</p>
 
       {detalhe && <Detalhe id={detalhe} res={res} props={{ d, etapa }} aoFechar={() => setDetalhe(null)} />}
     </section>
@@ -208,10 +214,12 @@ function Detalhe({ id, res, props, aoFechar }: { id: string; res: ReturnType<typ
   const grupo = (k: string) => { const v = ativos.map((x) => x.porCriterio[k]).filter((x): x is number => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
   const crits = etapa === '*' ? res.criterios : criteriosDaEtapa(criteriosAtivos(d.criterios, d.blocos), etapa);
   const notas = d.avaliacoes.filter((a) => a.candidato_id === id && (etapa === '*' || a.etapa === etapa));
-  const avIds = [...new Set(notas.map((a) => a.avaliador_id))];
+  // Uma linha por avaliador e momento (a Construção aparece separada da Apresentação)
+  const linhasAv = [...new Set(notas.map((a) => a.avaliador_id + '|' + (a.momento === 'construcao' ? 'construcao' : 'apresentacao')))]
+    .sort((x, y) => x.localeCompare(y)).map((k) => k.split('|') as [string, string]);
   const nomeAv = (x: string) => d.avaliadores.find((a) => a.id === x)?.nome || x;
-  const celula = (av: string, k: string) => {
-    const ns = notas.filter((a) => a.avaliador_id === av && a.criterio_id === k);
+  const celula = (av: string, mom: string, k: string) => {
+    const ns = notas.filter((a) => a.avaliador_id === av && a.criterio_id === k && (a.momento === 'construcao' ? 'construcao' : 'apresentacao') === mom);
     const num = ns.filter((a) => typeof a.nota === 'number').map((a) => a.nota as number);
     if (num.length) return num2(num.reduce((a, b) => a + b, 0) / num.length).replace(',00', '');
     return ns.some((a) => a.nota === 'NA') ? 'NA' : '';
@@ -221,7 +229,7 @@ function Detalhe({ id, res, props, aoFechar }: { id: string; res: ReturnType<typ
 
   return (
     <Modal titulo={`${l.nome}`} aoFechar={aoFechar}>
-      <p class="ajuda">{l.id} · {l.status} · ranking {l.ranking ?? '—'} · média {num2(l.media)} · {l.nAvaliadores} avaliador(es) · desvio {num2(l.desvio)}{l.situacao ? ' · ' + l.situacao : ''}</p>
+      <p class="ajuda">{l.id} · {l.status} · ranking {l.ranking ?? '—'} · média {num2(l.media)}{l.mediaConstrucao != null && <> (construção {num2(l.mediaConstrucao)} · apresentação {num2(l.mediaApresentacao)})</>} · {l.nAvaliadores} avaliador(es) · desvio {num2(l.desvio)}{l.situacao ? ' · ' + l.situacao : ''}</p>
       <h3>Média por critério × média do grupo</h3>
       <div role="img" aria-label="Gráfico de barras: candidato contra a média do grupo por critério">
         {crits.map((k) => {
@@ -240,16 +248,16 @@ function Detalhe({ id, res, props, aoFechar }: { id: string; res: ReturnType<typ
       </div>
 
       <h3>Notas por avaliador</h3>
-      {!avIds.length ? <p class="ajuda">Ninguém avaliou ainda.</p> : (
+      {!linhasAv.length ? <p class="ajuda">Ninguém avaliou ainda.</p> : (
         <div class="matriz-box"><table class="tabela">
           <thead><tr><th>Avaliador</th>{crits.map((k) => <th class="num" title={k.nome}>{k.sigla || k.nome.slice(0, 5)}</th>)}</tr></thead>
-          <tbody>{avIds.map((av) => <tr><td>{nomeAv(av)}</td>{crits.map((k) => <td class="num">{celula(av, k.id)}</td>)}</tr>)}</tbody>
+          <tbody>{linhasAv.map(([av, mom]) => <tr><td>{nomeAv(av)}{mom === 'construcao' && <small class="ajuda"> · Construção</small>}</td>{crits.map((k) => <td class="num">{celula(av, mom, k.id)}</td>)}</tr>)}</tbody>
         </table></div>
       )}
 
       <h3>Observações</h3>
       {!obs.length ? <p class="ajuda">Sem observações.</p> : obs.map((o) => (
-        <div class="painel" style={{ marginBottom: 8 }}><small class="ajuda" style={{ display: 'block' }}>{nomeAv(o.avaliador_id)} · {nomeEtapa(o.etapa)}</small><p style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{o.texto}</p></div>
+        <div class="painel" style={{ marginBottom: 8 }}><small class="ajuda" style={{ display: 'block' }}>{nomeAv(o.avaliador_id)} · {nomeEtapa(o.etapa)}{o.momento === 'construcao' ? ' · Construção' : ''}</small><p style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{o.texto}</p></div>
       ))}
       <div class="acoes"><button class="botao" onClick={aoFechar}>Fechar</button></div>
     </Modal>

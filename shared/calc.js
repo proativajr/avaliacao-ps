@@ -45,6 +45,24 @@ export function blocosAtivos(blocos, ativos) {
   return (blocos || []).filter((b) => sim(b.ativo) && usados[b.id]).sort((a, b) => (Number(a.ordem) || 0) - (Number(b.ordem) || 0));
 }
 
+/** Notas sem momento (dados antigos, dinâmicas sem equipe) valem como Apresentação. */
+export function momentoDe(a) {
+  return String(a && a.momento || '').trim().toLowerCase() === 'construcao' ? 'construcao' : 'apresentacao';
+}
+
+/** Pesos dos dois momentos (Config: peso_construcao e peso_apresentacao; vazio ou inválido = 1). */
+export function pesosMomentos(cfg) {
+  const pc = numOuNulo((cfg || {}).peso_construcao), pa = numOuNulo((cfg || {}).peso_apresentacao);
+  return { construcao: pc == null || pc < 0 ? 1 : pc, apresentacao: pa == null || pa < 0 ? 1 : pa };
+}
+
+/** Junta a média da Construção com a da Apresentação. Com só um momento, devolve esse valor sem conta. */
+function combinar(c, a, w) {
+  const nc = ehNumero(c), na = ehNumero(a);
+  if (nc && na) { const den = w.construcao + w.apresentacao; return den === 0 ? null : (c * w.construcao + a * w.apresentacao) / den; }
+  return nc ? c : (na ? a : null);
+}
+
 function mediaPonderada(medias, pesos) {
   let num = 0, den = 0;
   medias.forEach((m, i) => { if (ehNumero(m)) { num += m * pesos[i]; den += pesos[i]; } });
@@ -56,7 +74,9 @@ function mediaPonderada(medias, pesos) {
  * @param {object} p
  *  p.candidatos [{id, nome, status}], p.criterios, p.blocos, p.avaliacoes [{etapa, avaliador_id, candidato_id, criterio_id, nota}]
  *  p.etapa '*' para todas ou o id da etapa
- *  p.config {nota_de_corte, vagas, min_avaliadores_por_candidato, limite_divergencia}
+ *  p.config {nota_de_corte, vagas, min_avaliadores_por_candidato, limite_divergencia, peso_construcao, peso_apresentacao}
+ *  Cada avaliação pode ter momento 'construcao' (senão vale 'apresentacao'). A média do critério na dinâmica é a média
+ *  ponderada das médias dos dois momentos; sem notas de Construção, é a média de sempre.
  * @returns {{criterios, blocos, linhas}} linhas na ordem do ranking
  */
 export function calcularResultados(p) {
@@ -71,14 +91,17 @@ export function calcularResultados(p) {
   const minAval = numOuNulo(cfg.min_avaliadores_por_candidato);
   const limite = numOuNulo(cfg.limite_divergencia);
 
-  // Índice: candidato -> critério -> [notas] e candidato -> avaliador -> [notas]
-  const porCandCrit = {}, porCandAval = {}, naPorCandCrit = {};
+  // Índice: momento -> candidato -> critério -> [notas] e candidato -> avaliador -> [notas]
+  const pesoMom = pesosMomentos(cfg);
+  const porCandAval = {}, naPorCandCrit = {};
+  const porMom = { construcao: {}, apresentacao: {} };
   (p.avaliacoes || []).forEach((a) => {
     if (!idsAtivos[a.criterio_id]) return;
     if (etapa !== '*' && a.etapa !== etapa) return;
     const n = a.nota;
     if (ehNumero(n)) {
-      ((porCandCrit[a.candidato_id] = porCandCrit[a.candidato_id] || {})[a.criterio_id] = porCandCrit[a.candidato_id][a.criterio_id] || []).push(n);
+      const pm = porMom[momentoDe(a)];
+      ((pm[a.candidato_id] = pm[a.candidato_id] || {})[a.criterio_id] = pm[a.candidato_id][a.criterio_id] || []).push(n);
       ((porCandAval[a.candidato_id] = porCandAval[a.candidato_id] || {})[a.avaliador_id] = porCandAval[a.candidato_id][a.avaliador_id] || []).push(n);
     } else if (String(n).toUpperCase() === 'NA') {
       const m = (naPorCandCrit[a.candidato_id] = naPorCandCrit[a.candidato_id] || {});
@@ -88,8 +111,10 @@ export function calcularResultados(p) {
 
   const pesos = ativos.map((c) => c.peso);
   const linhas = (p.candidatos || []).filter((c) => c.id).map((c) => {
-    const pc = porCandCrit[c.id] || {};
-    const medias = ativos.map((k) => media(pc[k.id] || []));
+    const pcC = porMom.construcao[c.id] || {}, pcA = porMom.apresentacao[c.id] || {};
+    const mediasC = ativos.map((k) => media(pcC[k.id] || []));
+    const mediasA = ativos.map((k) => media(pcA[k.id] || []));
+    const medias = ativos.map((k, i) => combinar(mediasC[i], mediasA[i], pesoMom));
     const porCriterio = {};
     ativos.forEach((k, i) => { porCriterio[k.id] = medias[i]; });
     const porBloco = {};
@@ -104,6 +129,8 @@ export function calcularResultados(p) {
       porCriterio,
       porBloco,
       media: mediaPonderada(medias, pesos),
+      mediaConstrucao: mediaPonderada(mediasC, pesos),
+      mediaApresentacao: mediaPonderada(mediasA, pesos),
       nAvaliadores: mediasAval.length,
       desvio: desvioAmostral(mediasAval),
       naPorCriterio: naPorCandCrit[c.id] || {},
@@ -139,7 +166,7 @@ export function calcularResultados(p) {
 }
 
 /**
- * Progresso de cada avaliador numa etapa: completos, parciais e pendentes (só candidatos ATIVO).
+ * Progresso de cada avaliador numa etapa (só a Apresentação conta; a Construção é de equipes específicas): completos, parciais e pendentes (só candidatos ATIVO).
  * "Não posso avaliar" (NA) conta como respondido.
  */
 export function calcularProgresso(p) {
@@ -152,7 +179,7 @@ export function calcularProgresso(p) {
   cands.forEach((c) => { idsCand[c.id] = true; });
   const resp = {}; // avaliador -> candidato -> {criterio: true}
   (p.avaliacoes || []).forEach((a) => {
-    if (a.etapa !== p.etapa || !exigidos[a.criterio_id] || !idsCand[a.candidato_id]) return;
+    if (a.etapa !== p.etapa || !exigidos[a.criterio_id] || !idsCand[a.candidato_id] || momentoDe(a) === 'construcao') return;
     if (a.nota === '' || a.nota == null) return;
     const m = ((resp[a.avaliador_id] = resp[a.avaliador_id] || {})[a.candidato_id] = resp[a.avaliador_id][a.candidato_id] || {});
     m[a.criterio_id] = true;

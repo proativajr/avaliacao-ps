@@ -25,9 +25,13 @@ O painel do admin abre pelo link de admin (planilha → **PS Proativa → Mostra
   1. Escolha a dinâmica no topo.
   2. Toque em **Montar** e use **+** para criar as equipes (3, 4…).
   3. Toque no número da equipe ao lado de cada candidato presente, ou em **Sortear** para distribuir quem falta.
-  4. Volte e, quando uma equipe apresentar, toque em **Avaliar**. Em até 10 segundos os celulares mostram só essa equipe.
-     O cartão azul mostra quantos avaliadores já completaram cada membro. Depois, **Encerrar**.
-- **Resultados:** ranking ao vivo (atualiza a cada 30 s), com filtro por dinâmica. Clique num candidato para ver
+  4. Em **Montar**, abra **Avaliadores de cada equipe** e toque nos nomes de quem acompanha a equipe na **Construção** (1 ou mais).
+  5. Cada equipe tem dois momentos, com status **Pendente**, **Em andamento** ou **Concluído** e "X de Y avaliadores completaram":
+     - **Construção:** toque em **Iniciar**. Só os avaliadores designados veem a equipe (várias equipes podem estar em construção ao mesmo tempo). **Concluir** tira a equipe dos celulares.
+     - **Apresentação:** quando a equipe apresentar, toque em **Avaliar**. Em até 10 segundos todos os celulares mostram só essa equipe.
+       O cartão azul mostra quantos avaliadores já completaram cada membro. Depois, **Encerrar**.
+- **Resultados:** ranking ao vivo (atualiza a cada 30 s), com filtro por dinâmica. Em dinâmicas em equipe aparecem as colunas **Construção** e **Apresentação**;
+  a média é a dos dois momentos, com os pesos de **Configuração → Processo** (padrão 1 e 1). A nota de Construção vem só dos avaliadores designados à equipe. Clique num candidato para ver
   a média por critério contra o grupo, as notas de cada avaliador e as observações.
 - **Progresso dos avaliadores** (fim da página de Resultados): **Copiar lembrete** gera uma mensagem pronta para
   o WhatsApp de quem ainda tem pendências.

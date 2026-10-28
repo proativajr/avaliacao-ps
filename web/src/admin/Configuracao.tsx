@@ -21,10 +21,10 @@ export function Configuracao({ d, setD, acao }: PropsAba) {
 
   const salvarConfig = async () => {
     const chaves = ['nome_processo', 'data_inicio', 'data_fim', 'avaliacao_aberta', 'avaliadores_veem_notas_dos_outros', 'nota_de_corte', 'vagas',
-      'min_avaliadores_por_candidato', 'limite_divergencia', 'modo', 'url_app'];
+      'min_avaliadores_por_candidato', 'limite_divergencia', 'modo', 'url_app', 'peso_construcao', 'peso_apresentacao'];
     if (String(cfg.modo).toUpperCase() !== String(d.config.modo).toUpperCase() &&
       !confirm(`Mudar o modo desta planilha para ${cfg.modo}? O modo ENSAIO permite gerar e zerar dados fictícios.`)) return;
-    const r = await acao<{ config: any }>('admin.salvarConfig', { config: Object.fromEntries(chaves.map((k) => [k, cfg[k] ?? ''])) }, 'Configuração salva');
+    const r = await acao<{ config: any }>('admin.salvarConfig', { config: Object.fromEntries(chaves.map((k) => [k, cfg[k] ?? (k.startsWith('peso_') ? 1 : '')])) }, 'Configuração salva');
     if (r) setD((x) => ({ ...x, config: r.config }));
   };
   const salvarEtapas = async () => {
@@ -83,6 +83,8 @@ export function Configuracao({ d, setD, acao }: PropsAba) {
           {campo('vagas', 'Vagas', 'number', 'Vazio = sem limite.')}
           {campo('min_avaliadores_por_candidato', 'Mínimo de avaliadores por candidato', 'number', 'Abaixo disso aparece "dados insuficientes".')}
           {campo('limite_divergencia', 'Limite de divergência', 'number', 'Desvio padrão entre avaliadores acima disso marca "divergência".')}
+          {campo('peso_construcao', 'Peso da Construção', 'number', 'Dinâmicas em equipe: peso da nota dada na construção. Padrão 1.')}
+          {campo('peso_apresentacao', 'Peso da Apresentação', 'number', 'Dinâmicas em equipe: peso da nota dada na apresentação. Padrão 1.')}
           <label class="campo"><span>Modo desta planilha</span>
             <select value={String(cfg.modo).toUpperCase()} onChange={(e) => setCfg({ ...cfg, modo: (e.target as HTMLSelectElement).value })}>
               <option value="ENSAIO">ENSAIO (dados fictícios)</option><option value="PRODUCAO">PRODUCAO (processo real)</option>
