@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { criteriosAtivos, criteriosDaEtapa } from '@shared/calc.js';
 import { normalizarNome } from '@shared/texto.js';
 import type { Equipe, EstadoMomento, Etapa } from '../tipos';
+import { Modal } from '../ui';
 import type { PropsAba } from './Admin';
 
 const idEquipe = (etapa: string, i: number) => `${etapa}_eq${i + 1}`;
@@ -16,6 +17,8 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
   const [etapa, setEtapa] = useState(etapas.find((e) => e.id === ativaEtapa)?.id || etapas[0]?.id || '');
   const [busca, setBusca] = useState('');
   const [montar, setMontar] = useState(false);
+  // Janela de criar/renomear dinâmica: null = fechada; id vazio = nova
+  const [editando, setEditando] = useState<{ id: string; nome: string } | null>(null);
   // No desktop (≥ 1024 px) "Montar equipes" fica numa coluna ao lado, em vez de outra tela.
   const [largo, setLargo] = useState(() => matchMedia('(min-width: 1024px)').matches);
   useEffect(() => {
@@ -104,10 +107,20 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
     const r = await acao<{ config: Record<string, any>; etapas: Etapa[]; equipes: Equipe[] }>('admin.construcao', { etapa, equipe: idEquipe(etapa, i), estado }, aviso);
     if (r) setD((x) => ({ ...x, config: r.config, etapas: r.etapas, equipes: r.equipes }));
   };
-  const novaDinamica = async () => {
+  // Cria (sem id) ou renomeia (com id) uma dinâmica
+  const salvarDinamica = async () => {
+    if (!editando) return;
+    const nome = editando.nome.trim();
+    if (!nome) return;
+    if (editando.id) {
+      const atual = etapas.find((e) => e.id === editando.id);
+      const r = await acao<{ etapas: Etapa[] }>('admin.salvarEtapas', { lista: [{ id: editando.id, nome, ordem: atual?.ordem, aberta: atual?.aberta }] }, 'Nome atualizado');
+      if (r) { setD((x) => ({ ...x, etapas: r.etapas })); setEditando(null); }
+      return;
+    }
     const n = etapas.length + 1;
-    const r = await acao<{ etapas: Etapa[] }>('admin.salvarEtapas', { lista: [{ nome: `Dinâmica ${n}`, ordem: n, aberta: 'SIM' }] }, `Dinâmica ${n} criada`);
-    if (r) { setD((x) => ({ ...x, etapas: r.etapas })); const nova = r.etapas.find((e) => !d.etapas.some((x) => x.id === e.id)); if (nova) setEtapa(nova.id); }
+    const r = await acao<{ etapas: Etapa[] }>('admin.salvarEtapas', { lista: [{ nome, ordem: n, aberta: 'SIM' }] }, `${nome} criada`);
+    if (r) { setD((x) => ({ ...x, etapas: r.etapas })); const nova = r.etapas.find((e) => !d.etapas.some((x) => x.id === e.id)); if (nova) setEtapa(nova.id); setEditando(null); }
   };
 
   // Quantos avaliadores já completaram cada candidato nesta dinâmica
@@ -218,13 +231,37 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
       <div class="cabeca-pagina">
         <div>
           <span class="sobrelinha">Ao vivo</span>
-          <select class="titulo-select" value={etapa} aria-label="Dinâmica"
-            onChange={(e) => { const v = (e.target as HTMLSelectElement).value; if (v === '__nova') { (e.target as HTMLSelectElement).value = etapa; novaDinamica(); } else setEtapa(v); }}>
-            {etapas.map((e) => <option value={e.id}>{e.nome}</option>)}
-            <option value="__nova">+ Nova dinâmica</option>
-          </select>
+          <h1 class="titulo">{nomeEtapa || 'Dinâmicas'}</h1>
         </div>
+        <button class="botao principal" onClick={() => setEditando({ id: '', nome: `Dinâmica ${etapas.length + 1}` })}>+ Nova dinâmica</button>
       </div>
+
+      <div class="dinamicas" role="radiogroup" aria-label="Escolher dinâmica">
+        {etapas.map((e) => {
+          const nEq = (d.equipes || []).filter((q) => q.etapa === e.id).length;
+          const noAr = ativaEtapa === e.id;
+          return (
+            <button role="radio" aria-checked={e.id === etapa} class={'dinamica' + (noAr ? ' no-ar' : '')} onClick={() => setEtapa(e.id)}>
+              <b>{e.nome}</b>
+              <small>{noAr ? 'Ao vivo · ' : ''}{nEq} equipe{nEq === 1 ? '' : 's'}</small>
+            </button>
+          );
+        })}
+      </div>
+      {etapa && <button class="link renomear" onClick={() => setEditando({ id: etapa, nome: nomeEtapa })}>Renomear “{nomeEtapa}”</button>}
+
+      {editando && (
+        <Modal titulo={editando.id ? 'Renomear dinâmica' : 'Nova dinâmica'} aoFechar={() => setEditando(null)}>
+          <label class="campo"><span>Nome da dinâmica</span>
+            <input type="text" value={editando.nome} maxLength={60} placeholder="Ex.: Dinâmica de cases"
+              onInput={(e) => setEditando({ ...editando, nome: (e.target as HTMLInputElement).value })}
+              onKeyDown={(e) => { if (e.key === 'Enter') salvarDinamica(); }} ref={(el) => { if (el) setTimeout(() => el.focus(), 30); }} /></label>
+          <div class="acoes">
+            <button class="botao leve" onClick={() => setEditando(null)}>Cancelar</button>
+            <button class="botao principal" disabled={!editando.nome.trim()} onClick={salvarDinamica}>{editando.id ? 'Salvar nome' : 'Criar dinâmica'}</button>
+          </div>
+        </Modal>
+      )}
 
       <div class={'aovivo-grade' + (largo ? ' com-montar' : '')}>
         <div class="coluna">

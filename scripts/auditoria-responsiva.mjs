@@ -55,7 +55,7 @@ const TELAS = {
   'av-equipe': async (p) => { await p.goto(`http://localhost:4173/#t=${AV}&amb=ensaio`); await p.waitForSelector('.cands, .espera'); },
   'av-candidato': async (p) => { await TELAS['av-equipe'](p); await p.locator('.cands li button').first().click(); await p.waitForSelector('.notas'); },
   'av-menu': async (p) => { await TELAS['av-candidato'](p); await p.click('button[aria-label="Mais opções"]'); await p.waitForSelector('.folha'); },
-  'adm-aovivo': async (p) => { await p.goto(`http://localhost:4173/#adm=${ADM}&amb=ensaio`); await p.waitForSelector('.aovivo'); await p.selectOption('.titulo-select', 'dinamica_2'); await p.waitForTimeout(150); },
+  'adm-aovivo': async (p) => { await p.goto(`http://localhost:4173/#adm=${ADM}&amb=ensaio`); await p.waitForSelector('.aovivo'); await p.click('.dinamica:has-text("Dinâmica 2")'); await p.waitForTimeout(150); },
   'adm-montar': async (p) => { await TELAS['adm-aovivo'](p); const b = p.locator('button:has-text("Montar"):visible'); if (await b.count()) await b.first().click(); await p.waitForSelector('.alocar'); },
   'adm-ranking': async (p) => { await TELAS.admin(p, 'Ranking'); await p.waitForSelector('.ranking'); },
   'adm-detalhe': async (p) => { await TELAS['adm-ranking'](p); await p.locator('.ranking tbody tr').first().click(); await p.waitForSelector('.modal'); },

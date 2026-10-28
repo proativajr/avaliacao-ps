@@ -369,6 +369,14 @@ table.tabela { width: 100%; border-collapse: collapse; font-size: var(--fs-legen
 .eq-txt { flex: 1; min-width: 0; display: grid; }
 .eq-txt b { font-size: var(--fs-forte); font-weight: 600; color: var(--marca); }
 .eq-txt small { font-size: var(--fs-legenda); color: var(--suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dinamicas { display: flex; gap: var(--e2); overflow-x: auto; padding: 2px 2px var(--e2); margin: 0 -2px; scroll-snap-type: x proximity; }
+.dinamica { flex: 0 0 auto; min-width: 140px; min-height: var(--toque); display: grid; gap: 2px; text-align: left; padding: var(--e2) var(--e4); border-radius: var(--raio); border: 1px solid var(--linha); background: var(--superficie); color: var(--marca); font: inherit; cursor: pointer; scroll-snap-align: start; }
+.dinamica b { font-size: var(--fs-corpo); font-weight: 600; }
+.dinamica small { font-size: var(--fs-legenda); color: var(--suave); }
+.dinamica[aria-checked='true'] { background: var(--marca); border-color: var(--marca); color: var(--marca-texto); }
+.dinamica[aria-checked='true'] small { color: #C9CFDA; }
+.dinamica.no-ar small { font-weight: 600; }
+.renomear { display: inline-block; margin: var(--e1) 0 var(--e4); font-size: var(--fs-legenda); min-height: var(--toque); }
 .equipes .equipe-item { flex-direction: column; align-items: stretch; gap: var(--e2); }
 .eq-avs { margin: 0; font-size: var(--fs-legenda); color: var(--texto); overflow-wrap: anywhere; }
 .eq-avs span { color: var(--suave); margin-right: var(--e1); }
