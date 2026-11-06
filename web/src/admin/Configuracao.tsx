@@ -21,10 +21,10 @@ export function Configuracao({ d, setD, acao }: PropsAba) {
 
   const salvarConfig = async () => {
     const chaves = ['nome_processo', 'data_inicio', 'data_fim', 'avaliacao_aberta', 'avaliadores_veem_notas_dos_outros', 'nota_de_corte', 'vagas',
-      'min_avaliadores_por_candidato', 'limite_divergencia', 'modo', 'url_app', 'peso_construcao', 'peso_apresentacao'];
+      'min_avaliadores_por_candidato', 'limite_divergencia', 'modo', 'url_app', 'peso_construcao', 'peso_apresentacao', 'apresentacao_so_designados'];
     if (String(cfg.modo).toUpperCase() !== String(d.config.modo).toUpperCase() &&
       !confirm(`Mudar o modo desta planilha para ${cfg.modo}? O modo ENSAIO permite gerar e zerar dados fictícios.`)) return;
-    const r = await acao<{ config: any }>('admin.salvarConfig', { config: Object.fromEntries(chaves.map((k) => [k, cfg[k] ?? (k.startsWith('peso_') ? 1 : '')])) }, 'Configuração salva');
+    const r = await acao<{ config: any }>('admin.salvarConfig', { config: Object.fromEntries(chaves.map((k) => [k, cfg[k] ?? (k.startsWith('peso_') ? 1 : k === 'apresentacao_so_designados' ? 'NÃO' : '')])) }, 'Configuração salva');
     if (r) setD((x) => ({ ...x, config: r.config }));
   };
   const salvarEtapas = async () => {
@@ -92,6 +92,7 @@ export function Configuracao({ d, setD, acao }: PropsAba) {
           <div style={{ display: 'grid', alignContent: 'start' }}>
             <SimNao rotulo="Avaliação aberta" valor={cfg.avaliacao_aberta} aoMudar={(v) => setCfg({ ...cfg, avaliacao_aberta: v })} />
             <SimNao rotulo="Avaliadores veem a média dos colegas" valor={cfg.avaliadores_veem_notas_dos_outros} aoMudar={(v) => setCfg({ ...cfg, avaliadores_veem_notas_dos_outros: v })} />
+            <SimNao rotulo="Na Apresentação, só os avaliadores designados à equipe avaliam" valor={cfg.apresentacao_so_designados} aoMudar={(v) => setCfg({ ...cfg, apresentacao_so_designados: v })} />
           </div>
         </div>
         <div class="barra-acoes fim"><button class="botao principal" onClick={salvarConfig}>Salvar processo</button></div>

@@ -128,6 +128,10 @@ function pacotePublico_() {
     dinamica_ativa: String(cfg.dinamica_ativa || ''),
     equipe: equipeAtiva_(cfg),
     equipes_construcao: equipesEmConstrucao_(),
+    apresentacao_so_designados: ehSim_(cfg.apresentacao_so_designados),
+    // Só com a regra ligada: quem é de qual equipe (cada avaliador recebe só o seu recorte, sem a lista de designados).
+    equipes_designacao: ehSim_(cfg.apresentacao_so_designados)
+      ? lerEquipes_().map(function (q) { return { etapa: q.etapa, membros: q.membros, avaliadores: q.avaliadores }; }) : [],
     etapas: lerObjetos_(ABAS.ETAPAS).map(function (e) { return { id: String(e.id), nome: String(e.nome), ordem: Number(e.ordem) || 0, aberta: ehSim_(e.aberta) }; })
       .sort(function (a, b) { return a.ordem - b.ordem; }),
     blocos: blocosAtivos(blocos, criterios).map(function (b) { return { id: b.id, nome: b.nome, nome_curto: b.nome_curto, ordem: b.ordem }; }),
@@ -161,6 +165,27 @@ function equipesEmConstrucao_() {
 function construcaoDoAvaliador_(equipes, avId) {
   return (equipes || []).filter(function (q) { return q.avaliadores.indexOf(avId) >= 0; })
     .map(function (q) { return { id: q.id, nome: q.nome, etapa: q.etapa, membros: q.membros }; });
+}
+
+/**
+ * Com "apresentacao_so_designados" ligado: candidatos que este avaliador NÃO pode avaliar, por dinâmica
+ * (os que estão em equipes às quais ele não foi designado). Candidato sem equipe fica livre. Sem a regra: {}.
+ */
+function foraDaEquipe_(pub, avId) {
+  var r = {};
+  if (!pub.apresentacao_so_designados) return r;
+  var minhas = {};
+  (pub.equipes_designacao || []).forEach(function (q) {
+    if (q.avaliadores.indexOf(avId) >= 0) q.membros.forEach(function (c) { minhas[q.etapa + '|' + c] = true; });
+  });
+  (pub.equipes_designacao || []).forEach(function (q) {
+    if (q.avaliadores.indexOf(avId) >= 0) return;
+    q.membros.forEach(function (c) {
+      if (minhas[q.etapa + '|' + c]) return;
+      (r[q.etapa] = r[q.etapa] || []).push(c);
+    });
+  });
+  return r;
 }
 
 /** Tira _linha e converte datas em texto ISO (para JSON). */
@@ -223,7 +248,9 @@ ACOES_AVALIADOR['av.iniciar'] = function (av) {
   var pub = pacotePublico_();
   var r = JSON.parse(JSON.stringify(pub));
   r.construcao = construcaoDoAvaliador_(pub.equipes_construcao, av.id);
+  r.fora_da_equipe = foraDaEquipe_(pub, av.id);
   delete r.equipes_construcao;
+  delete r.equipes_designacao;
   r.eu = { id: av.id, nome: av.nome };
   r.minhas = { notas: lerAvaliacoes_(av.id), observacoes: lerObservacoes_(av.id) };
   if (pub.veem_outros) r.colegas = mediasDosColegas_(av.id);
@@ -234,7 +261,8 @@ ACOES_AVALIADOR['av.iniciar'] = function (av) {
 ACOES_AVALIADOR['av.sincronizar'] = function (av) {
   var pub = pacotePublico_();
   return { versao: pub.versao, em_votacao: pub.em_votacao, avaliacao_aberta: pub.avaliacao_aberta, etapas: pub.etapas,
-    dinamica_ativa: pub.dinamica_ativa, equipe: pub.equipe, construcao: construcaoDoAvaliador_(pub.equipes_construcao, av.id) };
+    dinamica_ativa: pub.dinamica_ativa, equipe: pub.equipe, construcao: construcaoDoAvaliador_(pub.equipes_construcao, av.id),
+    apresentacao_so_designados: pub.apresentacao_so_designados, fora_da_equipe: foraDaEquipe_(pub, av.id) };
 };
 
 /** Média dos colegas por etapa|candidato|critério (só quando a configuração permite). */
@@ -270,19 +298,27 @@ ACOES_AVALIADOR['av.salvar'] = function (av, dados) {
 
   var salvos = [], recusados = [];
   var equipes = null;
-  // Construção: só vale para quem foi designado à equipe do candidato (não exige o momento aberto, para a fila offline poder enviar depois).
-  var designado = function (item) {
+  /**
+   * Quem pode avaliar o candidato, pelas designações das equipes (não exige o momento aberto, para a fila offline poder enviar depois):
+   *  - Construção: só quem foi designado à equipe do candidato;
+   *  - Apresentação: todos, a menos que "apresentacao_so_designados" esteja ligado. Aí só os designados à equipe do candidato
+   *    (candidato sem equipe nesta dinâmica continua livre, como nas dinâmicas sem equipe).
+   */
+  var podeAvaliar = function (item) {
+    var construcao = item.momento === 'construcao';
+    if (!construcao && !pub.apresentacao_so_designados) return true;
     if (!equipes) equipes = lerEquipes_();
-    return equipes.some(function (q) {
-      return q.etapa === item.etapa && q.membros.indexOf(item.candidato_id) >= 0 && q.avaliadores.indexOf(av.id) >= 0;
-    });
+    var dele = equipes.filter(function (q) { return q.etapa === item.etapa && q.membros.indexOf(item.candidato_id) >= 0; });
+    if (!construcao && !dele.length) return true;
+    return dele.some(function (q) { return q.avaliadores.indexOf(av.id) >= 0; });
   };
   var validar = function (item, ehNota) {
     var e = etapas[item.etapa];
     if (!e) return 'Etapa inexistente.';
     if (!pub.avaliacao_aberta || !e.aberta) return 'A avaliação desta etapa está fechada.';
     if (!cands[item.candidato_id]) return 'Candidato não está ativo.';
-    if (item.momento === 'construcao' && !designado(item)) return 'Você não é avaliador desta equipe na construção.';
+    if (!podeAvaliar(item)) return item.momento === 'construcao' ? 'Você não é avaliador desta equipe na construção.'
+      : 'Só os avaliadores designados à equipe deste candidato podem avaliá-lo.';
     if (ehNota) {
       var k = crits[item.criterio_id];
       if (!k) return 'Critério inativo.';
@@ -401,6 +437,7 @@ var VALIDA_CONFIG = {
   },
   peso_construcao: function (v) { return numeroOuVazio_(v, 0, 10); },
   peso_apresentacao: function (v) { return numeroOuVazio_(v, 0, 10); },
+  apresentacao_so_designados: simNao_,
   url_app: function (v) { return String(v).trim().replace(/\/+$/, ''); },
 };
 
@@ -508,6 +545,33 @@ ACOES_ADMIN['admin.salvarEquipes'] = function (dados) {
     else if (String(cfg.equipe_ativa).indexOf(etapa + '_eq') === 0) { gravarConfig_('equipe_ativa', ''); gravarConfig_('em_votacao', ''); }
     limparCache_(true);
     return { equipes: lerEquipes_(), config: lerConfig_() };
+  });
+};
+
+/**
+ * Designa os avaliadores de UMA equipe (substitui a lista dela, sem tocar em membros, estados nem nas outras equipes).
+ * dados: {etapa, equipe: id da equipe, avaliadores: [ids]}. Zero, um ou muitos: não há mínimo nem máximo.
+ * Um avaliador pode estar em várias equipes. IDs repetidos contam uma vez; um avaliador inexistente recusa o pedido
+ * inteiro (nada é gravado). A gravação é de uma linha só, sob a trava: ou grava tudo, ou nada.
+ */
+ACOES_ADMIN['admin.designarAvaliadores'] = function (dados) {
+  var etapa = String(dados.etapa || '');
+  var equipeId = String(dados.equipe || '');
+  if (!Array.isArray(dados.avaliadores)) throw erroApi_('VALIDACAO', 'Envie a lista de avaliadores (pode ser vazia).');
+  return comTrava_(function () {
+    var linha = lerObjetos_(ABAS.EQUIPES).filter(function (e) { return String(e.id) === equipeId && String(e.etapa) === etapa; })[0];
+    if (!linha) throw erroApi_('VALIDACAO', 'Equipe inexistente nesta dinâmica. Atualize a página e tente de novo.');
+    var existe = {};
+    lerObjetos_(ABAS.AVALIADORES).forEach(function (a) { existe[String(a.id)] = true; });
+    var ids = [];
+    dados.avaliadores.map(String).forEach(function (id) {
+      if (!existe[id]) throw erroApi_('VALIDACAO', 'Avaliador não encontrado: ' + id);
+      if (ids.indexOf(id) < 0) ids.push(id);
+    });
+    linha.avaliadores = ids.join(',');
+    reescrever_(ABAS.EQUIPES, [linha]);
+    limparCache_(true);
+    return { equipes: lerEquipes_() };
   });
 };
 
@@ -837,6 +901,15 @@ ACOES_ADMIN['admin.zerarEnsaio'] = function () {
 ACOES_ADMIN['admin.apagarDados'] = function (dados) {
   if (String(dados.confirmacao || '') !== 'APAGAR') throw erroApi_('VALIDACAO', 'Digite APAGAR para confirmar.');
   return apagarDados_(modo_() === 'ENSAIO');
+};
+/** O que o reset apaga e mantém (para a confirmação). */
+ACOES_ADMIN['admin.resumoReset'] = function () {
+  return resumoReset_();
+};
+/** Reset do processo seletivo (ver resetarProcesso_). Exige dados.confirmacao = 'RESETAR'. */
+ACOES_ADMIN['admin.resetarProcesso'] = function (dados) {
+  if (String(dados.confirmacao || '').trim() !== 'RESETAR') throw erroApi_('VALIDACAO', 'Digite RESETAR para confirmar.');
+  return resetarProcesso_();
 };
 ACOES_ADMIN['admin.conferir'] = function () {
   return conferirCalculos_();

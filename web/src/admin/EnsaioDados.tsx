@@ -2,6 +2,53 @@
 import { useState } from 'preact/hooks';
 import { baixarJson, dataArquivo } from './exportar';
 import type { PropsAba } from './Admin';
+import { Modal } from '../ui';
+
+interface ResumoReset {
+  apaga: { candidatos: number; inscricoes: number; importacoes: number; notas: number; observacoes: number };
+  mantem: { avaliadores: number; equipes: number; designacoes: number; dinamicas: number; criterios: number };
+}
+
+/** Reset do processo seletivo: dois passos (abrir a janela com o resumo e digitar RESETAR) para não disparar por engano. */
+function ResetProcesso({ acao, recarregar }: Pick<PropsAba, 'acao' | 'recarregar'>) {
+  const [resumo, setResumo] = useState<ResumoReset | null>(null);
+  const [texto, setTexto] = useState('');
+  const [rodando, setRodando] = useState(false);
+  const abrir = async () => { setTexto(''); const r = await acao<ResumoReset>('admin.resumoReset'); if (r) setResumo(r); };
+  const executar = async () => {
+    if (texto.trim() !== 'RESETAR' || rodando) return;
+    setRodando(true);
+    const r = await acao('admin.resetarProcesso', { confirmacao: 'RESETAR' }, 'Processo resetado. Pronto para importar a planilha.');
+    setRodando(false);
+    if (r) { setResumo(null); recarregar(); }
+  };
+  const n = (v: number, um: string, varios: string) => `${v} ${v === 1 ? um : varios}`;
+  return (
+    <div class="bloco perigo" style={{ marginTop: 16 }}>
+      <h2>Resetar processo seletivo</h2>
+      <p>Volta o app ao estado de processo recém-criado, pronto para importar a planilha de inscrições de novo.</p>
+      <ul class="ajuda">
+        <li><b>Apaga:</b> candidatos, inscrições importadas, histórico de importações, notas e observações. As equipes ficam vazias e o Ao vivo volta ao início.</li>
+        <li><b>Mantém:</b> avaliadores (os links continuam valendo), equipes e os avaliadores designados a cada uma, dinâmicas, configuração e critérios, inclusive os valores PREDADOR.</li>
+      </ul>
+      <button class="botao perigo" onClick={abrir}>Resetar processo…</button>
+      {resumo && (
+        <Modal titulo="Resetar processo seletivo" aoFechar={() => !rodando && setResumo(null)}>
+          <p class="aviso erro" style={{ marginTop: 0 }}>
+            Vai apagar {n(resumo.apaga.candidatos, 'candidato', 'candidatos')}, {n(resumo.apaga.notas, 'nota', 'notas')}, {n(resumo.apaga.observacoes, 'observação', 'observações')} e {n(resumo.apaga.importacoes, 'importação', 'importações')}. Não dá para desfazer.
+          </p>
+          <p class="ajuda">Ficam {n(resumo.mantem.avaliadores, 'avaliador', 'avaliadores')}, {n(resumo.mantem.equipes, 'equipe', 'equipes')} com {n(resumo.mantem.designacoes, 'designação', 'designações')}, {n(resumo.mantem.dinamicas, 'dinâmica', 'dinâmicas')} e {n(resumo.mantem.criterios, 'critério', 'critérios')}. Se quiser guardar uma cópia, baixe o backup antes.</p>
+          <label class="campo"><span>Digite RESETAR para confirmar</span>
+            <input value={texto} autoComplete="off" onInput={(e) => setTexto((e.target as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter') executar(); }} /></label>
+          <div class="acoes">
+            <button class="botao leve" disabled={rodando} onClick={() => setResumo(null)}>Cancelar</button>
+            <button class="botao perigo cheio" disabled={texto.trim() !== 'RESETAR' || rodando} onClick={executar}>{rodando ? 'Resetando…' : 'Resetar agora'}</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
 
 export function EnsaioDados({ d, acao, recarregar, sessao }: PropsAba) {
   const ensaio = String(d.config.modo).toUpperCase() === 'ENSAIO';
@@ -52,6 +99,8 @@ export function EnsaioDados({ d, acao, recarregar, sessao }: PropsAba) {
           <button class="botao" style={{ marginTop: 12 }} onClick={async () => { const r = await acao('admin.backup', {}, 'Backup gerado'); if (r) baixarJson(`backup_${dataArquivo()}.json`, r); }}>Baixar backup</button>
         </div>
       </div>
+
+      <ResetProcesso acao={acao} recarregar={recarregar} />
 
       <div class="bloco perigo" style={{ marginTop: 16 }}>
         <h2>Apagar dados do processo</h2>

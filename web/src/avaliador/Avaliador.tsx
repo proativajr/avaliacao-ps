@@ -18,6 +18,9 @@ export interface Pacote {
   equipe?: { id: string; nome: string; etapa: string; membros: string[] } | null;
   /** Equipes em Construção em que este avaliador foi designado. */
   construcao?: { id: string; nome: string; etapa: string; membros: string[] }[];
+  /** Regra opcional: na Apresentação só os designados avaliam. fora_da_equipe = candidatos que eu não posso avaliar, por dinâmica. */
+  apresentacao_so_designados?: boolean;
+  fora_da_equipe?: Record<string, string[]>;
   etapas: { id: string; nome: string; ordem: number; aberta: boolean }[];
   blocos: { id: string; nome: string; nome_curto: string; ordem: number }[];
   criterios: { id: string; bloco: string; ordem: number; sigla: string; nome: string; descricao: string; etapas: string }[];
@@ -33,6 +36,10 @@ export interface Contexto {
   equipe: { nome: string; ids: string[] } | null;
   /** Equipes em Construção designadas a este avaliador nesta dinâmica. */
   construcao: { id: string; nome: string; ids: string[] }[];
+  /** Candidatos desta dinâmica que eu não posso avaliar na Apresentação (equipes de outros avaliadores). */
+  fora: Set<string>;
+  /** Equipe da vez quando ela é de outros avaliadores (só com a regra ligada). */
+  equipeDeOutros: string | null;
   criterios: Pacote['criterios'];
   notas: Record<string, Valor>;
   obs: Record<string, { texto: string; ts: number }>;
@@ -108,10 +115,11 @@ export function Avaliador({ sessao }: { sessao: Sessao; outras: Sessao[] }) {
     const id = setInterval(async () => {
       if (document.visibilityState !== 'visible') return;
       try {
-        const s = await chamar<Pick<Pacote, 'versao' | 'em_votacao' | 'avaliacao_aberta' | 'etapas' | 'dinamica_ativa' | 'equipe' | 'construcao'>>(sessao, 'av.sincronizar', {}, 15000);
+        const s = await chamar<Pick<Pacote, 'versao' | 'em_votacao' | 'avaliacao_aberta' | 'etapas' | 'dinamica_ativa' | 'equipe' | 'construcao' | 'apresentacao_so_designados' | 'fora_da_equipe'>>(sessao, 'av.sincronizar', {}, 15000);
         setSemConexaoInicio(false);
         // Só baixa tudo de novo quando candidatos ou critérios mudam; equipe e dinâmica vêm na consulta leve.
-        setPacote((p) => (p ? { ...p, em_votacao: s.em_votacao, avaliacao_aberta: s.avaliacao_aberta, etapas: s.etapas, dinamica_ativa: s.dinamica_ativa, equipe: s.equipe, construcao: s.construcao } : p));
+        setPacote((p) => (p ? { ...p, em_votacao: s.em_votacao, avaliacao_aberta: s.avaliacao_aberta, etapas: s.etapas, dinamica_ativa: s.dinamica_ativa, equipe: s.equipe, construcao: s.construcao,
+          apresentacao_so_designados: s.apresentacao_so_designados, fora_da_equipe: s.fora_da_equipe } : p));
         if (s.versao !== pacote.versao) carregar();
       } catch { /* sem internet: tenta na próxima */ }
     }, 10000);
@@ -156,24 +164,33 @@ export function Avaliador({ sessao }: { sessao: Sessao; outras: Sessao[] }) {
     const noPacote = (id: string) => pacote.candidatos.some((c) => c.id === id);
     const construcao = (pacote.construcao || []).filter((q) => q.etapa === etapa)
       .map((q) => ({ id: q.id, nome: q.nome, ids: q.membros.filter(noPacote) })).filter((q) => q.ids.length);
+    const fora = new Set(pacote.apresentacao_so_designados ? (pacote.fora_da_equipe || {})[etapa] || [] : []);
     const eq = pacote.equipe && pacote.equipe.etapa === etapa
       ? { nome: pacote.equipe.nome, ids: pacote.equipe.membros.filter((id) => pacote.candidatos.some((c) => c.id === id)) } : null;
+    const minhaEq = eq ? { nome: eq.nome, ids: eq.ids.filter((id) => !fora.has(id)) } : null;
+    const bloqueado = (candId: string, momento?: Momento) => {
+      if (momento === 'construcao' || !fora.has(candId)) return false;
+      toast('Só os avaliadores designados à equipe deste candidato podem avaliá-lo.');
+      return true;
+    };
     return {
-      pacote, etapa, aberta, criterios, notas, obs, estado, construcao, equipe: eq && eq.ids.length ? eq : null,
+      pacote, etapa, aberta, criterios, notas, obs, estado, construcao, fora,
+      equipe: minhaEq && minhaEq.ids.length ? minhaEq : null,
+      equipeDeOutros: eq && eq.ids.length && !(minhaEq && minhaEq.ids.length) ? eq.nome : null,
       darNota: (candId, critId, nota, momento) => {
-        if (!aberta) return;
+        if (!aberta || bloqueado(candId, momento)) return;
         const ts = agoraTs();
         setNotas((m) => ({ ...m, [chaveNota(etapa, candId, critId, momento)]: { nota, ts } }));
         registrar(candId, critId, nota, ts, momento);
       },
       darVarias: (candId, nota, momento) => {
-        if (!aberta) return;
+        if (!aberta || bloqueado(candId, momento)) return;
         const novos: Record<string, Valor> = {};
         criterios.forEach((k) => { const ts = agoraTs(); novos[chaveNota(etapa, candId, k.id, momento)] = { nota, ts }; registrar(candId, k.id, nota, ts, momento); });
         setNotas((m) => ({ ...m, ...novos }));
       },
       salvarObs: (candId, texto, momento) => {
-        if (!aberta) return;
+        if (!aberta || bloqueado(candId, momento)) return;
         const k = chaveObs(etapa, candId, momento);
         if ((obs[k]?.texto || '') === texto) return;
         const ts = agoraTs();

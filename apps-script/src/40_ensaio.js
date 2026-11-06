@@ -100,6 +100,49 @@ function apagarDados_(zerarContadores) {
   });
 }
 
+/** Abas apagadas pelo reset: candidatos e tudo o que deriva deles (inscrições, importações, notas e observações). */
+var ABAS_RESET = [ABAS.CANDIDATOS, ABAS.INSCRICOES, ABAS.IMPORTACOES, ABAS.AVALIACOES, ABAS.OBSERVACOES];
+/** Chaves da Config que só guardam o momento ao vivo (apontam para candidatos e equipes em andamento). */
+var CONFIG_AO_VIVO = ['em_votacao', 'equipe_ativa', 'dinamica_ativa'];
+
+/** O que o reset vai apagar e o que vai manter (para a tela de confirmação). */
+function resumoReset_() {
+  var conta = function (nome) { return lerObjetos_(nome).length; };
+  var equipes = lerEquipes_();
+  return {
+    apaga: { candidatos: conta(ABAS.CANDIDATOS), inscricoes: conta(ABAS.INSCRICOES), importacoes: conta(ABAS.IMPORTACOES),
+      notas: conta(ABAS.AVALIACOES), observacoes: conta(ABAS.OBSERVACOES) },
+    mantem: { avaliadores: conta(ABAS.AVALIADORES), equipes: equipes.length,
+      designacoes: equipes.reduce(function (s, q) { return s + q.avaliadores.length; }, 0),
+      dinamicas: conta(ABAS.ETAPAS), criterios: conta(ABAS.CRITERIOS) },
+  };
+}
+
+/**
+ * Reset do processo seletivo: volta ao estado de processo recém-criado, pronto para importar a planilha de novo.
+ * Apaga candidatos, inscrições, importações, notas e observações, tira os candidatos das equipes e zera o
+ * estado dos momentos (Construção e Apresentação) e do ao vivo.
+ * Mantém Config, dinâmicas, blocos, critérios (inclusive os valores PREDADOR), avaliadores (e os links deles),
+ * equipes e os avaliadores designados a cada equipe.
+ * Tudo ou nada: se uma etapa falhar, as abas voltam ao que eram antes.
+ * Os IDs de candidato não recomeçam do c001: assim uma nota antiga que ainda esteja na fila de um celular
+ * é recusada (candidato inexistente) em vez de cair num candidato novo.
+ */
+function resetarProcesso_() {
+  return comTrava_(function () {
+    var antes = resumoReset_();
+    emTransacao_(ABAS_RESET.concat([ABAS.EQUIPES]), CONFIG_AO_VIVO, function () {
+      var equipes = lerObjetos_(ABAS.EQUIPES);
+      ABAS_RESET.forEach(function (n) { limparDados_(n); });
+      equipes.forEach(function (q) { q.membros = ''; q.construcao = ''; q.apresentacao = ''; });
+      reescrever_(ABAS.EQUIPES, equipes);
+      CONFIG_AO_VIVO.forEach(function (k) { gravarConfig_(k, ''); });
+    });
+    limparCache_();
+    return { apagados: antes.apaga, mantidos: antes.mantem };
+  });
+}
+
 // ------------------- Itens do menu da planilha -------------------
 
 function menuGerarDadosFicticios() {
@@ -129,4 +172,19 @@ function menuApagarDadosDoProcesso() {
   }
   apagarDados_(modo_() === 'ENSAIO');
   avisar_('Dados apagados', 'Os dados pessoais do processo foram apagados. Lembre de esvaziar a lixeira e o histórico de versões se necessário.');
+}
+
+function menuResetarProcesso() {
+  var ui = SpreadsheetApp.getUi();
+  var r = resumoReset_();
+  var resp = ui.prompt('Resetar processo seletivo',
+    'Apaga ' + r.apaga.candidatos + ' candidatos, ' + r.apaga.notas + ' notas, ' + r.apaga.observacoes + ' observações e o histórico de importações.\n' +
+    'Mantém ' + r.mantem.avaliadores + ' avaliadores, ' + r.mantem.equipes + ' equipes com os avaliadores designados, a configuração e os critérios.\n\n' +
+    'Não dá para desfazer. Digite RESETAR para confirmar:', ui.ButtonSet.OK_CANCEL);
+  if (resp.getSelectedButton() !== ui.Button.OK || String(resp.getResponseText()).trim() !== 'RESETAR') {
+    avisar_('Cancelado', 'Nada foi apagado.');
+    return;
+  }
+  resetarProcesso_();
+  avisar_('Processo resetado', 'Pronto para importar a planilha de inscrições de novo. Avaliadores, equipes e critérios foram mantidos.');
 }

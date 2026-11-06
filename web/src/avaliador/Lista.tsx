@@ -63,7 +63,8 @@ export function Lista({ ctx, estadoFila, semConexao, abertas, trocarEtapa, abrir
   const daEquipe = equipe ? equipe.ids.map((id) => pacote.candidatos.find((c) => c.id === id)!).filter(Boolean) : [];
   const emEquipe = new Set([...(equipe ? equipe.ids : []), ...construcao.flatMap((q) => q.ids)]);
   const destaque = !!equipe || construcao.length > 0;
-  const outros = pacote.candidatos.filter((c) => !destaque || !emEquipe.has(c.id));
+  // Com a regra "só designados na Apresentação", some quem é de equipe de outros avaliadores.
+  const outros = pacote.candidatos.filter((c) => (!destaque || !emEquipe.has(c.id)) && !ctx.fora.has(c.id));
   const visiveis = outros.filter((c) => !busca || normalizarNome(c.nome + ' ' + c.nome_curto).includes(normalizarNome(busca)));
   const nomeEtapa = pacote.etapas.find((e) => e.id === ctx.etapa)?.nome || '';
   const feitosEquipe = daEquipe.filter((c) => estados[c.id].tipo === 'completo').length;
@@ -93,8 +94,9 @@ export function Lista({ ctx, estadoFila, semConexao, abertas, trocarEtapa, abrir
         ) : total > 0 && !construcao.length && (
           <section class="espera">
             <span class="sobrelinha"><i />Aguardando</span>
-            <h1>A próxima equipe aparece aqui sozinha.</h1>
-            <p>Enquanto isso, você pode revisar qualquer candidato.</p>
+            {ctx.equipeDeOutros
+              ? <><h1>{ctx.equipeDeOutros} está apresentando.</h1><p>Ela é avaliada pelos avaliadores designados a ela. Quando for a vez de uma equipe sua, ela aparece aqui sozinha.</p></>
+              : <><h1>A próxima equipe aparece aqui sozinha.</h1><p>Enquanto isso, você pode revisar qualquer candidato.</p></>}
           </section>
         )}
 

@@ -11,6 +11,7 @@ function onOpen() {
     .addItem('Ensaio: gerar dados fictícios', 'menuGerarDadosFicticios')
     .addItem('Ensaio: zerar dados', 'menuZerarEnsaio')
     .addSeparator()
+    .addItem('Resetar processo seletivo…', 'menuResetarProcesso')
     .addItem('Regerar token do admin', 'regerarTokenAdmin')
     .addItem('Apagar dados do processo…', 'menuApagarDadosDoProcesso')
     .addToUi();
