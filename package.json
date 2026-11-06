@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@fontsource/poppins": "^5.2.7",
+    "lucide-preact": "^0.469.0",
     "papaparse": "^5.5.3",
     "preact": "^10.27.3",
     "read-excel-file": "^5.8.0",
