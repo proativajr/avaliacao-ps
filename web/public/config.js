@@ -3,7 +3,7 @@
 // Edite este arquivo direto no GitHub; o site atualiza sozinho depois do deploy.
 window.PS_CONFIG = {
   api: {
-    producao: '',
-    ensaio: 'https://script.google.com/macros/s/AKfycbwG1xw9KWrT6LiBgG-TqHpZjiY6HXesjKywcoYuJ9_B7sfpFALZFcdbeOPdHTc9QYFeSA/exec',
+    producao: 'https://script.google.com/macros/s/AKfycbyf3oaA_jUBkEXNSSjvEct4sSnKPyuKFPn17uW0Q4kWsCdZSDIBPvaoCU-iq3NWSAgSLg/exec',
+    ensaio: '',
   },
 };
