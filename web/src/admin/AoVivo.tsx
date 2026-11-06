@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { criteriosAtivos, criteriosDaEtapa } from '@shared/calc.js';
 import { normalizarNome } from '@shared/texto.js';
 import type { Equipe, EstadoMomento, Etapa } from '../tipos';
-import { Modal } from '../ui';
+import { BotaoAcao, Modal, useTrava } from '../ui';
 import { Foto, iniciais } from '../avaliador/Foto';
 import type { PropsAba } from './Admin';
 import { I, NoCampo, useLargo } from './desktop';
@@ -42,6 +42,7 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
   // Janela "Avaliadores da Equipe N": índice da equipe e a seleção em edição
   const [designando, setDesignando] = useState<{ i: number; sel: string[] } | null>(null);
   const timer = useRef<any>(null);
+  const travaDin = useTrava(); // Enter e o botão "Criar dinâmica" dividem a mesma trava
   const pendente = useRef<{ g: string[][] } | null>(null);
 
   const salvarAgora = async () => {
@@ -87,7 +88,7 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
   useEffect(() => {
     const id = setInterval(async () => {
       if (document.visibilityState !== 'visible') return;
-      const r = await acao<any>('admin.notas');
+      const r = await acao<any>('admin.notas', {}, undefined, { semIndicador: true });
       if (r) setD((x) => ({ ...x, avaliacoes: r.avaliacoes, observacoes: r.observacoes }));
     }, 10000);
     return () => clearInterval(id);
@@ -245,10 +246,10 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
           <label class="campo"><span>Nome da dinâmica</span>
             <input type="text" value={editando.nome} maxLength={60} placeholder="Ex.: Dinâmica de cases"
               onInput={(e) => setEditando({ ...editando, nome: (e.target as HTMLInputElement).value })}
-              onKeyDown={(e) => { if (e.key === 'Enter') salvarDinamica(); }} ref={(el) => { if (el) setTimeout(() => el.focus(), 30); }} /></label>
+              onKeyDown={(e) => { if (e.key === 'Enter' && editando.nome.trim()) travaDin.rodar(salvarDinamica); }} ref={(el) => { if (el) setTimeout(() => el.focus(), 30); }} /></label>
           <div class="acoes">
             <button class="botao leve" onClick={() => setEditando(null)}>Cancelar</button>
-            <button class="botao principal" disabled={!editando.nome.trim()} onClick={salvarDinamica}>{editando.id ? 'Salvar nome' : 'Criar dinâmica'}</button>
+            <BotaoAcao class="botao principal" disabled={!editando.nome.trim()} trava={travaDin} aoClicar={salvarDinamica}>{editando.id ? 'Salvar nome' : 'Criar dinâmica'}</BotaoAcao>
           </div>
         </Modal>
       )}
@@ -271,7 +272,7 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
           <p class="ajuda" aria-live="polite">{designando.sel.length ? `${designando.sel.length} selecionado${designando.sel.length === 1 ? '' : 's'}: ${designando.sel.map(nomeAv).join(', ')}` : 'Nenhum selecionado: a equipe fica sem avaliadores.'}</p>
           <div class="acoes">
             <button class="botao leve" onClick={() => setDesignando(null)}>Cancelar</button>
-            <button class="botao principal" onClick={salvarDesignacao}>Salvar</button>
+            <BotaoAcao class="botao principal" aoClicar={salvarDesignacao}>Salvar</BotaoAcao>
           </div>
         </Modal>
       )}
@@ -307,7 +308,7 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
             <h1>{nomeEtapa || 'Dinâmicas'}</h1>
             {etapa && <button class="botao inverso pequeno" onClick={() => setEditando({ id: etapa, nome: nomeEtapa })}><I c={Pencil} />Renomear</button>}
             <button class="botao inverso pequeno" onClick={() => setEditando({ id: '', nome: `Dinâmica ${etapas.length + 1}` })}><I c={Plus} />Nova dinâmica</button>
-            {ativaAqui >= 0 && <button class="botao inverso pequeno" onClick={() => aoVivo('', 'Avaliação encerrada')}><I c={Square} />Encerrar a Equipe {ativaAqui + 1}</button>}
+            {ativaAqui >= 0 && <BotaoAcao class="botao inverso pequeno" aoClicar={() => aoVivo('', 'Avaliação encerrada')}><I c={Square} />Encerrar a Equipe {ativaAqui + 1}</BotaoAcao>}
           </div>
           {etapas.length > 0 && (
             <div class="dinamicas-campo" role="radiogroup" aria-label="Escolher dinâmica">
@@ -394,17 +395,17 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
                     <b><I c={Hammer} />Construção</b>
                     <span class={'estado' + classeEstado(eC)}><I c={iconeEstado(eC)} t={18} />{textoMomento(eC, lc, avsSel.length ? 'Só os avaliadores da equipe avaliam.' : 'Precisa de pelo menos um avaliador.')}</span>
                     {eC === 'ANDAMENTO'
-                      ? <button class="botao pequeno" onClick={() => construcao(sel, 'CONCLUIDO', `Construção da Equipe ${sel + 1} concluída`)}><I c={CircleCheck} />Concluir</button>
-                      : <button class={'botao pequeno' + (eC === 'CONCLUIDO' ? '' : ' principal')} disabled={!membrosSel.length || !avsSel.length} onClick={() => construcao(sel, 'ANDAMENTO', `Construção da Equipe ${sel + 1} aberta`)}>
+                      ? <BotaoAcao class="botao pequeno" aoClicar={() => construcao(sel, 'CONCLUIDO', `Construção da Equipe ${sel + 1} concluída`)}><I c={CircleCheck} />Concluir</BotaoAcao>
+                      : <BotaoAcao class={'botao pequeno' + (eC === 'CONCLUIDO' ? '' : ' principal')} disabled={!membrosSel.length || !avsSel.length} aoClicar={() => construcao(sel, 'ANDAMENTO', `Construção da Equipe ${sel + 1} aberta`)}>
                         {eC === 'CONCLUIDO' ? <><I c={RotateCcw} />Reabrir</> : <><I c={Play} />Iniciar</>}
-                      </button>}
+                      </BotaoAcao>}
                   </li>
                   <li>
                     <b><I c={Presentation} />Apresentação</b>
                     <span class={'estado' + classeEstado(eA)}><I c={iconeEstado(eA)} t={18} />{textoMomento(eA, la, soDesignados ? 'Só os avaliadores da equipe avaliam.' : 'Todos os avaliadores avaliam.')}</span>
                     {sel === ativaAqui
-                      ? <button class="botao pequeno" onClick={() => aoVivo('', 'Avaliação encerrada')}><I c={Square} />Encerrar</button>
-                      : <button class="botao pequeno principal" disabled={!membrosSel.length} onClick={() => aoVivo(idEquipe(etapa, sel), `Equipe ${sel + 1} aberta`)}><I c={Play} />Pôr no ar</button>}
+                      ? <BotaoAcao class="botao pequeno" aoClicar={() => aoVivo('', 'Avaliação encerrada')}><I c={Square} />Encerrar</BotaoAcao>
+                      : <BotaoAcao class="botao pequeno principal" disabled={!membrosSel.length} aoClicar={() => aoVivo(idEquipe(etapa, sel), `Equipe ${sel + 1} aberta`)}><I c={Play} />Pôr no ar</BotaoAcao>}
                   </li>
                 </ul>
                 <h3><I c={UsersRound} />Candidatos <small>{membrosSel.length}</small></h3>
@@ -432,7 +433,7 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
                         <li>
                           <span class="avatar-av" aria-hidden="true">{iniciais(nomeAv(id))}</span>
                           <span class="n"><b>{nomeAv(id)}</b><small>{a && a.ativo !== 'SIM' ? 'Inativo' : a?.area || 'Avaliador'}</small></span>
-                          <button class="botao pequeno perigo" onClick={() => tirar(sel, id)} aria-label={`Tirar ${nomeAv(id)} da Equipe ${sel + 1}`}><I c={UserMinus} />Tirar</button>
+                          <BotaoAcao class="botao pequeno perigo" aoClicar={() => tirar(sel, id)} aria-label={`Tirar ${nomeAv(id)} da Equipe ${sel + 1}`}><I c={UserMinus} />Tirar</BotaoAcao>
                         </li>
                       );
                     })}
@@ -489,7 +490,7 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
                   <span class="cont">{completos[cid] || 0}/{totalAgora}</span>
                 </li>
               ))}</ul>
-              <button class="botao" onClick={() => aoVivo('', 'Avaliação encerrada')}>Encerrar</button>
+              <BotaoAcao class="botao" aoClicar={() => aoVivo('', 'Avaliação encerrada')}>Encerrar</BotaoAcao>
             </div>
           ) : grupos.length > 0 && (
             <div class="bloco"><div class="vazio" style={{ padding: 0 }}><p>Nenhuma equipe em avaliação. Toque em <b>Avaliar</b> quando uma equipe apresentar.</p></div></div>
@@ -535,14 +536,14 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
                       <div class="momento">
                         <div class="mom-txt"><b>Construção</b><small class={'est ' + eC.toLowerCase()}>{status(eC, lc)}</small></div>
                         {eC === 'ANDAMENTO'
-                          ? <button class="botao" onClick={() => construcao(i, 'CONCLUIDO', `Construção da Equipe ${i + 1} concluída`)}>Concluir</button>
-                          : <button class="botao" disabled={!g.length || !(designados[i] || []).length} onClick={() => construcao(i, 'ANDAMENTO', `Construção da Equipe ${i + 1} aberta`)}>{eC === 'CONCLUIDO' ? 'Reabrir' : 'Iniciar'}</button>}
+                          ? <BotaoAcao class="botao" aoClicar={() => construcao(i, 'CONCLUIDO', `Construção da Equipe ${i + 1} concluída`)}>Concluir</BotaoAcao>
+                          : <BotaoAcao class="botao" disabled={!g.length || !(designados[i] || []).length} aoClicar={() => construcao(i, 'ANDAMENTO', `Construção da Equipe ${i + 1} aberta`)}>{eC === 'CONCLUIDO' ? 'Reabrir' : 'Iniciar'}</BotaoAcao>}
                       </div>
                       <div class="momento">
                         <div class="mom-txt"><b>Apresentação</b><small class={'est ' + eA.toLowerCase()}>{status(eA, la)}</small></div>
                         {i === ativaAqui
                           ? <span class="ao-vivo">Ao vivo</span>
-                          : <button class="botao" disabled={!g.length} onClick={() => aoVivo(idEquipe(etapa, i), `Equipe ${i + 1} aberta`)}>Avaliar</button>}
+                          : <BotaoAcao class="botao" disabled={!g.length} aoClicar={() => aoVivo(idEquipe(etapa, i), `Equipe ${i + 1} aberta`)}>Avaliar</BotaoAcao>}
                       </div>
                     </li>
                   );

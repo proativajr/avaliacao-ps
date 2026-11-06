@@ -2,7 +2,7 @@
 import { useState } from 'preact/hooks';
 import { baixarJson, dataArquivo } from './exportar';
 import type { PropsAba } from './Admin';
-import { Modal } from '../ui';
+import { BotaoAcao, Modal, useTrava } from '../ui';
 import { I, useLargo } from './desktop';
 import { Download, Eraser, ListChecks, Lock, RotateCcw, Sparkles, Trash2, TriangleAlert, X } from 'lucide-preact';
 
@@ -15,17 +15,16 @@ interface ResumoReset {
 function ResetProcesso({ acao, recarregar }: Pick<PropsAba, 'acao' | 'recarregar'>) {
   const [resumo, setResumo] = useState<ResumoReset | null>(null);
   const [texto, setTexto] = useState('');
-  const [rodando, setRodando] = useState(false);
+  const trava = useTrava(); // Enter no campo e o botão dividem a mesma trava
+  const rodando = trava.rodando;
   const largo = useLargo();
   const ic = (c: any) => largo && <I c={c} />;   // ícones Lucide só no desktop
   const abrir = async () => { setTexto(''); const r = await acao<ResumoReset>('admin.resumoReset'); if (r) setResumo(r); };
-  const executar = async () => {
-    if (texto.trim() !== 'RESETAR' || rodando) return;
-    setRodando(true);
+  const executar = () => trava.rodar(async () => {
+    if (texto.trim() !== 'RESETAR') return;
     const r = await acao('admin.resetarProcesso', { confirmacao: 'RESETAR' }, 'Processo resetado. Pronto para importar a planilha.');
-    setRodando(false);
     if (r) { setResumo(null); recarregar(); }
-  };
+  });
   const n = (v: number, um: string, varios: string) => `${v} ${v === 1 ? um : varios}`;
   return (
     <div class="bloco perigo" style={{ marginTop: 16 }}>
@@ -74,7 +73,7 @@ function ResetProcesso({ acao, recarregar }: Pick<PropsAba, 'acao' | 'recarregar
             <input value={texto} autoComplete="off" onInput={(e) => setTexto((e.target as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter') executar(); }} /></label>
           <div class="acoes">
             <button class="botao leve" disabled={rodando} onClick={() => setResumo(null)}>{ic(X)}Cancelar</button>
-            <button class="botao perigo cheio" disabled={texto.trim() !== 'RESETAR' || rodando} onClick={executar}>{ic(RotateCcw)}{rodando ? 'Resetando…' : 'Resetar agora'}</button>
+            <BotaoAcao class="botao perigo cheio" disabled={texto.trim() !== 'RESETAR'} trava={trava} aoClicar={executar}>{ic(RotateCcw)}{rodando ? 'Resetando…' : 'Resetar agora'}</BotaoAcao>
           </div>
         </Modal>
       )}
@@ -107,11 +106,11 @@ export function EnsaioDados({ d, acao, recarregar, sessao }: PropsAba) {
                 <label class="campo"><span>Avaliadores</span><input type="number" min="1" max="50" value={nAval} onInput={(e) => setNAval(Number((e.target as HTMLInputElement).value))} /></label>
               </div>
               <div class="barra-acoes">
-                <button class="botao principal" onClick={async () => { if (await acao('admin.gerarFicticios', { candidatos: nCand, avaliadores: nAval }, 'Dados fictícios gerados')) recarregar(); }}>{ic(Sparkles)}Gerar dados fictícios</button>
-                <button class="botao perigo" onClick={async () => {
+                <BotaoAcao class="botao principal" aoClicar={async () => { if (await acao('admin.gerarFicticios', { candidatos: nCand, avaliadores: nAval }, 'Dados fictícios gerados')) recarregar(); }}>{ic(Sparkles)}Gerar dados fictícios</BotaoAcao>
+                <BotaoAcao class="botao perigo" aoClicar={async () => {
                   if (!confirm('Apagar candidatos, avaliadores e notas desta planilha de ENSAIO? A configuração e os critérios ficam.')) return;
                   if (await acao('admin.zerarEnsaio', {}, 'Ensaio zerado')) recarregar();
-                }}>{ic(Eraser)}Zerar dados do ensaio</button>
+                }}>{ic(Eraser)}Zerar dados do ensaio</BotaoAcao>
               </div>
               <p class="ajuda">Para testar a importação, use os arquivos da pasta <code>exemplos/</code> do repositório.</p>
             </>
@@ -121,7 +120,7 @@ export function EnsaioDados({ d, acao, recarregar, sessao }: PropsAba) {
         <div class="bloco">
           <h2>Conferir cálculos</h2>
           <p class="ajuda">Recalcula a Tabela Geral por fora (mesmo código do app) e compara com as fórmulas da planilha, na dinâmica escolhida na célula B2 da Tabela Geral.</p>
-          <button class="botao" style={{ marginTop: 12 }} onClick={async () => setConferencia(await acao('admin.conferir'))}>{ic(ListChecks)}Conferir agora</button>
+          <BotaoAcao class="botao" style={{ marginTop: 12 }} aoClicar={async () => setConferencia(await acao('admin.conferir'))}>{ic(ListChecks)}Conferir agora</BotaoAcao>
           {conferencia && (conferencia.ok
             ? <p class="aviso ok" style={{ marginTop: 12 }}>Tudo certo: {conferencia.candidatos} candidatos conferidos (dinâmica {conferencia.etapa}).</p>
             : <div class="aviso erro" style={{ marginTop: 12 }}><b>Diferenças encontradas:</b><ul>{conferencia.diferencas.slice(0, 20).map((x: string) => <li>{x}</li>)}</ul></div>)}
@@ -130,7 +129,7 @@ export function EnsaioDados({ d, acao, recarregar, sessao }: PropsAba) {
         <div class="bloco">
           <h2>Backup completo</h2>
           <p class="ajuda">Baixa todas as abas de dados (inclui tokens e contatos). Guarde em local seguro.</p>
-          <button class="botao" style={{ marginTop: 12 }} onClick={async () => { const r = await acao('admin.backup', {}, 'Backup gerado'); if (r) baixarJson(`backup_${dataArquivo()}.json`, r); }}>{ic(Download)}Baixar backup</button>
+          <BotaoAcao class="botao" style={{ marginTop: 12 }} aoClicar={async () => { const r = await acao('admin.backup', {}, 'Backup gerado'); if (r) baixarJson(`backup_${dataArquivo()}.json`, r); }}>{ic(Download)}Baixar backup</BotaoAcao>
         </div>
       </div>
 
@@ -141,10 +140,10 @@ export function EnsaioDados({ d, acao, recarregar, sessao }: PropsAba) {
         <p>Ao fim do processo (LGPD), apaga <b>todos</b> os candidatos, avaliadores, inscrições, notas e observações desta planilha. A configuração e os critérios ficam. Não dá para desfazer.</p>
         <p class="ajuda">Depois, para apagar também o histórico de versões, faça uma cópia da planilha vazia e exclua a original (e esvazie a lixeira do Drive).</p>
         <label class="campo" style={{ maxWidth: 320 }}><span>Digite APAGAR para confirmar</span><input value={confirmacao} onInput={(e) => setConfirmacao((e.target as HTMLInputElement).value)} /></label>
-        <button class="botao perigo cheio" disabled={confirmacao !== 'APAGAR'} onClick={async () => {
+        <BotaoAcao class="botao perigo cheio" disabled={confirmacao !== 'APAGAR'} aoClicar={async () => {
           if (!confirm('Última confirmação: apagar todos os dados do processo agora?')) return;
           if (await acao('admin.apagarDados', { confirmacao }, 'Dados do processo apagados')) { setConfirmacao(''); recarregar(); }
-        }}>{ic(Trash2)}Apagar dados do processo</button>
+        }}>{ic(Trash2)}Apagar dados do processo</BotaoAcao>
       </div>
     </section>
   );

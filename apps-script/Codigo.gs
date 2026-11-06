@@ -98,6 +98,38 @@ function diretoriaValida(texto) {
   return '';
 }
 
+/**
+ * Grupos de registros repetidos por nome (sem acento e caixa) e/ou email.
+ * campos: lista de [rótulo, função que devolve a chave]. Chave vazia não conta.
+ * Devolve [{campo, valor, ids: [...]}] só para chaves com 2 ou mais registros. Não altera nada.
+ */
+function gruposDuplicados(lista, campos) {
+  const grupos = [];
+  campos.forEach(function (c) {
+    const porChave = {};
+    lista.forEach(function (o) {
+      const k = c[1](o);
+      if (!k) return;
+      (porChave[k] = porChave[k] || []).push(String(o.id));
+    });
+    Object.keys(porChave).forEach(function (k) {
+      if (porChave[k].length > 1) grupos.push({ campo: c[0], valor: k, ids: porChave[k] });
+    });
+  });
+  return grupos;
+}
+
+/** Duplicados de avaliadores (mesmo nome ou mesmo email) e de candidatos (mesmo email). */
+function duplicadosCadastro(avaliadores, candidatos) {
+  return {
+    avaliadores: gruposDuplicados(avaliadores || [], [
+      ['nome', function (a) { return normalizarNome(a.nome); }],
+      ['email', function (a) { return normalizarEmail(a.email); }],
+    ]),
+    candidatos: gruposDuplicados(candidatos || [], [['email', function (c) { return normalizarEmail(c.email); }]]),
+  };
+}
+
 // ===== shared/calc.js =====
 // Regras de cálculo do processo seletivo (seção 10 do escopo).
 // Mesmo código usado no app (ranking ao vivo), no Apps Script (conferir cálculos) e nos testes.
@@ -313,7 +345,7 @@ function estadoCandidato(respondidos, total) {
  * Mexer aqui muda a estrutura criada pelo setup().
  * ===================================================================== */
 
-var VERSAO_SISTEMA = '1.3.0';
+var VERSAO_SISTEMA = '1.4.0';
 
 var ABAS = {
   CONFIG: 'Config',
@@ -356,7 +388,7 @@ CABECALHOS[ABAS.AVALIADORES] = ['id', 'nome', 'email', 'area', 'token', 'ativo',
 CABECALHOS[ABAS.CANDIDATOS] = ['id', 'nome_exibicao', 'nome_normalizado', 'email', 'telefone', 'curso', 'semestre',
   'foto_url', 'status', 'origem', 'importado_em', 'chave_inscricao', 'criado_em', 'atualizado_em'];
 CABECALHOS[ABAS.INSCRICOES] = ['candidato_id', 'lote_id', 'importado_em', 'hash_linha', 'dados_json'];
-CABECALHOS[ABAS.IMPORTACOES] = ['lote_id', 'em', 'origem', 'nome_arquivo', 'linhas', 'criados', 'atualizados', 'ignorados'];
+CABECALHOS[ABAS.IMPORTACOES] = ['lote_id', 'em', 'origem', 'nome_arquivo', 'linhas', 'criados', 'atualizados', 'ignorados', 'envio'];
 CABECALHOS[ABAS.AVALIACOES] = ['chave', 'etapa', 'avaliador_id', 'candidato_id', 'criterio_id', 'nota', 'atualizado_em', 'cliente_ts', 'momento'];
 CABECALHOS[ABAS.OBSERVACOES] = ['chave', 'etapa', 'avaliador_id', 'candidato_id', 'texto', 'atualizado_em', 'cliente_ts', 'momento'];
 
@@ -2213,22 +2245,47 @@ ACOES_ADMIN['admin.removerCriterios'] = function (dados) {
 
 // ------------------- Avaliadores -------------------
 
-/** Cria ou atualiza avaliadores. Itens sem id são novos (ganham id e token). */
+/** Índice de avaliadores por nome normalizado e por email, para recusar repetidos. */
+function indiceAvaliadores_(lista) {
+  var ind = { nome: {}, email: {} };
+  lista.forEach(function (a) { marcarAvaliador_(ind, a); });
+  return ind;
+}
+function marcarAvaliador_(ind, a) {
+  var n = normalizarNome(a.nome), e = normalizarEmail(a.email);
+  if (n && !ind.nome[n]) ind.nome[n] = a;
+  if (e && !ind.email[e]) ind.email[e] = a;
+}
+/** O avaliador já cadastrado (outro id) com o mesmo nome ou email, ou null. */
+function avaliadorRepetido_(ind, nome, email, idProprio) {
+  var n = normalizarNome(nome), e = normalizarEmail(email);
+  var porNome = n && ind.nome[n], porEmail = e && ind.email[e];
+  if (porNome && String(porNome.id) !== String(idProprio || '')) return { campo: 'nome', a: porNome };
+  if (porEmail && String(porEmail.id) !== String(idProprio || '')) return { campo: 'email', a: porEmail };
+  return null;
+}
+function mensagemRepetido_(r) {
+  var a = r.a;
+  return 'Já existe um avaliador com este ' + r.campo + ': ' + a.nome + (a.id ? ' (' + a.id + ')' : '') +
+    (a.ativo && !ehSim_(a.ativo) ? '. Ele está desativado: use Reativar.' : '.');
+}
+
+/**
+ * Cria ou atualiza avaliadores. Itens sem id são novos (ganham id e token).
+ * Nome (sem acento e caixa) e email são únicos: um novo igual a um existente, ativo ou desativado, é recusado com
+ * código CONFLITO e nada é gravado. Com dados.pularRepetidos (colar lista), os repetidos são pulados e devolvidos
+ * em "repetidos", e o resto é gravado. Na edição, só o nome ou email que mudou é conferido, para não travar
+ * a edição de duplicados antigos.
+ */
 ACOES_ADMIN['admin.salvarAvaliadores'] = function (dados) {
   var lista = dados.lista || [];
+  var pular = !!dados.pularRepetidos;
   return comTrava_(function () {
     var existentes = lerObjetos_(ABAS.AVALIADORES);
     var porId = {};
     existentes.forEach(function (a) { porId[String(a.id)] = a; });
-    var novosItens = lista.filter(function (a) { return !a.id; });
-    var ids = proximosIds_('a', ABAS.AVALIADORES, novosItens.length);
-    var agora = new Date();
-    var novos = novosItens.map(function (a, i) {
-      var nome = String(a.nome || '').replace(/\s+/g, ' ').trim();
-      if (!nome) throw erroApi_('VALIDACAO', 'Avaliador sem nome.');
-      return { id: ids[i], nome: nome, email: normalizarEmail(a.email), area: exigirDiretoria_(a.area, nome), token: gerarToken_(),
-        ativo: 'SIM', criado_em: agora, ultimo_acesso: '', area_revisar: '' };
-    });
+    var ind = indiceAvaliadores_(existentes);
+    var repetidos = [];
     var atualizar = lista.filter(function (a) { return a.id; }).map(function (a) {
       var ex = porId[String(a.id)];
       if (!ex) throw erroApi_('VALIDACAO', 'Avaliador não encontrado: ' + a.id);
@@ -2238,12 +2295,36 @@ ACOES_ADMIN['admin.salvarAvaliadores'] = function (dados) {
       if (a.email !== undefined) o.email = normalizarEmail(a.email);
       if (a.area !== undefined) { o.area = exigirDiretoria_(a.area, o.nome); o.area_revisar = ''; }
       if (a.ativo !== undefined) o.ativo = simNao_(a.ativo);
+      var mudouNome = normalizarNome(o.nome) !== normalizarNome(ex.nome);
+      var mudouEmail = normalizarEmail(o.email) !== normalizarEmail(ex.email);
+      var r = avaliadorRepetido_(ind, mudouNome ? o.nome : '', mudouEmail ? o.email : '', o.id);
+      if (r) throw erroApi_('CONFLITO', mensagemRepetido_(r));
       return o;
+    });
+    var novosItens = [];
+    lista.filter(function (a) { return !a.id; }).forEach(function (a) {
+      var nome = String(a.nome || '').replace(/\s+/g, ' ').trim();
+      if (!nome) throw erroApi_('VALIDACAO', 'Avaliador sem nome.');
+      var r = avaliadorRepetido_(ind, nome, a.email, '');
+      if (r) {
+        if (!pular) throw erroApi_('CONFLITO', mensagemRepetido_(r));
+        repetidos.push({ nome: nome, campo: r.campo, existente: { id: String(r.a.id || ''), nome: r.a.nome } });
+        return;
+      }
+      var item = { nome: nome, email: normalizarEmail(a.email), area: exigirDiretoria_(a.area, nome) };
+      marcarAvaliador_(ind, item); // o mesmo nome duas vezes no mesmo pedido também conta
+      novosItens.push(item);
+    });
+    var ids = proximosIds_('a', ABAS.AVALIADORES, novosItens.length);
+    var agora = new Date();
+    var novos = novosItens.map(function (a, i) {
+      return { id: ids[i], nome: a.nome, email: a.email, area: a.area, token: gerarToken_(),
+        ativo: 'SIM', criado_em: agora, ultimo_acesso: '', area_revisar: '' };
     });
     reescrever_(ABAS.AVALIADORES, atualizar);
     acrescentar_(ABAS.AVALIADORES, novos);
     limparCache_();
-    return { avaliadores: lerObjetos_(ABAS.AVALIADORES).map(limparObj_), criados: ids };
+    return { avaliadores: lerObjetos_(ABAS.AVALIADORES).map(limparObj_), criados: ids, repetidos: repetidos };
   });
 };
 
@@ -2275,7 +2356,7 @@ function dadosCandidato_(d) {
   return o;
 }
 
-/** Cria (sem id) ou edita (com id) candidatos à mão. */
+/** Cria (sem id) ou edita (com id) candidatos à mão. Email é único (CONFLITO se repetir); nome igual é permitido. */
 ACOES_ADMIN['admin.salvarCandidatos'] = function (dados) {
   var lista = dados.lista || [];
   return comTrava_(function () {
@@ -2285,10 +2366,19 @@ ACOES_ADMIN['admin.salvarCandidatos'] = function (dados) {
     var agora = new Date();
     var novosItens = lista.filter(function (c) { return !c.id; });
     var ids = proximosIds_('c', ABAS.CANDIDATOS, novosItens.length);
+    var porEmail = {};
+    existentes.forEach(function (c) { var e = normalizarEmail(c.email); if (e && !porEmail[e]) porEmail[e] = c; });
+    var emailRepetido = function (email, idProprio) {
+      var c = email && porEmail[normalizarEmail(email)];
+      if (c && String(c.id) !== String(idProprio || ''))
+        throw erroApi_('CONFLITO', 'Já existe um candidato com este email: ' + c.nome_exibicao + ' (' + c.id + ').');
+    };
     var novos = novosItens.map(function (c, i) {
       var d = dadosCandidato_(c);
       if (!d.nome_exibicao) throw erroApi_('VALIDACAO', 'Candidato sem nome.');
       if (d.email && !emailValido(d.email)) throw erroApi_('VALIDACAO', 'Email inválido: ' + d.email);
+      emailRepetido(d.email, '');
+      if (d.email) porEmail[d.email] = { id: ids[i], nome_exibicao: d.nome_exibicao }; // repetido no mesmo pedido
       d.id = ids[i]; d.nome_normalizado = normalizarNome(d.nome_exibicao); d.status = 'ATIVO'; d.origem = 'manual';
       d.criado_em = agora; d.atualizado_em = agora;
       return d;
@@ -2298,6 +2388,7 @@ ACOES_ADMIN['admin.salvarCandidatos'] = function (dados) {
       if (!ex) throw erroApi_('VALIDACAO', 'Candidato não encontrado: ' + c.id);
       var d = dadosCandidato_(c);
       if (d.email && !emailValido(d.email)) throw erroApi_('VALIDACAO', 'Email inválido: ' + d.email);
+      if (d.email !== undefined && d.email !== normalizarEmail(ex.email)) emailRepetido(d.email, ex.id);
       Object.keys(d).forEach(function (k) { ex[k] = d[k]; });
       if (!ex.nome_exibicao) throw erroApi_('VALIDACAO', 'Candidato sem nome.');
       if (c.status !== undefined) {
@@ -2325,7 +2416,11 @@ ACOES_ADMIN['admin.salvarCandidatos'] = function (dados) {
 ACOES_ADMIN['admin.importarCandidatos'] = function (dados) {
   var linhas = dados.linhas || [];
   var lote = dados.lote || {};
+  var envio = String(dados.envio || '').slice(0, 64);
   return comTrava_(function () {
+    // O mesmo envio chegando de novo (clique duplo, nova tentativa depois de erro de rede): devolve o primeiro resultado
+    var jaFeito = envio && lerObjetos_(ABAS.IMPORTACOES).filter(function (i) { return String(i.envio) === envio; })[0];
+    if (jaFeito) return resultadoImportacao_(String(jaFeito.lote_id), Number(jaFeito.criados) || 0, Number(jaFeito.atualizados) || 0, Number(jaFeito.ignorados) || 0, true);
     var agora = new Date();
     var loteId = 'L' + Utilities.formatDate(agora, 'America/Fortaleza', 'yyyyMMdd-HHmmss');
     var cands = lerObjetos_(ABAS.CANDIDATOS);
@@ -2359,13 +2454,17 @@ ACOES_ADMIN['admin.importarCandidatos'] = function (dados) {
     acrescentar_(ABAS.CANDIDATOS, novos);
     acrescentar_(ABAS.INSCRICOES, inscr);
     acrescentar_(ABAS.IMPORTACOES, [{ lote_id: loteId, em: agora, origem: String(lote.origem || ''), nome_arquivo: String(lote.nome_arquivo || '').slice(0, 120),
-      linhas: linhas.length, criados: novos.length, atualizados: atualizados.length, ignorados: ignoradas }]);
+      linhas: linhas.length, criados: novos.length, atualizados: atualizados.length, ignorados: ignoradas, envio: envio }]);
     limparCache_();
-    return { lote_id: loteId, criados: novos.length, atualizados: atualizados.length, ignorados: ignoradas,
-      candidatos: lerObjetos_(ABAS.CANDIDATOS).map(limparObj_),
-      inscricoes: lerObjetos_(ABAS.INSCRICOES).map(function (i) { return { candidato_id: String(i.candidato_id), hash: String(i.hash_linha) }; }) };
+    return resultadoImportacao_(loteId, novos.length, atualizados.length, ignoradas, false);
   });
 };
+
+function resultadoImportacao_(loteId, criados, atualizados, ignorados, repetido) {
+  return { lote_id: loteId, criados: criados, atualizados: atualizados, ignorados: ignorados, repetido: repetido,
+    candidatos: lerObjetos_(ABAS.CANDIDATOS).map(limparObj_),
+    inscricoes: lerObjetos_(ABAS.INSCRICOES).map(function (i) { return { candidato_id: String(i.candidato_id), hash: String(i.hash_linha) }; }) };
+}
 
 /** Linhas originais da inscrição de um candidato (para consulta do admin). */
 ACOES_ADMIN['admin.inscricao'] = function (dados) {
@@ -2392,6 +2491,20 @@ ACOES_ADMIN['admin.apagarDados'] = function (dados) {
   if (String(dados.confirmacao || '') !== 'APAGAR') throw erroApi_('VALIDACAO', 'Digite APAGAR para confirmar.');
   return apagarDados_(modo_() === 'ENSAIO');
 };
+/** Avaliadores (mesmo nome ou email) e candidatos (mesmo email) repetidos. Só lista, não apaga nada. */
+ACOES_ADMIN['admin.duplicados'] = function () {
+  return listarDuplicados_();
+};
+function listarDuplicados_() {
+  var avs = lerObjetos_(ABAS.AVALIADORES), cands = lerObjetos_(ABAS.CANDIDATOS);
+  var g = duplicadosCadastro(avs, cands);
+  var nomeAv = {}, nomeCand = {};
+  avs.forEach(function (a) { nomeAv[String(a.id)] = a.nome + (ehSim_(a.ativo) ? '' : ' [desativado]'); });
+  cands.forEach(function (c) { nomeCand[String(c.id)] = c.nome_exibicao; });
+  var com = function (grupos, nomes) { return grupos.map(function (x) { return { campo: x.campo, valor: x.valor, ids: x.ids, nomes: x.ids.map(function (id) { return nomes[id] || id; }) }; }); };
+  return { avaliadores: com(g.avaliadores, nomeAv), candidatos: com(g.candidatos, nomeCand) };
+}
+
 /** O que o reset apaga e mantém (para a confirmação). */
 ACOES_ADMIN['admin.resumoReset'] = function () {
   return resumoReset_();
@@ -2420,6 +2533,7 @@ function onOpen() {
     .addItem('Configurar planilha (setup)', 'setup')
     .addItem('Mostrar link do admin', 'mostrarLinkAdmin')
     .addItem('Conferir cálculos', 'menuConferirCalculos')
+    .addItem('Verificar duplicados', 'menuVerificarDuplicados')
     .addSeparator()
     .addItem('Ensaio: gerar dados fictícios', 'menuGerarDadosFicticios')
     .addItem('Ensaio: zerar dados', 'menuZerarEnsaio')
@@ -2428,4 +2542,16 @@ function onOpen() {
     .addItem('Regerar token do admin', 'regerarTokenAdmin')
     .addItem('Apagar dados do processo…', 'menuApagarDadosDoProcesso')
     .addToUi();
+}
+
+/** Lista avaliadores (mesmo nome ou email) e candidatos (mesmo email) repetidos. Não apaga nada. */
+function menuVerificarDuplicados() {
+  var r = listarDuplicados_();
+  var linha = function (g) { return '• ' + g.campo + ' "' + g.valor + '": ' + g.ids.map(function (id, i) { return g.nomes[i] + ' (' + id + ')'; }).join(', '); };
+  var partes = [];
+  if (r.avaliadores.length) partes.push('AVALIADORES\n' + r.avaliadores.map(linha).join('\n'));
+  if (r.candidatos.length) partes.push('CANDIDATOS\n' + r.candidatos.map(linha).join('\n'));
+  avisar_(partes.length ? 'Duplicados encontrados' : 'Nenhum duplicado',
+    partes.length ? partes.join('\n\n') + '\n\nNada foi apagado. Para tirar um avaliador repetido, desative-o no painel do admin.' :
+    'Nenhum avaliador com nome ou email repetido e nenhum candidato com email repetido.');
 }

@@ -1,17 +1,17 @@
 // Pequenos componentes reutilizados no app.
-import { ComponentChildren } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import { ComponentChildren, JSX } from 'preact';
+import { useEffect, useRef, useState } from 'preact/hooks';
 
-let mostrarToast: (t: string) => void = () => {};
+let mostrarToast: (t: string, ms: number) => void = () => {};
 
-/** Mensagem curta no rodapé ("Link copiado"). */
-export function toast(texto: string) { mostrarToast(texto); }
+/** Mensagem curta no rodapé ("Link copiado"). Erros ficam mais tempo (ms maior). */
+export function toast(texto: string, ms = 2600) { mostrarToast(texto, ms); }
 
 export function Toasts() {
   const [texto, setTexto] = useState('');
   useEffect(() => {
     let timer: any;
-    mostrarToast = (t) => { setTexto(t); clearTimeout(timer); timer = setTimeout(() => setTexto(''), 2600); };
+    mostrarToast = (t, ms) => { setTexto(t); clearTimeout(timer); timer = setTimeout(() => setTexto(''), ms); };
   }, []);
   return texto ? <div class="toast" role="status">{texto}</div> : null;
 }
@@ -69,4 +69,58 @@ export function dataRelativa(v: string | null | undefined) {
 
 export function num2(v: number | null | undefined) {
   return typeof v === 'number' && isFinite(v) ? v.toFixed(2).replace('.', ',') : '—';
+}
+
+/**
+ * Trava síncrona para ações que chamam o servidor. A ref bloqueia o segundo clique na hora,
+ * antes de o estado do Preact (rodando) ser aplicado, e o estado mostra o carregamento.
+ * rodar(fn) ignora a chamada se já houver uma em andamento e destrava quando fn termina (sucesso ou erro).
+ */
+export function useTrava() {
+  const trava = useRef(false);
+  const vivo = useRef(true);
+  const [rodando, setRodando] = useState(false);
+  useEffect(() => () => { vivo.current = false; }, []);
+  const rodar = async <T,>(fn: () => Promise<T> | T): Promise<T | undefined> => {
+    if (trava.current) return undefined;
+    trava.current = true;
+    setRodando(true);
+    try {
+      return await fn();
+    } finally {
+      trava.current = false;
+      if (vivo.current) setRodando(false);
+    }
+  };
+  return { rodando, rodar };
+}
+
+type PropsBotao = Omit<JSX.HTMLAttributes<HTMLButtonElement>, 'onClick' | 'class'> & {
+  class?: string;
+  /** Ação do botão. Se devolver uma Promise, o botão fica inativo e com carregamento até ela terminar. */
+  aoClicar?: (e: MouseEvent) => unknown;
+  /** Para botões de envio de formulário: o formulário controla a trava (useTrava) e passa o estado aqui. */
+  rodando?: boolean;
+  /** Trava compartilhada com outro gatilho da mesma ação (ex.: Enter no campo). Sem ela, o botão tem a própria. */
+  trava?: ReturnType<typeof useTrava>;
+  disabled?: boolean;
+  type?: 'button' | 'submit';
+  children?: ComponentChildren;
+};
+
+/**
+ * Botão de ação com carregamento: o mesmo em todo o admin. Enquanto a requisição roda, fica desabilitado,
+ * com aria-busy e um anel girando no lugar do ícone (o texto continua). Não cobre a tela nem atrasa o clique.
+ */
+export function BotaoAcao({ aoClicar, rodando, trava, disabled, class: cls = 'botao', type, children, ...resto }: PropsBotao) {
+  const propria = useTrava();
+  const t = trava || propria;
+  const ocupado = !!rodando || t.rodando;
+  return (
+    <button {...resto} type={type || (aoClicar ? 'button' : 'submit')} class={cls} disabled={disabled || ocupado} aria-busy={ocupado || undefined}
+      onClick={aoClicar ? (e) => { t.rodar(() => aoClicar(e as unknown as MouseEvent)); } : undefined}>
+      {ocupado && <span class="giro-botao" aria-hidden="true" />}
+      {children}
+    </button>
+  );
 }

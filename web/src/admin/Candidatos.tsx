@@ -1,10 +1,10 @@
 // Cadastro de candidatos: lista, busca, status, edição, inscrição original e importação.
 import { useMemo, useState } from 'preact/hooks';
 import { STATUS, type Candidato } from '../tipos';
-import { dataCurta, Modal } from '../ui';
-import { normalizarNome, emailValido, nomesParaAvaliador } from '@shared/texto.js';
+import { BotaoAcao, dataCurta, Modal, useTrava } from '../ui';
+import { normalizarNome, emailValido, nomesParaAvaliador, duplicadosCadastro } from '@shared/texto.js';
 import { Importar } from './Importar';
-import type { PropsAba } from './Admin';
+import type { OpcoesAcao, PropsAba } from './Admin';
 import { I, useLargo } from './desktop';
 import { ArrowLeft, FileText, Pencil, Upload, UserPlus } from 'lucide-preact';
 
@@ -19,6 +19,12 @@ export function Candidatos(props: PropsAba) {
   const [status, setStatus] = useState('');
   const [editando, setEditando] = useState<Partial<Candidato> | null>(null);
   const [inscricao, setInscricao] = useState<{ c: Candidato; itens: any[] | null } | null>(null);
+  const [erroForm, setErroForm] = useState('');
+  const envioForm = useTrava();
+  // Status em gravação, por candidato: o seletor fica inativo até a resposta
+  const [mudandoStatus, setMudandoStatus] = useState<Record<string, boolean>>({});
+  const abrirEdicao = (c: Partial<Candidato>) => { setErroForm(''); setEditando(c); };
+  const duplicados = useMemo(() => duplicadosCadastro([], d.candidatos).candidatos, [d.candidatos]);
 
   const notasPorCand = useMemo(() => {
     const m: Record<string, Set<string>> = {};
@@ -40,8 +46,8 @@ export function Candidatos(props: PropsAba) {
     </>
   );
 
-  const salvar = async (itens: Partial<Candidato>[], msg: string) => {
-    const r = await acao<{ candidatos: Candidato[] }>('admin.salvarCandidatos', { lista: itens }, msg);
+  const salvar = async (itens: Partial<Candidato>[], msg: string, opcoes?: OpcoesAcao) => {
+    const r = await acao<{ candidatos: Candidato[] }>('admin.salvarCandidatos', { lista: itens }, msg, opcoes);
     if (r) setD((x) => ({ ...x, candidatos: r.candidatos }));
     return !!r;
   };
@@ -65,9 +71,17 @@ export function Candidatos(props: PropsAba) {
           {STATUS.map((s) => <option value={s}>{s}</option>)}
         </select>
         <span class="espaco" />
-        <button class="botao" onClick={() => setEditando({ nome_exibicao: '', email: '', telefone: '', curso: '', semestre: '', foto_url: '' })}>{ic(UserPlus)}Adicionar à mão</button>
+        <button class="botao" onClick={() => abrirEdicao({ nome_exibicao: '', email: '', telefone: '', curso: '', semestre: '', foto_url: '' })}>{ic(UserPlus)}Adicionar à mão</button>
         <button class="botao principal" onClick={() => setModo('importar')}>{ic(Upload)}Importar inscrições</button>
       </div>
+      {duplicados.length > 0 && (
+        <div class="aviso alerta" role="status">
+          <b>Há candidatos com o mesmo email.</b> Nada foi apagado. Confira e mude o status do que sobrar, se for o caso.
+          <ul>
+            {duplicados.map((g) => <li>{g.valor}: {g.ids.map((id: string) => `${d.candidatos.find((c) => c.id === id)?.nome_exibicao || id} (${id})`).join(', ')}</li>)}
+          </ul>
+        </div>
+      )}
       <div class="tabela-box vira-cartao ate-desktop">
         <table class="tabela">
           <thead><tr><th>ID</th><th>Nome de exibição</th><th>Os avaliadores veem</th><th>Curso</th><th>Status</th><th class="num">Avaliadores</th><th class="num">Ações</th></tr></thead>
@@ -80,13 +94,19 @@ export function Candidatos(props: PropsAba) {
                 <td data-rotulo="Curso">{c.curso || '—'}{c.semestre ? ` (${c.semestre}º)` : ''}</td>
                 <td data-rotulo="Status">
                   <select class={'entrada selo ' + (COR_STATUS[c.status] || '')} style={{ width: 'auto' }} value={c.status} aria-label={'Status de ' + c.nome_exibicao}
-                    onChange={(e) => salvar([{ id: c.id, status: (e.target as HTMLSelectElement).value }], 'Status atualizado')}>
+                    disabled={!!mudandoStatus[c.id]} aria-busy={mudandoStatus[c.id] || undefined}
+                    onChange={async (e) => {
+                      const sel = e.target as HTMLSelectElement;
+                      setMudandoStatus((m) => ({ ...m, [c.id]: true }));
+                      if (!(await salvar([{ id: c.id, status: sel.value }], 'Status atualizado'))) sel.value = c.status; // erro: volta ao status salvo
+                      setMudandoStatus((m) => ({ ...m, [c.id]: false }));
+                    }}>
                     {STATUS.map((s) => <option value={s}>{s}</option>)}
                   </select>
                 </td>
                 <td class="num" data-rotulo="Avaliadores que deram nota">{notasPorCand[c.id]?.size || 0}</td>
                 <td class="acoes-cel"><div class="acoes-linha">
-                  <button class="botao pequeno" onClick={() => setEditando(c)}>{ic(Pencil)}Editar</button>
+                  <button class="botao pequeno" onClick={() => abrirEdicao(c)}>{ic(Pencil)}Editar</button>
                   {c.origem === 'importado' && <button class="botao pequeno" onClick={() => abrirInscricao(c)}>{ic(FileText)}Inscrição</button>}
                 </div></td>
               </tr>
@@ -98,12 +118,16 @@ export function Candidatos(props: PropsAba) {
 
       {editando && (
         <Modal titulo={editando.id ? `Editar ${editando.id}` : 'Adicionar candidato'} aoFechar={() => setEditando(null)}>
-          <form class="form-grade" onSubmit={async (e) => {
+          <form class="form-grade" onSubmit={(e) => {
             e.preventDefault();
-            if (!editando.nome_exibicao?.trim()) return;
-            if (editando.email && !emailValido(editando.email)) { alert('Email inválido.'); return; }
-            const { id, nome_exibicao, email, telefone, curso, semestre, foto_url } = editando;
-            if (await salvar([{ id, nome_exibicao, email, telefone, curso, semestre: semestre as any, foto_url }], id ? 'Candidato salvo' : 'Candidato adicionado')) setEditando(null);
+            envioForm.rodar(async () => {
+              if (!editando.nome_exibicao?.trim()) return;
+              if (editando.email && !emailValido(editando.email)) { setErroForm('Email inválido.'); return; }
+              setErroForm('');
+              const { id, nome_exibicao, email, telefone, curso, semestre, foto_url } = editando;
+              if (await salvar([{ id, nome_exibicao, email, telefone, curso, semestre: semestre as any, foto_url }], id ? 'Candidato salvo' : 'Candidato adicionado',
+                { aoErro: (m) => setErroForm(m) })) setEditando(null);
+            });
           }}>
             {([['nome_exibicao', 'Nome de exibição (o que os avaliadores veem)'], ['email', 'Email'], ['telefone', 'Telefone'], ['curso', 'Curso'], ['semestre', 'Semestre'], ['foto_url', 'Link da foto (opcional)']] as const).map(([k, r]) => (
               <label class="campo" style={k === 'nome_exibicao' || k === 'foto_url' ? { gridColumn: '1 / -1' } : undefined}><span>{r}</span>
@@ -112,7 +136,8 @@ export function Candidatos(props: PropsAba) {
               </label>
             ))}
             <p class="ajuda" style={{ gridColumn: '1 / -1' }}>Email e telefone só aparecem para admins.</p>
-            <div class="acoes" style={{ gridColumn: '1 / -1' }}><button type="button" class="botao" onClick={() => setEditando(null)}>Cancelar</button><button class="botao principal">Salvar</button></div>
+            {erroForm && <p class="aviso erro aviso-form" role="alert" style={{ gridColumn: '1 / -1' }}>{erroForm}</p>}
+            <div class="acoes" style={{ gridColumn: '1 / -1' }}><button type="button" class="botao" onClick={() => setEditando(null)}>Cancelar</button><BotaoAcao class="botao principal" rodando={envioForm.rodando}>Salvar</BotaoAcao></div>
           </form>
         </Modal>
       )}

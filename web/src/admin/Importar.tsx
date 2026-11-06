@@ -1,8 +1,9 @@
 // Importação de candidatos em 4 passos: fonte -> colunas -> revisão -> resultado.
-import { useMemo, useState } from 'preact/hooks';
+import { useMemo, useRef, useState } from 'preact/hooks';
 import { CAMPOS, detectarCabecalho, montarPrevia, nomesDeColuna, paraEnvio, resumoPrevia, sugerirMapeamento } from '@shared/importacao.js';
 import { lerArquivo, lerTexto } from './lerArquivo';
 import type { PropsAba } from './Admin';
+import { BotaoAcao, toast } from '../ui';
 import { I, useLargo } from './desktop';
 import { ArrowLeft, ArrowRight, ClipboardPaste, FileUp, Upload, Users } from 'lucide-preact';
 
@@ -16,6 +17,8 @@ const ROTULO_TIPO: Record<string, [string, string]> = {
 
 export function Importar({ d, setD, acao, aoTerminar }: PropsAba & { aoTerminar: () => void }) {
   const [passo, setPasso] = useState(0);
+  // Identificador deste envio: se o mesmo pedido chegar duas vezes (clique duplo, nova tentativa), o servidor grava uma vez só
+  const envio = useRef('');
   const largo = useLargo();
   const ic = (c: any) => largo && <I c={c} />;   // ícones Lucide só no desktop
   const [matriz, setMatriz] = useState<string[][]>([]);
@@ -45,6 +48,7 @@ export function Importar({ d, setD, acao, aoTerminar }: PropsAba & { aoTerminar:
     if (mapa.nome_exibicao === undefined) { setErro('Escolha qual coluna tem o nome do candidato.'); return; }
     setErro('');
     setPrevia(montarPrevia(matriz, iCab, mapa, d.candidatos, d.inscricoes));
+    envio.current = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12);
     setPasso(2);
   };
 
@@ -54,8 +58,11 @@ export function Importar({ d, setD, acao, aoTerminar }: PropsAba & { aoTerminar:
   const nomeAlvo = (id: string) => d.candidatos.find((c) => c.id === id)?.nome_exibicao || id;
 
   const confirmar = async () => {
-    const r = await acao('admin.importarCandidatos', { lote: { ...origem, ignorados_no_app: resumo.ignorar }, linhas: paraEnvio(previa) });
+    setErro('');
+    const r = await acao('admin.importarCandidatos', { envio: envio.current, lote: { ...origem, ignorados_no_app: resumo.ignorar }, linhas: paraEnvio(previa) },
+      undefined, { aoErro: (m) => { setErro(m); toast(m, 6000); } }); // o aviso de cima pode estar fora da tela
     if (r) {
+      if (r.repetido) toast('Esta importação já tinha sido gravada. Nada foi duplicado.', 6000);
       setD((x) => ({ ...x, candidatos: r.candidatos, inscricoes: r.inscricoes }));
       setResultado(r); setPasso(3);
     }
@@ -144,9 +151,9 @@ export function Importar({ d, setD, acao, aoTerminar }: PropsAba & { aoTerminar:
             </select>
             <span class="espaco" />
             <button class="botao" onClick={() => setPasso(1)}>{ic(ArrowLeft)}Voltar</button>
-            <button class="botao principal" disabled={!resumo.criar && !resumo.atualizar} onClick={confirmar}>
+            <BotaoAcao class="botao principal" disabled={!resumo.criar && !resumo.atualizar} aoClicar={confirmar}>
               Importar {resumo.criar ? `${resumo.criar} novo(s)` : ''}{resumo.criar && resumo.atualizar ? ' e ' : ''}{resumo.atualizar ? `atualizar ${resumo.atualizar}` : ''}
-            </button>
+            </BotaoAcao>
           </div>
           <div class="tabela-box vira-cartao ate-desktop">
             <table class="tabela">

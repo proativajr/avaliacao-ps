@@ -111,8 +111,9 @@
   .adm-desk .botao.vaga:hover { border-style: solid; }
   .adm-desk .botao.inverso { background: transparent; border-color: #FFFFFF; color: #FFFFFF; }
   .adm-desk .botao.inverso:hover { background: rgba(255, 255, 255, 0.12); color: #FFFFFF; }
-  .adm-desk .botao:disabled, .adm-desk .botao.leve:disabled, .adm-desk .botao.principal:disabled,
-  .adm-desk .botao.perigo:disabled, .adm-desk .botao.perigo.cheio:disabled, .adm-desk .botao.destaque:disabled {
+  /* :not([aria-busy]): o botão que está salvando mantém as cores (ver .giro-botao em estilo.css) */
+  .adm-desk .botao:disabled:not([aria-busy]), .adm-desk .botao.leve:disabled:not([aria-busy]), .adm-desk .botao.principal:disabled:not([aria-busy]),
+  .adm-desk .botao.perigo:disabled:not([aria-busy]), .adm-desk .botao.perigo.cheio:disabled:not([aria-busy]), .adm-desk .botao.destaque:disabled:not([aria-busy]) {
     cursor: not-allowed; opacity: 1; background: #EEF0F4; border-color: #D8DCE4; border-style: solid; color: #5B6577;
   }
   .adm-desk .link { display: inline-flex; align-items: center; gap: 4px; color: #2A3756; font-weight: 600; }
