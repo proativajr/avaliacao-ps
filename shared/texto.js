@@ -63,3 +63,29 @@ export function nomesParaAvaliador(candidatos) {
   partes.forEach((x) => { saida[x.id] = porCurto[normalizarNome(x.curto)] > 1 ? x.completo : x.curto; });
   return saida;
 }
+
+/** Diretorias da Proativa: as únicas opções aceitas no cadastro de avaliador. */
+export const DIRETORIAS = ['Projetos', 'Vice-presidência', 'Comercial', 'Presidência Executiva'];
+
+/**
+ * Converte um texto livre antigo de "área" numa das DIRETORIAS. Devolve '' quando não dá para saber.
+ * Aceita variações comuns: "projeto", "Diretoria de Projetos", "VP", "vice presidência", "PE", "presidência"…
+ */
+export function mapearDiretoria(texto) {
+  const n = normalizarNome(texto).replace(/[-_./]+/g, ' ').replace(/\s+/g, ' ').trim()
+    .replace(/^(diretoria|dir)( de| da| do)? /, '');
+  if (!n) return '';
+  for (const d of DIRETORIAS) if (normalizarNome(d).replace(/-/g, ' ') === n) return d;
+  if (/^projetos?$|^proj$/.test(n)) return 'Projetos';
+  if (/^vice( presidencia| presidente)?$|^vp$|^vpres$/.test(n)) return 'Vice-presidência';
+  if (/^comercial$|^com$/.test(n)) return 'Comercial';
+  if (/^presidencia( executiva)?$|^presidente( executivo| executiva)?$|^pe$|^executiva$/.test(n)) return 'Presidência Executiva';
+  return '';
+}
+
+/** Valor exatamente igual a uma das DIRETORIAS (ignorando maiúsculas e acentos) -> forma oficial; senão ''. */
+export function diretoriaValida(texto) {
+  const n = normalizarNome(texto);
+  for (const d of DIRETORIAS) if (normalizarNome(d) === n) return d;
+  return '';
+}

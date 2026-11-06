@@ -72,6 +72,32 @@ function nomesParaAvaliador(candidatos) {
   return saida;
 }
 
+/** Diretorias da Proativa: as únicas opções aceitas no cadastro de avaliador. */
+const DIRETORIAS = ['Projetos', 'Vice-presidência', 'Comercial', 'Presidência Executiva'];
+
+/**
+ * Converte um texto livre antigo de "área" numa das DIRETORIAS. Devolve '' quando não dá para saber.
+ * Aceita variações comuns: "projeto", "Diretoria de Projetos", "VP", "vice presidência", "PE", "presidência"…
+ */
+function mapearDiretoria(texto) {
+  const n = normalizarNome(texto).replace(/[-_./]+/g, ' ').replace(/\s+/g, ' ').trim()
+    .replace(/^(diretoria|dir)( de| da| do)? /, '');
+  if (!n) return '';
+  for (const d of DIRETORIAS) if (normalizarNome(d).replace(/-/g, ' ') === n) return d;
+  if (/^projetos?$|^proj$/.test(n)) return 'Projetos';
+  if (/^vice( presidencia| presidente)?$|^vp$|^vpres$/.test(n)) return 'Vice-presidência';
+  if (/^comercial$|^com$/.test(n)) return 'Comercial';
+  if (/^presidencia( executiva)?$|^presidente( executivo| executiva)?$|^pe$|^executiva$/.test(n)) return 'Presidência Executiva';
+  return '';
+}
+
+/** Valor exatamente igual a uma das DIRETORIAS (ignorando maiúsculas e acentos) -> forma oficial; senão ''. */
+function diretoriaValida(texto) {
+  const n = normalizarNome(texto);
+  for (const d of DIRETORIAS) if (normalizarNome(d) === n) return d;
+  return '';
+}
+
 // ===== shared/calc.js =====
 // Regras de cálculo do processo seletivo (seção 10 do escopo).
 // Mesmo código usado no app (ranking ao vivo), no Apps Script (conferir cálculos) e nos testes.
@@ -287,7 +313,7 @@ function estadoCandidato(respondidos, total) {
  * Mexer aqui muda a estrutura criada pelo setup().
  * ===================================================================== */
 
-var VERSAO_SISTEMA = '1.2.0';
+var VERSAO_SISTEMA = '1.3.0';
 
 var ABAS = {
   CONFIG: 'Config',
@@ -325,7 +351,8 @@ CABECALHOS[ABAS.BLOCOS] = ['id', 'nome', 'nome_curto', 'ordem', 'ativo'];
  *  avaliadores = quem acompanha a equipe na Construção. construcao/apresentacao = '', 'ANDAMENTO' ou 'CONCLUIDO'. */
 CABECALHOS[ABAS.EQUIPES] = ['id', 'etapa', 'nome', 'ordem', 'membros', 'avaliadores', 'construcao', 'apresentacao'];
 CABECALHOS[ABAS.CRITERIOS] = ['id', 'bloco', 'ordem', 'sigla', 'nome', 'descricao', 'peso', 'ativo', 'etapas'];
-CABECALHOS[ABAS.AVALIADORES] = ['id', 'nome', 'email', 'area', 'token', 'ativo', 'criado_em', 'ultimo_acesso'];
+/** area = diretoria (uma de DIRETORIAS). area_revisar = texto livre antigo que não deu para converter (o admin revisa). */
+CABECALHOS[ABAS.AVALIADORES] = ['id', 'nome', 'email', 'area', 'token', 'ativo', 'criado_em', 'ultimo_acesso', 'area_revisar'];
 CABECALHOS[ABAS.CANDIDATOS] = ['id', 'nome_exibicao', 'nome_normalizado', 'email', 'telefone', 'curso', 'semestre',
   'foto_url', 'status', 'origem', 'importado_em', 'chave_inscricao', 'criado_em', 'atualizado_em'];
 CABECALHOS[ABAS.INSCRICOES] = ['candidato_id', 'lote_id', 'importado_em', 'hash_linha', 'dados_json'];
@@ -370,6 +397,11 @@ var BLOCOS_PADRAO = [
   ['comport', 'Performance comportamental', 'Comport.', 2, 'SIM'],
 ];
 
+/** Textos novos de 06/11/2026 (versão 1.3.0). A migração usa os mesmos valores nas planilhas já criadas. */
+var DESCRICAO_PROATIVIDADE_ANTIGA = 'Tomar a iniciativa na realização das dinâmicas, antecipando desafios e soluções.';
+var DESCRICAO_PROATIVIDADE = 'Iniciativa para propor ideias, assumir tarefas e agir sem precisar ser cobrado.';
+var CRITERIO_RESPEITO = ['comport_respeito', 'comport', 7, '', 'Respeito', 'Respeito pela equipe e pelos avaliadores, inclusive durante discussões e na construção de ideias. O candidato ouve, considera pontos de vista diferentes e discorda de forma educada?', 1, 'SIM', ''];
+
 /** Critérios iniciais (seção 4 do escopo): id, bloco, ordem, sigla, nome, descrição, peso, ativo, etapas. */
 var CRITERIOS_PADRAO = [
   ['valores_proatividade', 'valores', 1, 'P', 'Proatividade', 'Um membro proativo age antes de ser solicitado. Ele identifica o que precisa ser feito e faz.', 1, 'SIM', ''],
@@ -380,12 +412,13 @@ var CRITERIOS_PADRAO = [
   ['valores_dedicacao', 'valores', 6, 'D', 'Dedicação', 'Um membro dedicado se compromete de verdade com o que assume. Ele está presente e entrega com vontade até o fim.', 1, 'SIM', ''],
   ['valores_organizacao', 'valores', 7, 'O', 'Organização', 'Um membro organizado tem clareza sobre suas prioridades, prazos e responsabilidades. Ele não deixa nada se perder no caminho.', 1, 'SIM', ''],
   ['valores_rede', 'valores', 8, 'R', 'Rede', 'Um membro que valoriza a rede constrói relações dentro e fora da Proativa. Ele sabe que conexões são parte do trabalho.', 1, 'SIM', ''],
-  ['comport_proatividade', 'comport', 1, '', 'Proatividade', 'Tomar a iniciativa na realização das dinâmicas, antecipando desafios e soluções.', 1, 'SIM', ''],
+  ['comport_proatividade', 'comport', 1, '', 'Proatividade', DESCRICAO_PROATIVIDADE, 1, 'SIM', ''],
   ['comport_criatividade', 'comport', 2, '', 'Criatividade', 'Atitude inovadora para solucionar problemas, se adaptando a situações imprevistas.', 1, 'SIM', ''],
   ['comport_comunicacao', 'comport', 3, '', 'Comunicação', 'Habilidade de transmitir informações de maneira clara e objetiva.', 1, 'SIM', ''],
   ['comport_analitica', 'comport', 4, '', 'Capacidade Analítica', 'Aptidão para analisar fatos ou dados, bem como a capacidade de síntese e objetividade das dinâmicas.', 1, 'SIM', ''],
   ['comport_equipe', 'comport', 5, '', 'Trabalho em Equipe', 'Capacidade de colaborar efetivamente com colegas de equipe, auxiliando no que fosse necessário.', 1, 'SIM', ''],
   ['comport_desafio', 'comport', 6, '', 'Desafio Individual', 'Com base no que foi passado, como você avalia o conteúdo, organização e aplicabilidade dos textos dos candidatos.', 1, 'SIM', ''],
+  CRITERIO_RESPEITO,
 ];
 
 // ===== apps-script/src/10_formulas.js =====
@@ -861,6 +894,7 @@ function setup() {
   criarAbas_(ss);
   Object.keys(CABECALHOS).forEach(function (nome) { garantirCabecalho_(nome); });
   preencherPadroes_();
+  aplicarMigracoes_();
   montarAbasDeCalculo_();
   // Conferência de segurança: se as fórmulas não forem entendidas (problema de idioma da planilha),
   // troca o idioma para inglês (EUA), que sempre funciona, e refaz as fórmulas.
@@ -1181,7 +1215,7 @@ function gerarDadosFicticios_(nCand, nAval) {
     var avs = idsA.map(function (id, i) {
       return {
         id: id, nome: 'Avaliador(a) fictício(a) ' + ('0' + (i + 1)).slice(-2), email: 'avaliador.' + id + '@exemplo.com',
-        area: escolher_(['Projetos', 'Comercial', 'Gente', 'Financeiro']), token: gerarToken_(), ativo: 'SIM',
+        area: escolher_(DIRETORIAS), token: gerarToken_(), ativo: 'SIM',
         criado_em: agora, ultimo_acesso: '',
       };
     });
@@ -1488,9 +1522,56 @@ function migrarEsquema_() {
   comTrava_(function () {
     Object.keys(CABECALHOS).forEach(function (nome) { garantirCabecalho_(nome); });
     preencherPadroes_();
+    aplicarMigracoes_();
     props_().setProperty('versao', VERSAO_SISTEMA);
     limparCache_();
   });
+}
+
+/** Ajustes de dados de versões novas. Idempotente: pode rodar de novo sem efeito. */
+function aplicarMigracoes_() {
+  migrarCriterios130_();
+  migrarDiretorias_();
+}
+
+/** 1.3.0: acrescenta o critério Respeito ao bloco comportamental e troca a descrição antiga da Proatividade. */
+function migrarCriterios130_() {
+  var crits = lerObjetos_(ABAS.CRITERIOS);
+  var temBloco = lerObjetos_(ABAS.BLOCOS).some(function (b) { return String(b.id) === 'comport'; });
+  var prot = crits.filter(function (c) { return String(c.id) === 'comport_proatividade'; })[0];
+  if (prot && String(prot.descricao).trim() === DESCRICAO_PROATIVIDADE_ANTIGA) {
+    prot.descricao = DESCRICAO_PROATIVIDADE;
+    reescrever_(ABAS.CRITERIOS, [prot]);
+  }
+  if (!temBloco || crits.some(function (c) { return String(c.id) === CRITERIO_RESPEITO[0]; })) return;
+  var o = {};
+  CABECALHOS[ABAS.CRITERIOS].forEach(function (k, i) { o[k] = CRITERIO_RESPEITO[i]; });
+  var ordens = crits.filter(function (c) { return String(c.bloco) === 'comport'; }).map(function (c) { return Number(c.ordem) || 0; });
+  o.ordem = (ordens.length ? Math.max.apply(null, ordens) : 0) + 1;
+  acrescentar_(ABAS.CRITERIOS, [o]);
+}
+
+/** Área em texto livre -> uma das DIRETORIAS. O que não bater fica vazio e o texto original vai para area_revisar. */
+function migrarDiretorias_() {
+  var mudar = [];
+  lerObjetos_(ABAS.AVALIADORES).forEach(function (a) {
+    var txt = String(a.area == null ? '' : a.area).trim();
+    if (!txt) return;
+    var valida = diretoriaValida(txt);
+    if (valida) { if (valida !== a.area || a.area_revisar) { a.area = valida; a.area_revisar = ''; mudar.push(a); } return; }
+    var m = mapearDiretoria(txt);
+    if (m) { a.area = m; a.area_revisar = ''; } else { a.area_revisar = txt; a.area = ''; }
+    mudar.push(a);
+  });
+  reescrever_(ABAS.AVALIADORES, mudar);
+}
+
+/** Diretoria obrigatória e só da lista. Devolve a forma oficial. */
+function exigirDiretoria_(valor, nome) {
+  var d = diretoriaValida(valor);
+  if (!d) throw erroApi_('VALIDACAO', (String(valor || '').trim() ? 'Diretoria inválida para ' : 'Escolha a diretoria de ') + nome +
+    '. Opções: ' + DIRETORIAS.join(', ') + '.');
+  return d;
 }
 
 function identificar_(token) {
@@ -2145,8 +2226,8 @@ ACOES_ADMIN['admin.salvarAvaliadores'] = function (dados) {
     var novos = novosItens.map(function (a, i) {
       var nome = String(a.nome || '').replace(/\s+/g, ' ').trim();
       if (!nome) throw erroApi_('VALIDACAO', 'Avaliador sem nome.');
-      return { id: ids[i], nome: nome, email: normalizarEmail(a.email), area: String(a.area || '').trim(), token: gerarToken_(),
-        ativo: 'SIM', criado_em: agora, ultimo_acesso: '' };
+      return { id: ids[i], nome: nome, email: normalizarEmail(a.email), area: exigirDiretoria_(a.area, nome), token: gerarToken_(),
+        ativo: 'SIM', criado_em: agora, ultimo_acesso: '', area_revisar: '' };
     });
     var atualizar = lista.filter(function (a) { return a.id; }).map(function (a) {
       var ex = porId[String(a.id)];
@@ -2155,7 +2236,7 @@ ACOES_ADMIN['admin.salvarAvaliadores'] = function (dados) {
       Object.keys(ex).forEach(function (k) { o[k] = ex[k]; });
       if (a.nome !== undefined) o.nome = String(a.nome).replace(/\s+/g, ' ').trim() || ex.nome;
       if (a.email !== undefined) o.email = normalizarEmail(a.email);
-      if (a.area !== undefined) o.area = String(a.area).trim();
+      if (a.area !== undefined) { o.area = exigirDiretoria_(a.area, o.nome); o.area_revisar = ''; }
       if (a.ativo !== undefined) o.ativo = simNao_(a.ativo);
       return o;
     });

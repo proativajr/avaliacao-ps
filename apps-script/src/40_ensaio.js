@@ -50,7 +50,7 @@ function gerarDadosFicticios_(nCand, nAval) {
     var avs = idsA.map(function (id, i) {
       return {
         id: id, nome: 'Avaliador(a) fictício(a) ' + ('0' + (i + 1)).slice(-2), email: 'avaliador.' + id + '@exemplo.com',
-        area: escolher_(['Projetos', 'Comercial', 'Gente', 'Financeiro']), token: gerarToken_(), ativo: 'SIM',
+        area: escolher_(DIRETORIAS), token: gerarToken_(), ativo: 'SIM',
         criado_em: agora, ultimo_acesso: '',
       };
     });

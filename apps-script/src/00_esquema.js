@@ -3,7 +3,7 @@
  * Mexer aqui muda a estrutura criada pelo setup().
  * ===================================================================== */
 
-var VERSAO_SISTEMA = '1.2.0';
+var VERSAO_SISTEMA = '1.3.0';
 
 var ABAS = {
   CONFIG: 'Config',
@@ -41,7 +41,8 @@ CABECALHOS[ABAS.BLOCOS] = ['id', 'nome', 'nome_curto', 'ordem', 'ativo'];
  *  avaliadores = quem acompanha a equipe na Construção. construcao/apresentacao = '', 'ANDAMENTO' ou 'CONCLUIDO'. */
 CABECALHOS[ABAS.EQUIPES] = ['id', 'etapa', 'nome', 'ordem', 'membros', 'avaliadores', 'construcao', 'apresentacao'];
 CABECALHOS[ABAS.CRITERIOS] = ['id', 'bloco', 'ordem', 'sigla', 'nome', 'descricao', 'peso', 'ativo', 'etapas'];
-CABECALHOS[ABAS.AVALIADORES] = ['id', 'nome', 'email', 'area', 'token', 'ativo', 'criado_em', 'ultimo_acesso'];
+/** area = diretoria (uma de DIRETORIAS). area_revisar = texto livre antigo que não deu para converter (o admin revisa). */
+CABECALHOS[ABAS.AVALIADORES] = ['id', 'nome', 'email', 'area', 'token', 'ativo', 'criado_em', 'ultimo_acesso', 'area_revisar'];
 CABECALHOS[ABAS.CANDIDATOS] = ['id', 'nome_exibicao', 'nome_normalizado', 'email', 'telefone', 'curso', 'semestre',
   'foto_url', 'status', 'origem', 'importado_em', 'chave_inscricao', 'criado_em', 'atualizado_em'];
 CABECALHOS[ABAS.INSCRICOES] = ['candidato_id', 'lote_id', 'importado_em', 'hash_linha', 'dados_json'];
@@ -86,6 +87,11 @@ var BLOCOS_PADRAO = [
   ['comport', 'Performance comportamental', 'Comport.', 2, 'SIM'],
 ];
 
+/** Textos novos de 06/11/2026 (versão 1.3.0). A migração usa os mesmos valores nas planilhas já criadas. */
+var DESCRICAO_PROATIVIDADE_ANTIGA = 'Tomar a iniciativa na realização das dinâmicas, antecipando desafios e soluções.';
+var DESCRICAO_PROATIVIDADE = 'Iniciativa para propor ideias, assumir tarefas e agir sem precisar ser cobrado.';
+var CRITERIO_RESPEITO = ['comport_respeito', 'comport', 7, '', 'Respeito', 'Respeito pela equipe e pelos avaliadores, inclusive durante discussões e na construção de ideias. O candidato ouve, considera pontos de vista diferentes e discorda de forma educada?', 1, 'SIM', ''];
+
 /** Critérios iniciais (seção 4 do escopo): id, bloco, ordem, sigla, nome, descrição, peso, ativo, etapas. */
 var CRITERIOS_PADRAO = [
   ['valores_proatividade', 'valores', 1, 'P', 'Proatividade', 'Um membro proativo age antes de ser solicitado. Ele identifica o que precisa ser feito e faz.', 1, 'SIM', ''],
@@ -96,10 +102,11 @@ var CRITERIOS_PADRAO = [
   ['valores_dedicacao', 'valores', 6, 'D', 'Dedicação', 'Um membro dedicado se compromete de verdade com o que assume. Ele está presente e entrega com vontade até o fim.', 1, 'SIM', ''],
   ['valores_organizacao', 'valores', 7, 'O', 'Organização', 'Um membro organizado tem clareza sobre suas prioridades, prazos e responsabilidades. Ele não deixa nada se perder no caminho.', 1, 'SIM', ''],
   ['valores_rede', 'valores', 8, 'R', 'Rede', 'Um membro que valoriza a rede constrói relações dentro e fora da Proativa. Ele sabe que conexões são parte do trabalho.', 1, 'SIM', ''],
-  ['comport_proatividade', 'comport', 1, '', 'Proatividade', 'Tomar a iniciativa na realização das dinâmicas, antecipando desafios e soluções.', 1, 'SIM', ''],
+  ['comport_proatividade', 'comport', 1, '', 'Proatividade', DESCRICAO_PROATIVIDADE, 1, 'SIM', ''],
   ['comport_criatividade', 'comport', 2, '', 'Criatividade', 'Atitude inovadora para solucionar problemas, se adaptando a situações imprevistas.', 1, 'SIM', ''],
   ['comport_comunicacao', 'comport', 3, '', 'Comunicação', 'Habilidade de transmitir informações de maneira clara e objetiva.', 1, 'SIM', ''],
   ['comport_analitica', 'comport', 4, '', 'Capacidade Analítica', 'Aptidão para analisar fatos ou dados, bem como a capacidade de síntese e objetividade das dinâmicas.', 1, 'SIM', ''],
   ['comport_equipe', 'comport', 5, '', 'Trabalho em Equipe', 'Capacidade de colaborar efetivamente com colegas de equipe, auxiliando no que fosse necessário.', 1, 'SIM', ''],
   ['comport_desafio', 'comport', 6, '', 'Desafio Individual', 'Com base no que foi passado, como você avalia o conteúdo, organização e aplicabilidade dos textos dos candidatos.', 1, 'SIM', ''],
+  CRITERIO_RESPEITO,
 ];
