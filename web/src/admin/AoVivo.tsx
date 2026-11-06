@@ -6,7 +6,13 @@ import { criteriosAtivos, criteriosDaEtapa } from '@shared/calc.js';
 import { normalizarNome } from '@shared/texto.js';
 import type { Equipe, EstadoMomento, Etapa } from '../tipos';
 import { Modal } from '../ui';
+import { Foto, iniciais } from '../avaliador/Foto';
 import type { PropsAba } from './Admin';
+import { I, NoCampo, useLargo } from './desktop';
+import {
+  Check, CircleCheck, Clock, Hammer, Info, ListTodo, Minus, Pencil, Play, Plus, Presentation, Radio, RotateCcw,
+  Shuffle, Square, TrendingUp, TriangleAlert, UserCheck, UserMinus, UserPlus, Users, UsersRound,
+} from 'lucide-preact';
 
 const idEquipe = (etapa: string, i: number) => `${etapa}_eq${i + 1}`;
 
@@ -19,14 +25,12 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
   const [montar, setMontar] = useState(false);
   // Janela de criar/renomear dinâmica: null = fechada; id vazio = nova
   const [editando, setEditando] = useState<{ id: string; nome: string } | null>(null);
-  // No desktop (≥ 1024 px) "Montar equipes" fica numa coluna ao lado, em vez de outra tela.
-  const [largo, setLargo] = useState(() => matchMedia('(min-width: 1024px)').matches);
-  useEffect(() => {
-    const m = matchMedia('(min-width: 1024px)');
-    const f = () => setLargo(m.matches);
-    m.addEventListener('change', f);
-    return () => m.removeEventListener('change', f);
-  }, []);
+  // No desktop (≥ 1024 px) a tela muda de forma (direção B): equipes em degraus e o painel da equipe escolhida.
+  // "Montar equipes" abre numa janela, em vez de outra tela.
+  const largo = useLargo();
+  // Equipe aberta no painel do desktop (-1 = a que está apresentando, ou a primeira)
+  const [escolhida, setEscolhida] = useState(-1);
+  useEffect(() => setEscolhida(-1), [etapa]);
 
   // Equipes da dinâmica escolhida, editadas aqui e salvas sozinhas
   const doServidor = (et: string) => (d.equipes || []).filter((q) => q.etapa === et).sort((a, b) => a.ordem - b.ordem);
@@ -68,6 +72,14 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
     const r = await acao<{ equipes: Equipe[] }>('admin.designarAvaliadores', { etapa, equipe: idEquipe(etapa, i), avaliadores: sel },
       sel.length ? `Equipe ${i + 1}: ${sel.length} avaliador${sel.length === 1 ? '' : 'es'}` : `Equipe ${i + 1} ficou sem avaliadores`);
     if (r) { setD((x) => ({ ...x, equipes: r.equipes })); setDesignando(null); }
+  };
+  // Desktop: tira um avaliador da equipe direto na lista (mesma gravação da janela de designação)
+  const tirar = async (i: number, av: string) => {
+    if (!(await salvarAgora())) return;
+    const sel = (designados[i] || []).filter((x) => x !== av);
+    const r = await acao<{ equipes: Equipe[] }>('admin.designarAvaliadores', { etapa, equipe: idEquipe(etapa, i), avaliadores: sel },
+      `${nomeAv(av)} saiu da Equipe ${i + 1}`);
+    if (r) setD((x) => ({ ...x, equipes: r.equipes }));
   };
   useEffect(() => () => { if (pendente.current) salvarAgora(); }, [etapa]); // eslint-disable-line
 
@@ -185,15 +197,15 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
           <span>{nomeEtapa}</span>
         </div>
       )}
-      <div class="bloco-topo"><h2>Montar equipes</h2><span class="ajuda" style={{ margin: 0 }}>{semEquipe.length} sem equipe</span></div>
+      <div class="bloco-topo">{!largo && <h2>Montar equipes</h2>}<span class="ajuda" style={{ margin: 0 }}>{semEquipe.length} sem equipe</span></div>
       <div class="montar">
-        <button class="passo" onClick={() => qtd(grupos.length - 1)} disabled={grupos.length < 1} aria-label="Menos uma equipe">−</button>
+        <button class="passo" onClick={() => qtd(grupos.length - 1)} disabled={grupos.length < 1} aria-label="Menos uma equipe">{largo ? <I c={Minus} /> : '−'}</button>
         <b class="qtd" aria-live="polite">{grupos.length} equipe{grupos.length === 1 ? '' : 's'}</b>
-        <button class="passo" onClick={() => qtd(grupos.length + 1)} aria-label="Mais uma equipe">+</button>
+        <button class="passo" onClick={() => qtd(grupos.length + 1)} aria-label="Mais uma equipe">{largo ? <I c={Plus} /> : '+'}</button>
         <span class="espaco" />
-        {grupos.length > 0 && semEquipe.length > 0 && <button class="botao destaque" onClick={sortear}>Sortear {semEquipe.length}</button>}
+        {grupos.length > 0 && semEquipe.length > 0 && <button class={largo ? 'botao' : 'botao destaque'} onClick={sortear}>{largo && <I c={Shuffle} />}Sortear {semEquipe.length}</button>}
       </div>
-      {grupos.length === 0 ? <div class="vazio"><p>Toque em + para criar a primeira equipe.</p></div> : !presentes.length ? <div class="vazio"><p>Nenhum candidato ativo. Cadastre em Pessoas.</p></div> : (
+      {grupos.length === 0 ? <div class="vazio"><p>{largo ? 'Use + para criar a primeira equipe.' : 'Toque em + para criar a primeira equipe.'}</p></div> : !presentes.length ? <div class="vazio"><p>Nenhum candidato ativo. Cadastre em Pessoas.</p></div> : (
         <>
           {presentes.length > 10 && (
             <label class="busca-campo">
@@ -217,7 +229,7 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
             })}
             {!visiveis.length && <li class="vazio">Ninguém com esse nome.</li>}
           </ul>
-          <p class="nota-rodape">Toque no número de novo para tirar da equipe.{grupos.some((g) => g.length) && <> <button class="link" onClick={limpar}>Limpar tudo</button></>}</p>
+          <p class="nota-rodape">{largo ? 'Clique no número de novo para tirar da equipe.' : 'Toque no número de novo para tirar da equipe.'}{grupos.some((g) => g.length) && <> <button class="link" onClick={limpar}>Limpar tudo</button></>}</p>
         </>
       )}
     </div>
@@ -225,34 +237,9 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
 
   if (montar && !largo) return <section class="aovivo">{blocoMontar}</section>;
 
-  const membrosAtivos = ativaAqui >= 0 ? grupos[ativaAqui] || [] : [];
-  const feitos = membrosAtivos.reduce((s, cid) => s + (completos[cid] || 0), 0);
-  // Quantos avaliam a equipe da vez na Apresentação: todos, ou só os designados com a regra ligada
-  const totalAgora = soDesignados && ativaAqui >= 0 ? (designados[ativaAqui] || []).length : totalAv;
-  return (
-    <section class="aovivo">
-      <div class="cabeca-pagina">
-        <div>
-          <span class="sobrelinha">Ao vivo</span>
-          <h1 class="titulo">{nomeEtapa || 'Dinâmicas'}</h1>
-        </div>
-        <button class="botao principal" onClick={() => setEditando({ id: '', nome: `Dinâmica ${etapas.length + 1}` })}>+ Nova dinâmica</button>
-      </div>
-
-      <div class="dinamicas" role="radiogroup" aria-label="Escolher dinâmica">
-        {etapas.map((e) => {
-          const nEq = (d.equipes || []).filter((q) => q.etapa === e.id).length;
-          const noAr = ativaEtapa === e.id;
-          return (
-            <button role="radio" aria-checked={e.id === etapa} class={'dinamica' + (noAr ? ' no-ar' : '')} onClick={() => setEtapa(e.id)}>
-              <b>{e.nome}</b>
-              <small>{noAr ? 'Ao vivo · ' : ''}{nEq} equipe{nEq === 1 ? '' : 's'}</small>
-            </button>
-          );
-        })}
-      </div>
-      {etapa && <button class="link renomear" onClick={() => setEditando({ id: etapa, nome: nomeEtapa })}>Renomear “{nomeEtapa}”</button>}
-
+  // Janelas de criar/renomear dinâmica e de designar avaliadores (iguais no celular e no desktop)
+  const modais = (
+    <>
       {editando && (
         <Modal titulo={editando.id ? 'Renomear dinâmica' : 'Nova dinâmica'} aoFechar={() => setEditando(null)}>
           <label class="campo"><span>Nome da dinâmica</span>
@@ -288,8 +275,206 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
           </div>
         </Modal>
       )}
+    </>
+  );
 
-      <div class={'aovivo-grade' + (largo ? ' com-montar' : '')}>
+  const membrosAtivos = ativaAqui >= 0 ? grupos[ativaAqui] || [] : [];
+  const feitos = membrosAtivos.reduce((s, cid) => s + (completos[cid] || 0), 0);
+  // Quantos avaliam a equipe da vez na Apresentação: todos, ou só os designados com a regra ligada
+  const totalAgora = soDesignados && ativaAqui >= 0 ? (designados[ativaAqui] || []).length : totalAv;
+
+  if (largo) {
+    // ---------- Desktop: direção B "Linha ascendente" ----------
+    const servidor = doServidor(etapa);
+    const sel = escolhida >= 0 && escolhida < grupos.length ? escolhida : ativaAqui >= 0 ? ativaAqui : 0;
+    const membrosSel = grupos[sel] || [];
+    const avsSel = designados[sel] || [];
+    const qSel = servidor[sel];
+    const eC: EstadoMomento = qSel?.construcao || '';
+    const eA: EstadoMomento = sel === ativaAqui ? 'ANDAMENTO' : (qSel?.apresentacao || '');
+    const lc = lancaram(sel, 'construcao'), la = lancaram(sel, 'apresentacao');
+    const textoMomento = (e: EstadoMomento, l: { feitos: number; total: number }, ninguem: string) =>
+      e === 'ANDAMENTO' ? `Em andamento. ${l.feitos} de ${l.total} avaliadores completaram.`
+        : e === 'CONCLUIDO' ? `Concluída. ${l.feitos} de ${l.total} avaliadores completaram.` : `Pendente. ${ninguem}`;
+    const classeEstado = (e: EstadoMomento) => (e === 'CONCLUIDO' ? ' ok' : e === 'ANDAMENTO' ? ' andamento' : '');
+    const iconeEstado = (e: EstadoMomento) => (e === 'CONCLUIDO' ? CircleCheck : e === 'ANDAMENTO' ? Radio : Clock);
+    const fecharMontar = () => { salvarAgora(); setMontar(false); };
+    const totalAgoraDesk = membrosAtivos.length * totalAgora;
+    return (
+      <section class="aovivo aovivo-desk">
+        <NoCampo>
+          <div class="titulo-linha">
+            <h1>{nomeEtapa || 'Dinâmicas'}</h1>
+            {etapa && <button class="botao inverso pequeno" onClick={() => setEditando({ id: etapa, nome: nomeEtapa })}><I c={Pencil} />Renomear</button>}
+            <button class="botao inverso pequeno" onClick={() => setEditando({ id: '', nome: `Dinâmica ${etapas.length + 1}` })}><I c={Plus} />Nova dinâmica</button>
+            {ativaAqui >= 0 && <button class="botao inverso pequeno" onClick={() => aoVivo('', 'Avaliação encerrada')}><I c={Square} />Encerrar a Equipe {ativaAqui + 1}</button>}
+          </div>
+          {etapas.length > 0 && (
+            <div class="dinamicas-campo" role="radiogroup" aria-label="Escolher dinâmica">
+              {etapas.map((e) => {
+                const nEq = (d.equipes || []).filter((q) => q.etapa === e.id).length;
+                const noAr = ativaEtapa === e.id;
+                return (
+                  <button role="radio" aria-checked={e.id === etapa} onClick={() => setEtapa(e.id)}>
+                    {noAr && <I c={Radio} t={18} />}{e.nome}<small>{noAr ? 'ao vivo, ' : ''}{nEq} equipe{nEq === 1 ? '' : 's'}</small>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <p class="linha-status" aria-live="polite">
+            {ativaAqui >= 0 ? `A Equipe ${ativaAqui + 1} está apresentando. ${feitos} de ${totalAgoraDesk} avaliações recebidas.`
+              : grupos.length ? 'Nenhuma equipe apresentando agora.' : 'Crie as equipes desta dinâmica para começar.'}
+          </p>
+        </NoCampo>
+
+        {modais}
+        {montar && (
+          <Modal titulo={`Montar equipes da ${nomeEtapa}`} aoFechar={fecharMontar}>
+            {blocoMontar}
+            <div class="acoes"><button class="botao principal" onClick={fecharMontar}><I c={Check} />Pronto</button></div>
+          </Modal>
+        )}
+
+        {grupos.length === 0 ? (
+          <div class="vazio-desk">
+            <h2>Nenhuma equipe nesta dinâmica</h2>
+            <p class="ajuda"><I c={Info} t={18} />{presentes.length ? 'Crie as equipes e depois distribua os candidatos.' : 'Dá para criar as equipes e designar os avaliadores antes de importar os candidatos.'}</p>
+            <button class="botao principal" onClick={() => qtd(3)}><I c={Plus} />Criar 3 equipes</button>
+          </div>
+        ) : (
+          <>
+            <div class="degraus-topo">
+              <h2><I c={TrendingUp} t={22} />Ordem de apresentação</h2>
+              <span class="espaco" />
+              {semEquipe.length > 0 && <button class="botao pequeno" onClick={sortear}><I c={Shuffle} />Sortear {semEquipe.length} sem equipe</button>}
+              <button class="botao pequeno" onClick={() => setMontar(true)}><I c={Users} />Montar equipes</button>
+              <button class="botao pequeno" disabled={grupos.length >= 12} onClick={() => qtd(grupos.length + 1)}><I c={Plus} />Nova equipe</button>
+            </div>
+
+            {semAvaliadores.length > 0 && (
+              <p class="alerta-desk" role="status">
+                <I c={TriangleAlert} />
+                <span>
+                  <b>{semAvaliadores.length === 1 ? `A Equipe ${semAvaliadores[0] + 1} está` : `As Equipes ${semAvaliadores.map((i) => i + 1).join(', ')} estão`} sem avaliadores designados.</b>
+                  {soDesignados ? (semAvaliadores.length === 1 ? ' Ninguém consegue avaliá-la.' : ' Ninguém consegue avaliá-las.')
+                    : (semAvaliadores.length === 1 ? ' A Construção dela não pode começar' : ' A Construção delas não pode começar') + ', mas a Apresentação funciona normalmente.'} Escolha a equipe e use <b>Adicionar avaliador</b>.
+                </span>
+              </p>
+            )}
+
+            <ol class="degraus">
+              {grupos.map((g, i) => {
+                const c: EstadoMomento = servidor[i]?.construcao || '';
+                const [ic, txt, cls] = i === ativaAqui ? [Radio, 'Apresentando agora', ' andamento']
+                  : !(designados[i] || []).length ? [TriangleAlert, 'Sem avaliadores', ' falta']
+                    : c === 'ANDAMENTO' ? [Hammer, 'Construção em andamento', ' andamento']
+                      : c === 'CONCLUIDO' ? [CircleCheck, 'Construção concluída', ' ok'] : [Clock, 'Construção pendente', ''];
+                return (
+                  <li>
+                    <button class={'degrau' + (i === ativaAqui ? ' no-ar' : '')} aria-pressed={i === sel} onClick={() => setEscolhida(i)}>
+                      <span class="ordem">Apresenta em {i + 1}º</span>
+                      <b>Equipe {i + 1}</b>
+                      <span class="quem">{g.length ? g.map(curto).join(', ') : 'Ninguém ainda'}</span>
+                      <span class={'estado' + cls}><I c={ic as any} t={18} />{txt}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+
+            <section class="detalhe" aria-labelledby="equipe-aberta">
+              <h2 id="equipe-aberta">Equipe {sel + 1}
+                <span class="acoes"><button class="botao pequeno" onClick={() => setMontar(true)}><I c={Users} />Mudar candidatos</button></span>
+              </h2>
+              <div class="det-col">
+                <h3><I c={ListTodo} />Momentos</h3>
+                <ul class="momentos">
+                  <li>
+                    <b><I c={Hammer} />Construção</b>
+                    <span class={'estado' + classeEstado(eC)}><I c={iconeEstado(eC)} t={18} />{textoMomento(eC, lc, avsSel.length ? 'Só os avaliadores da equipe avaliam.' : 'Precisa de pelo menos um avaliador.')}</span>
+                    {eC === 'ANDAMENTO'
+                      ? <button class="botao pequeno" onClick={() => construcao(sel, 'CONCLUIDO', `Construção da Equipe ${sel + 1} concluída`)}><I c={CircleCheck} />Concluir</button>
+                      : <button class={'botao pequeno' + (eC === 'CONCLUIDO' ? '' : ' principal')} disabled={!membrosSel.length || !avsSel.length} onClick={() => construcao(sel, 'ANDAMENTO', `Construção da Equipe ${sel + 1} aberta`)}>
+                        {eC === 'CONCLUIDO' ? <><I c={RotateCcw} />Reabrir</> : <><I c={Play} />Iniciar</>}
+                      </button>}
+                  </li>
+                  <li>
+                    <b><I c={Presentation} />Apresentação</b>
+                    <span class={'estado' + classeEstado(eA)}><I c={iconeEstado(eA)} t={18} />{textoMomento(eA, la, soDesignados ? 'Só os avaliadores da equipe avaliam.' : 'Todos os avaliadores avaliam.')}</span>
+                    {sel === ativaAqui
+                      ? <button class="botao pequeno" onClick={() => aoVivo('', 'Avaliação encerrada')}><I c={Square} />Encerrar</button>
+                      : <button class="botao pequeno principal" disabled={!membrosSel.length} onClick={() => aoVivo(idEquipe(etapa, sel), `Equipe ${sel + 1} aberta`)}><I c={Play} />Pôr no ar</button>}
+                  </li>
+                </ul>
+                <h3><I c={UsersRound} />Candidatos <small>{membrosSel.length}</small></h3>
+                {membrosSel.length ? (
+                  <ul class="fotos">
+                    {membrosSel.map((cid) => {
+                      const cand = d.candidatos.find((c) => c.id === cid);
+                      return (
+                        <li>
+                          <Foto nome={nome(cid)} foto={cand?.foto_url} tam={48} forma="quadrada" />
+                          <span class="n">{nome(cid)}{sel === ativaAqui && <small>{completos[cid] || 0} de {totalAgora} avaliaram</small>}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : <p class="ajuda"><I c={Info} t={18} />Ninguém nesta equipe ainda. Use Mudar candidatos.</p>}
+              </div>
+              <div class="det-col">
+                <h3><I c={UserCheck} />{soDesignados ? 'Avaliadores da equipe' : 'Avaliadores da Construção'} <small>{avsSel.length}</small></h3>
+                {avsSel.length ? (
+                  <ul class="pessoas">
+                    {avsSel.map((id) => {
+                      const a = d.avaliadores.find((x) => x.id === id);
+                      return (
+                        <li>
+                          <span class="avatar-av" aria-hidden="true">{iniciais(nomeAv(id))}</span>
+                          <span class="n"><b>{nomeAv(id)}</b><small>{a && a.ativo !== 'SIM' ? 'Inativo' : a?.area || 'Avaliador'}</small></span>
+                          <button class="botao pequeno perigo" onClick={() => tirar(sel, id)} aria-label={`Tirar ${nomeAv(id)} da Equipe ${sel + 1}`}><I c={UserMinus} />Tirar</button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : <p class="ajuda"><I c={Info} t={18} />Nenhum avaliador designado.</p>}
+                <button class="botao vaga" onClick={() => abrirDesignacao(sel)}><I c={UserPlus} />Adicionar avaliador</button>
+                <p class="ajuda"><I c={Info} t={18} />Sem limite de avaliadores. {soDesignados ? 'Só quem está aqui avalia esta equipe, na Construção e na Apresentação.' : 'Só quem está aqui avalia a Construção desta equipe. Na Apresentação, todos avaliam.'}</p>
+              </div>
+            </section>
+          </>
+        )}
+      </section>
+    );
+  }
+
+  return (
+    <section class="aovivo">
+      <div class="cabeca-pagina">
+        <div>
+          <span class="sobrelinha">Ao vivo</span>
+          <h1 class="titulo">{nomeEtapa || 'Dinâmicas'}</h1>
+        </div>
+        <button class="botao principal" onClick={() => setEditando({ id: '', nome: `Dinâmica ${etapas.length + 1}` })}>+ Nova dinâmica</button>
+      </div>
+
+      <div class="dinamicas" role="radiogroup" aria-label="Escolher dinâmica">
+        {etapas.map((e) => {
+          const nEq = (d.equipes || []).filter((q) => q.etapa === e.id).length;
+          const noAr = ativaEtapa === e.id;
+          return (
+            <button role="radio" aria-checked={e.id === etapa} class={'dinamica' + (noAr ? ' no-ar' : '')} onClick={() => setEtapa(e.id)}>
+              <b>{e.nome}</b>
+              <small>{noAr ? 'Ao vivo · ' : ''}{nEq} equipe{nEq === 1 ? '' : 's'}</small>
+            </button>
+          );
+        })}
+      </div>
+      {etapa && <button class="link renomear" onClick={() => setEditando({ id: etapa, nome: nomeEtapa })}>Renomear “{nomeEtapa}”</button>}
+
+      {modais}
+
+      <div class="aovivo-grade">
         <div class="coluna">
           {ativaAqui >= 0 ? (
             <div class="agora" role="status" aria-label={`Avaliando agora: Equipe ${ativaAqui + 1}`}>
@@ -367,7 +552,6 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
             )}
           </div>
         </div>
-        {largo && <div class="coluna">{blocoMontar}</div>}
       </div>
     </section>
   );

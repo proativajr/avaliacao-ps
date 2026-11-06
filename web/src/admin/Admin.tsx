@@ -1,5 +1,6 @@
 // Painel do admin: carrega tudo da planilha e organiza em 4 seções.
-// No computador a navegação fica no topo; no celular, numa barra fixa embaixo.
+// No celular a navegação fica numa barra fixa embaixo; no tablet, no topo.
+// No desktop (≥ 1024 px) o topo vira o campo azul da direção B, com abas e o título da seção.
 import { useCallback, useEffect, useState } from 'preact/hooks';
 import { chamar, ErroApi, Sessao, sair, trocarSessao } from '../api';
 import type { AdminDados } from '../tipos';
@@ -11,6 +12,9 @@ import { Resultados } from './Resultados';
 import { Configuracao } from './Configuracao';
 import { EnsaioDados } from './EnsaioDados';
 import { AoVivo } from './AoVivo';
+import { AlvoCampo, I, useLargo } from './desktop';
+import './admin-desktop.css';
+import { FlaskConical, LoaderCircle, LogOut, Radio, Settings2, Sheet, Trophy, Users } from 'lucide-preact';
 
 export type Acao = <T = any>(nome: string, dados?: unknown, sucesso?: string) => Promise<T | null>;
 export interface PropsAba { d: AdminDados; setD: (f: (d: AdminDados) => AdminDados) => void; acao: Acao; sessao: Sessao; recarregar: () => Promise<void>; }
@@ -23,6 +27,8 @@ const ICONES: Record<string, string> = {
 };
 const SECOES = [['aovivo', 'Ao vivo'], ['ranking', 'Ranking'], ['pessoas', 'Pessoas'], ['ajustes', 'Ajustes']] as const;
 type Secao = typeof SECOES[number][0];
+// Ícones Lucide das seções no desktop (no celular a barra de baixo mantém os ícones atuais)
+const ICONES_DESK = { aovivo: Radio, ranking: Trophy, pessoas: Users, ajustes: Settings2 };
 
 function Icone({ d }: { d: string }) {
   return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={d} /></svg>;
@@ -44,6 +50,9 @@ export function Admin({ sessao, outras }: { sessao: Sessao; outras: Sessao[] }) 
   const [pessoas, setPessoas] = useState<'candidatos' | 'avaliadores'>('candidatos');
   const [ajustes, setAjustes] = useState<'configuracao' | 'dados'>('configuracao');
   const [ocupado, setOcupado] = useState(false);
+  const largo = useLargo();
+  // Onde cada seção põe o próprio título, dentro do campo azul do topo (só no desktop)
+  const [alvo, setAlvo] = useState<HTMLElement | null>(null);
 
   const recarregar = useCallback(async () => {
     try {
@@ -82,10 +91,33 @@ export function Admin({ sessao, outras }: { sessao: Sessao; outras: Sessao[] }) 
   const ensaio = sessao.amb === 'ensaio' || String(d.config.modo).toUpperCase() === 'ENSAIO';
   const props: PropsAba = { d, setD, acao, sessao, recarregar };
   const ir = (s: Secao) => { setSecao(s); scrollTo(0, 0); };
+  const subPessoas = <Sub opcoes={[['candidatos', `Candidatos · ${d.candidatos.length}`], ['avaliadores', `Avaliadores · ${d.avaliadores.filter((a) => a.ativo === 'SIM').length}`]]} valor={pessoas} aoMudar={setPessoas} />;
+  const subAjustes = <Sub opcoes={[['configuracao', 'Configuração'], ['dados', 'Ensaio e dados']]} valor={ajustes} aoMudar={setAjustes} />;
   return (
-    <div class="adm">
-      {ensaio && <FaixaTeste />}
-      <div class="adm-corpo">
+    <div class={'adm' + (largo ? ' adm-desk' : '')}>
+      {ensaio && (largo
+        ? <div key="faixa" class="faixa-ensaio" role="note"><I c={FlaskConical} t={18} />Ambiente de ensaio. Os dados são fictícios.</div>
+        : <FaixaTeste />)}
+      {/* key: ao trocar celular/desktop, a faixa de ensaio muda de tipo e o Preact não pode confundir as duas divs */}
+      <div key="corpo" class="adm-corpo">
+      {largo ? (
+        /* Desktop: campo azul com recorte diagonal ascendente (um por tela), abas e o título da seção */
+        <header class="campo-azul">
+          <div class="barra">
+            <img class="marca-campo" src="./marca/kit-assinatura-negativa.png" alt="Proativa Jr." width={160} height={35} />
+            <nav class="abas" aria-label="Seções">
+              {SECOES.map(([id, rot]) => <button class="aba" aria-current={secao === id ? 'page' : undefined} onClick={() => ir(id)}><I c={ICONES_DESK[id]} />{rot}</button>)}
+            </nav>
+            <span class="espaco" />
+            <span class={'status-campo' + (ocupado ? ' salvando' : '')} role="status">{ocupado ? <><I c={LoaderCircle} t={18} />Salvando…</> : d.config.nome_processo || 'PS'}</span>
+          </div>
+          <div class="titulo-campo">
+            {secao === 'pessoas' && <><h1>Pessoas</h1>{subPessoas}</>}
+            {secao === 'ajustes' && <><h1>Ajustes</h1>{subAjustes}</>}
+            <div class="slot-campo" ref={setAlvo} />
+          </div>
+        </header>
+      ) : (
       <header class="adm-topo">
         <div class="linha1">
           <Assinatura />
@@ -96,22 +128,24 @@ export function Admin({ sessao, outras }: { sessao: Sessao; outras: Sessao[] }) 
           <span class={'adm-status' + (ocupado ? ' salvando' : '')} role="status">{ocupado ? 'Salvando…' : d.config.nome_processo || 'PS'}</span>
         </div>
       </header>
+      )}
 
+      <AlvoCampo.Provider value={largo ? alvo : null}>
       <main class="adm-conteudo">
         {secao === 'aovivo' && <AoVivo {...props} />}
         {secao === 'ranking' && <Resultados {...props} />}
         {secao === 'pessoas' && (
           <>
-            <Sub opcoes={[['candidatos', `Candidatos · ${d.candidatos.length}`], ['avaliadores', `Avaliadores · ${d.avaliadores.filter((a) => a.ativo === 'SIM').length}`]]} valor={pessoas} aoMudar={setPessoas} />
+            {!largo && subPessoas}
             {pessoas === 'candidatos' ? <Candidatos {...props} /> : <Avaliadores {...props} />}
           </>
         )}
         {secao === 'ajustes' && (
           <>
-            <Sub opcoes={[['configuracao', 'Configuração'], ['dados', 'Ensaio e dados']]} valor={ajustes} aoMudar={setAjustes} />
+            {!largo && subAjustes}
             {ajustes === 'configuracao' ? <Configuracao {...props} /> : <EnsaioDados {...props} />}
             <div class="adm-conta">
-              {d.planilha_url && <a class="botao" href={d.planilha_url} target="_blank" rel="noopener">Abrir planilha</a>}
+              {d.planilha_url && <a class="botao" href={d.planilha_url} target="_blank" rel="noopener">{largo && <I c={Sheet} />}Abrir planilha</a>}
               {outras.length > 0 && (
                 <select class="entrada" aria-label="Trocar de acesso"
                   onChange={(e) => { const s = outras[Number((e.target as HTMLSelectElement).value)]; if (s) trocarSessao(s); }}>
@@ -119,11 +153,12 @@ export function Admin({ sessao, outras }: { sessao: Sessao; outras: Sessao[] }) 
                   {outras.map((s, i) => <option value={i}>{s.perfil === 'admin' ? 'Admin' : 'Avaliador'} · {s.amb === 'ensaio' ? 'ensaio' : 'produção'}</option>)}
                 </select>
               )}
-              <button class="botao leve" onClick={() => { if (confirm('Sair deste aparelho? Você vai precisar do link de admin para entrar de novo.')) sair(sessao); }}>Sair deste aparelho</button>
+              <button class="botao leve" onClick={() => { if (confirm('Sair deste aparelho? Você vai precisar do link de admin para entrar de novo.')) sair(sessao); }}>{largo && <I c={LogOut} />}Sair deste aparelho</button>
             </div>
           </>
         )}
       </main>
+      </AlvoCampo.Provider>
       </div>
 
       <nav class="adm-barra" aria-label="Seções">

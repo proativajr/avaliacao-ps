@@ -5,6 +5,8 @@ import { dataCurta, Modal } from '../ui';
 import { normalizarNome, emailValido, nomesParaAvaliador } from '@shared/texto.js';
 import { Importar } from './Importar';
 import type { PropsAba } from './Admin';
+import { I, useLargo } from './desktop';
+import { ArrowLeft, FileText, Pencil, Upload, UserPlus } from 'lucide-preact';
 
 const COR_STATUS: Record<string, string> = { ATIVO: 'ok', FALTOU: 'alerta', ELIMINADO: 'erro', DESISTIU: '' };
 
@@ -12,6 +14,8 @@ export function Candidatos(props: PropsAba) {
   const { d, setD, acao } = props;
   const [modo, setModo] = useState<'lista' | 'importar'>(d.candidatos.length ? 'lista' : 'importar');
   const [busca, setBusca] = useState('');
+  const largo = useLargo();
+  const ic = (c: any) => largo && <I c={c} />;   // ícones Lucide só no desktop
   const [status, setStatus] = useState('');
   const [editando, setEditando] = useState<Partial<Candidato> | null>(null);
   const [inscricao, setInscricao] = useState<{ c: Candidato; itens: any[] | null } | null>(null);
@@ -31,7 +35,7 @@ export function Candidatos(props: PropsAba) {
 
   if (modo === 'importar') return (
     <>
-      {d.candidatos.length > 0 && <button class="botao leve" onClick={() => setModo('lista')} style={{ marginBottom: 8, marginLeft: -12 }}>‹ Voltar para a lista</button>}
+      {d.candidatos.length > 0 && <button class="botao leve" onClick={() => setModo('lista')} style={{ marginBottom: 8, marginLeft: largo ? 0 : -12 }}>{largo ? <><I c={ArrowLeft} />Voltar para a lista</> : '‹ Voltar para a lista'}</button>}
       <Importar {...props} aoTerminar={() => setModo('lista')} />
     </>
   );
@@ -61,8 +65,8 @@ export function Candidatos(props: PropsAba) {
           {STATUS.map((s) => <option value={s}>{s}</option>)}
         </select>
         <span class="espaco" />
-        <button class="botao" onClick={() => setEditando({ nome_exibicao: '', email: '', telefone: '', curso: '', semestre: '', foto_url: '' })}>Adicionar à mão</button>
-        <button class="botao principal" onClick={() => setModo('importar')}>Importar inscrições</button>
+        <button class="botao" onClick={() => setEditando({ nome_exibicao: '', email: '', telefone: '', curso: '', semestre: '', foto_url: '' })}>{ic(UserPlus)}Adicionar à mão</button>
+        <button class="botao principal" onClick={() => setModo('importar')}>{ic(Upload)}Importar inscrições</button>
       </div>
       <div class="tabela-box vira-cartao ate-desktop">
         <table class="tabela">
@@ -82,8 +86,8 @@ export function Candidatos(props: PropsAba) {
                 </td>
                 <td class="num" data-rotulo="Avaliadores que deram nota">{notasPorCand[c.id]?.size || 0}</td>
                 <td class="acoes-cel"><div class="acoes-linha">
-                  <button class="botao pequeno" onClick={() => setEditando(c)}>Editar</button>
-                  {c.origem === 'importado' && <button class="botao pequeno" onClick={() => abrirInscricao(c)}>Inscrição</button>}
+                  <button class="botao pequeno" onClick={() => setEditando(c)}>{ic(Pencil)}Editar</button>
+                  {c.origem === 'importado' && <button class="botao pequeno" onClick={() => abrirInscricao(c)}>{ic(FileText)}Inscrição</button>}
                 </div></td>
               </tr>
             ))}

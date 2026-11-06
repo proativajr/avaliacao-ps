@@ -5,6 +5,8 @@ import type { Avaliador } from '../tipos';
 import { copiar, dataRelativa, Modal } from '../ui';
 import { normalizarNome, normalizarEmail, emailValido } from '@shared/texto.js';
 import type { PropsAba } from './Admin';
+import { I, useLargo } from './desktop';
+import { ClipboardPaste, Copy, Link2, MessageCircle, Pencil, RefreshCw, UserCheck, UserPlus, UserX } from 'lucide-preact';
 
 /** "Nome, email" / "Nome<TAB>email" / "Nome email@x.com" -> [{nome, email}] */
 export function lerListaAvaliadores(texto: string) {
@@ -23,6 +25,8 @@ function mensagemWhats(a: Avaliador, processo: string, link: string) {
 
 export function Avaliadores({ d, setD, acao, sessao }: PropsAba) {
   const [busca, setBusca] = useState('');
+  const largo = useLargo();
+  const ic = (c: any) => largo && <I c={c} />;   // ícones Lucide só no desktop
   const [editando, setEditando] = useState<Partial<Avaliador> | null>(null);
   const [colando, setColando] = useState(false);
   const [texto, setTexto] = useState('');
@@ -52,16 +56,16 @@ export function Avaliadores({ d, setD, acao, sessao }: PropsAba) {
       <div class="barra-acoes">
         <input class="entrada" type="search" placeholder="Buscar avaliador" value={busca} onInput={(e) => setBusca((e.target as HTMLInputElement).value)} aria-label="Buscar avaliador" />
         <span class="espaco" />
-        <button class="botao" onClick={() => copiar(todosLinks(), 'Links de todos copiados')} disabled={!d.avaliadores.length}>Copiar todos os links</button>
-        <button class="botao" onClick={() => { setTexto(''); setColando(true); }}>Colar lista</button>
-        <button class="botao principal" onClick={() => setEditando({ nome: '', email: '', area: '' })}>Adicionar avaliador</button>
+        <button class="botao" onClick={() => copiar(todosLinks(), 'Links de todos copiados')} disabled={!d.avaliadores.length}>{ic(Copy)}Copiar todos os links</button>
+        <button class="botao" onClick={() => { setTexto(''); setColando(true); }}>{ic(ClipboardPaste)}Colar lista</button>
+        <button class="botao principal" onClick={() => setEditando({ nome: '', email: '', area: '' })}>{ic(UserPlus)}Adicionar avaliador</button>
       </div>
 
       {!d.avaliadores.length ? (
         <div class="bloco">
           <h2>Nenhum avaliador cadastrado</h2>
           <p>Cole a lista de membros (nome e email, um por linha) ou adicione um por um.</p>
-          <button class="botao principal" onClick={() => { setTexto(''); setColando(true); }}>Colar lista de membros</button>
+          <button class="botao principal" onClick={() => { setTexto(''); setColando(true); }}>{ic(ClipboardPaste)}Colar lista de membros</button>
         </div>
       ) : (
         <div class="tabela-box vira-cartao ate-desktop">
@@ -79,18 +83,18 @@ export function Avaliadores({ d, setD, acao, sessao }: PropsAba) {
                     <td data-rotulo="Último acesso">{dataRelativa(a.ultimo_acesso)}</td>
                     <td class="acoes-cel">
                       <div class="acoes-linha">
-                        {ativo && <button class="botao pequeno" onClick={() => copiar(link, 'Link de ' + a.nome.split(' ')[0] + ' copiado')}>Copiar link</button>}
-                        {ativo && <a class="botao pequeno" target="_blank" rel="noopener" href={'https://wa.me/?text=' + encodeURIComponent(mensagemWhats(a, processo, link))}>WhatsApp</a>}
-                        <button class="botao pequeno" onClick={() => setEditando(a)}>Editar</button>
+                        {ativo && <button class="botao pequeno" onClick={() => copiar(link, 'Link de ' + a.nome.split(' ')[0] + ' copiado')}>{ic(Link2)}Copiar link</button>}
+                        {ativo && <a class="botao pequeno" target="_blank" rel="noopener" href={'https://wa.me/?text=' + encodeURIComponent(mensagemWhats(a, processo, link))}>{ic(MessageCircle)}WhatsApp</a>}
+                        <button class="botao pequeno" onClick={() => setEditando(a)}>{ic(Pencil)}Editar</button>
                         {ativo && <button class="botao pequeno" onClick={async () => {
                           if (!confirm(`Gerar um link novo para ${a.nome}? O link antigo para de funcionar na hora.`)) return;
                           const r = await acao<{ avaliador: Avaliador }>('admin.regerarToken', { id: a.id }, 'Link novo gerado. Envie para ' + a.nome.split(' ')[0] + '.');
                           if (r) setD((x) => ({ ...x, avaliadores: x.avaliadores.map((y) => (y.id === a.id ? r.avaliador : y)) }));
-                        }}>Regerar link</button>}
+                        }}>{ic(RefreshCw)}Regerar link</button>}
                         <button class={'botao pequeno' + (ativo ? ' perigo' : '')} onClick={() => {
                           if (ativo && !confirm(`Desativar ${a.nome}? O link deixa de funcionar, mas as notas já dadas continuam valendo.`)) return;
                           salvar([{ id: a.id, ativo: ativo ? 'NÃO' : 'SIM' }], ativo ? 'Avaliador desativado' : 'Avaliador reativado');
-                        }}>{ativo ? 'Desativar' : 'Reativar'}</button>
+                        }}>{ic(ativo ? UserX : UserCheck)}{ativo ? 'Desativar' : 'Reativar'}</button>
                       </div>
                     </td>
                   </tr>

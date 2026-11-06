@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { Bloco, Criterio, Etapa } from '../tipos';
 import type { PropsAba } from './Admin';
+import { I, useLargo } from './desktop';
+import { ArrowDown, ArrowUp, Plus, Save, Trash2 } from 'lucide-preact';
 
 function SimNao({ valor, aoMudar, rotulo }: { valor: string; aoMudar: (v: string) => void; rotulo: string }) {
   const sim = String(valor).toUpperCase() === 'SIM';
@@ -13,6 +15,8 @@ function SimNao({ valor, aoMudar, rotulo }: { valor: string; aoMudar: (v: string
 }
 
 export function Configuracao({ d, setD, acao }: PropsAba) {
+  const largo = useLargo();
+  const ic = (c: any) => largo && <I c={c} />;   // ícones Lucide só no desktop
   const [cfg, setCfg] = useState<Record<string, any>>({ ...d.config });
   const [etapas, setEtapas] = useState<Etapa[]>(d.etapas.map((e) => ({ ...e })));
   const [blocos, setBlocos] = useState<Bloco[]>(d.blocos.map((b) => ({ ...b })));
@@ -95,7 +99,7 @@ export function Configuracao({ d, setD, acao }: PropsAba) {
             <SimNao rotulo="Na Apresentação, só os avaliadores designados à equipe avaliam" valor={cfg.apresentacao_so_designados} aoMudar={(v) => setCfg({ ...cfg, apresentacao_so_designados: v })} />
           </div>
         </div>
-        <div class="barra-acoes fim"><button class="botao principal" onClick={salvarConfig}>Salvar processo</button></div>
+        <div class="barra-acoes fim"><button class="botao principal" onClick={salvarConfig}>{ic(Save)}Salvar processo</button></div>
       </div>
 
       <div class="grade-blocos duas" style={{ marginTop: 16 }}>
@@ -108,13 +112,13 @@ export function Configuracao({ d, setD, acao }: PropsAba) {
               <label class="campo"><span>Ordem</span><input type="number" value={e.ordem} onInput={(ev) => setEtapas((l) => l.map((x) => (x === e ? { ...x, ordem: Number((ev.target as HTMLInputElement).value) } : x)))} /></label>
               <div class="linha-fim">
                 <SimNao rotulo="Aberta" valor={String(e.aberta)} aoMudar={(v) => setEtapas((l) => l.map((x) => (x === e ? { ...x, aberta: v } : x)))} />
-                <button class="botao pequeno perigo" onClick={() => removerEtapa(e)} aria-label={`Apagar ${e.nome}`}>Apagar</button>
+                <button class="botao pequeno perigo" onClick={() => removerEtapa(e)} aria-label={`Apagar ${e.nome}`}>{ic(Trash2)}Apagar</button>
               </div>
             </div>
           ))}
           <div class="barra-acoes fim">
-            <button class="botao" onClick={() => setEtapas((l) => [...l, { id: '', nome: `Dinâmica ${l.length + 1}`, ordem: l.length + 1, aberta: 'NÃO' }])}>Adicionar dinâmica</button>
-            <button class="botao principal" onClick={salvarEtapas}>Salvar dinâmicas</button>
+            <button class="botao" onClick={() => setEtapas((l) => [...l, { id: '', nome: `Dinâmica ${l.length + 1}`, ordem: l.length + 1, aberta: 'NÃO' }])}>{ic(Plus)}Adicionar dinâmica</button>
+            <button class="botao principal" onClick={salvarEtapas}>{ic(Save)}Salvar dinâmicas</button>
           </div>
         </div>
 
@@ -130,14 +134,14 @@ export function Configuracao({ d, setD, acao }: PropsAba) {
             </div>
           ))}
           <div class="barra-acoes fim">
-            <button class="botao" onClick={() => setBlocos((l) => [...l, { id: '', nome: 'Novo bloco', nome_curto: 'Novo', ordem: l.length + 1, ativo: 'SIM' }])}>Adicionar bloco</button>
-            <button class="botao principal" onClick={salvarBlocos}>Salvar blocos</button>
+            <button class="botao" onClick={() => setBlocos((l) => [...l, { id: '', nome: 'Novo bloco', nome_curto: 'Novo', ordem: l.length + 1, ativo: 'SIM' }])}>{ic(Plus)}Adicionar bloco</button>
+            <button class="botao principal" onClick={salvarBlocos}>{ic(Save)}Salvar blocos</button>
           </div>
         </div>
       </div>
 
       <div class="bloco" style={{ marginTop: 16 }}>
-        <div class="bloco-topo"><h2>Critérios</h2><div class="acoes-topo"><button class="botao principal" onClick={salvarCriterios}>Salvar critérios</button></div></div>
+        <div class="bloco-topo"><h2>Critérios</h2><div class="acoes-topo"><button class="botao principal" onClick={salvarCriterios}>{ic(Save)}Salvar critérios</button></div></div>
         <p class="ajuda">O avaliador vê a descrição ao tocar no critério. Peso padrão 1 (com todos 1, a média é simples). Sem nenhuma dinâmica desmarcada, o critério vale em todas.</p>
         {d.blocos.map((b) => (
           <div>
@@ -167,17 +171,17 @@ export function Configuracao({ d, setD, acao }: PropsAba) {
                   <span class="ajuda">ID: {c.id || '(gerado ao salvar)'}</span>
                   <span class="espaco" />
                   <span class="mover">
-                    <button class="botao" onClick={() => mover(c, -1)} aria-label={`Subir ${c.nome}`}>↑</button>
-                    <button class="botao" onClick={() => mover(c, 1)} aria-label={`Descer ${c.nome}`}>↓</button>
+                    <button class="botao" onClick={() => mover(c, -1)} aria-label={`Subir ${c.nome}`} title={largo ? `Subir ${c.nome}` : undefined}>{largo ? <I c={ArrowUp} /> : '↑'}</button>
+                    <button class="botao" onClick={() => mover(c, 1)} aria-label={`Descer ${c.nome}`} title={largo ? `Descer ${c.nome}` : undefined}>{largo ? <I c={ArrowDown} /> : '↓'}</button>
                   </span>
-                  <button class="botao perigo" onClick={() => removerCriterio(c)}>Apagar</button>
+                  <button class="botao perigo" onClick={() => removerCriterio(c)}>{ic(Trash2)}Apagar</button>
                 </div>
               </div>
             ))}
-            <button class="botao" onClick={() => setCrits((l) => [...l, { id: '', bloco: b.id, ordem: l.filter((x) => x.bloco === b.id).length + 1, sigla: '', nome: 'Novo critério', descricao: '', peso: 1, ativo: 'SIM', etapas: '' }])}>Adicionar critério em {b.nome_curto}</button>
+            <button class="botao" onClick={() => setCrits((l) => [...l, { id: '', bloco: b.id, ordem: l.filter((x) => x.bloco === b.id).length + 1, sigla: '', nome: 'Novo critério', descricao: '', peso: 1, ativo: 'SIM', etapas: '' }])}>{ic(Plus)}Adicionar critério em {b.nome_curto}</button>
           </div>
         ))}
-        <div class="barra-acoes fim"><button class="botao principal" onClick={salvarCriterios}>Salvar critérios</button></div>
+        <div class="barra-acoes fim"><button class="botao principal" onClick={salvarCriterios}>{ic(Save)}Salvar critérios</button></div>
       </div>
     </section>
   );

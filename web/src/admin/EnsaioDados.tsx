@@ -3,6 +3,8 @@ import { useState } from 'preact/hooks';
 import { baixarJson, dataArquivo } from './exportar';
 import type { PropsAba } from './Admin';
 import { Modal } from '../ui';
+import { I, useLargo } from './desktop';
+import { Download, Eraser, ListChecks, Lock, RotateCcw, Sparkles, Trash2, TriangleAlert, X } from 'lucide-preact';
 
 interface ResumoReset {
   apaga: { candidatos: number; inscricoes: number; importacoes: number; notas: number; observacoes: number };
@@ -14,6 +16,8 @@ function ResetProcesso({ acao, recarregar }: Pick<PropsAba, 'acao' | 'recarregar
   const [resumo, setResumo] = useState<ResumoReset | null>(null);
   const [texto, setTexto] = useState('');
   const [rodando, setRodando] = useState(false);
+  const largo = useLargo();
+  const ic = (c: any) => largo && <I c={c} />;   // ícones Lucide só no desktop
   const abrir = async () => { setTexto(''); const r = await acao<ResumoReset>('admin.resumoReset'); if (r) setResumo(r); };
   const executar = async () => {
     if (texto.trim() !== 'RESETAR' || rodando) return;
@@ -31,18 +35,46 @@ function ResetProcesso({ acao, recarregar }: Pick<PropsAba, 'acao' | 'recarregar
         <li><b>Apaga:</b> candidatos, inscrições importadas, histórico de importações, notas e observações. As equipes ficam vazias e o Ao vivo volta ao início.</li>
         <li><b>Mantém:</b> avaliadores (os links continuam valendo), equipes e os avaliadores designados a cada uma, dinâmicas, configuração e critérios, inclusive os valores PREDADOR.</li>
       </ul>
-      <button class="botao perigo" onClick={abrir}>Resetar processo…</button>
+      <button class="botao perigo" onClick={abrir}>{ic(RotateCcw)}Resetar processo…</button>
       {resumo && (
         <Modal titulo="Resetar processo seletivo" aoFechar={() => !rodando && setResumo(null)}>
-          <p class="aviso erro" style={{ marginTop: 0 }}>
-            Vai apagar {n(resumo.apaga.candidatos, 'candidato', 'candidatos')}, {n(resumo.apaga.notas, 'nota', 'notas')}, {n(resumo.apaga.observacoes, 'observação', 'observações')} e {n(resumo.apaga.importacoes, 'importação', 'importações')}. Não dá para desfazer.
-          </p>
-          <p class="ajuda">Ficam {n(resumo.mantem.avaliadores, 'avaliador', 'avaliadores')}, {n(resumo.mantem.equipes, 'equipe', 'equipes')} com {n(resumo.mantem.designacoes, 'designação', 'designações')}, {n(resumo.mantem.dinamicas, 'dinâmica', 'dinâmicas')} e {n(resumo.mantem.criterios, 'critério', 'critérios')}. Se quiser guardar uma cópia, baixe o backup antes.</p>
+          {largo ? (
+            /* Desktop: o que apaga e o que fica lado a lado, e o alerta com faixa lateral, ícone e texto */
+            <>
+              <p>O app volta ao começo, pronto para importar a planilha de inscrições de novo.</p>
+              <div class="troca">
+                <div class="apaga">
+                  <h3><I c={Trash2} />Apaga</h3>
+                  <ul>
+                    <li>{n(resumo.apaga.candidatos, 'candidato', 'candidatos')}</li>
+                    <li>{n(resumo.apaga.inscricoes, 'inscrição importada', 'inscrições importadas')} e {n(resumo.apaga.importacoes, 'importação', 'importações')} no histórico</li>
+                    <li>{n(resumo.apaga.notas, 'nota', 'notas')} e {n(resumo.apaga.observacoes, 'observação', 'observações')}</li>
+                  </ul>
+                </div>
+                <div class="mantem">
+                  <h3><I c={Lock} />Mantém</h3>
+                  <ul>
+                    <li>{n(resumo.mantem.avaliadores, 'avaliador', 'avaliadores')} e os links</li>
+                    <li>{n(resumo.mantem.equipes, 'equipe', 'equipes')} com {n(resumo.mantem.designacoes, 'designação', 'designações')}</li>
+                    <li>{n(resumo.mantem.dinamicas, 'dinâmica', 'dinâmicas')} e {n(resumo.mantem.criterios, 'critério', 'critérios')}</li>
+                  </ul>
+                </div>
+              </div>
+              <p class="alerta-desk erro"><I c={TriangleAlert} /><span><b>Não dá para desfazer.</b> Baixe o backup antes se quiser guardar uma cópia.</span></p>
+            </>
+          ) : (
+            <>
+            <p class="aviso erro" style={{ marginTop: 0 }}>
+              Vai apagar {n(resumo.apaga.candidatos, 'candidato', 'candidatos')}, {n(resumo.apaga.notas, 'nota', 'notas')}, {n(resumo.apaga.observacoes, 'observação', 'observações')} e {n(resumo.apaga.importacoes, 'importação', 'importações')}. Não dá para desfazer.
+            </p>
+            <p class="ajuda">Ficam {n(resumo.mantem.avaliadores, 'avaliador', 'avaliadores')}, {n(resumo.mantem.equipes, 'equipe', 'equipes')} com {n(resumo.mantem.designacoes, 'designação', 'designações')}, {n(resumo.mantem.dinamicas, 'dinâmica', 'dinâmicas')} e {n(resumo.mantem.criterios, 'critério', 'critérios')}. Se quiser guardar uma cópia, baixe o backup antes.</p>
+            </>
+          )}
           <label class="campo"><span>Digite RESETAR para confirmar</span>
             <input value={texto} autoComplete="off" onInput={(e) => setTexto((e.target as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter') executar(); }} /></label>
           <div class="acoes">
-            <button class="botao leve" disabled={rodando} onClick={() => setResumo(null)}>Cancelar</button>
-            <button class="botao perigo cheio" disabled={texto.trim() !== 'RESETAR' || rodando} onClick={executar}>{rodando ? 'Resetando…' : 'Resetar agora'}</button>
+            <button class="botao leve" disabled={rodando} onClick={() => setResumo(null)}>{ic(X)}Cancelar</button>
+            <button class="botao perigo cheio" disabled={texto.trim() !== 'RESETAR' || rodando} onClick={executar}>{ic(RotateCcw)}{rodando ? 'Resetando…' : 'Resetar agora'}</button>
           </div>
         </Modal>
       )}
@@ -56,6 +88,8 @@ export function EnsaioDados({ d, acao, recarregar, sessao }: PropsAba) {
   const [nAval, setNAval] = useState(12);
   const [conferencia, setConferencia] = useState<any>(null);
   const [confirmacao, setConfirmacao] = useState('');
+  const largo = useLargo();
+  const ic = (c: any) => largo && <I c={c} />;
 
   return (
     <section>
@@ -73,11 +107,11 @@ export function EnsaioDados({ d, acao, recarregar, sessao }: PropsAba) {
                 <label class="campo"><span>Avaliadores</span><input type="number" min="1" max="50" value={nAval} onInput={(e) => setNAval(Number((e.target as HTMLInputElement).value))} /></label>
               </div>
               <div class="barra-acoes">
-                <button class="botao principal" onClick={async () => { if (await acao('admin.gerarFicticios', { candidatos: nCand, avaliadores: nAval }, 'Dados fictícios gerados')) recarregar(); }}>Gerar dados fictícios</button>
+                <button class="botao principal" onClick={async () => { if (await acao('admin.gerarFicticios', { candidatos: nCand, avaliadores: nAval }, 'Dados fictícios gerados')) recarregar(); }}>{ic(Sparkles)}Gerar dados fictícios</button>
                 <button class="botao perigo" onClick={async () => {
                   if (!confirm('Apagar candidatos, avaliadores e notas desta planilha de ENSAIO? A configuração e os critérios ficam.')) return;
                   if (await acao('admin.zerarEnsaio', {}, 'Ensaio zerado')) recarregar();
-                }}>Zerar dados do ensaio</button>
+                }}>{ic(Eraser)}Zerar dados do ensaio</button>
               </div>
               <p class="ajuda">Para testar a importação, use os arquivos da pasta <code>exemplos/</code> do repositório.</p>
             </>
@@ -87,7 +121,7 @@ export function EnsaioDados({ d, acao, recarregar, sessao }: PropsAba) {
         <div class="bloco">
           <h2>Conferir cálculos</h2>
           <p class="ajuda">Recalcula a Tabela Geral por fora (mesmo código do app) e compara com as fórmulas da planilha, na dinâmica escolhida na célula B2 da Tabela Geral.</p>
-          <button class="botao" style={{ marginTop: 12 }} onClick={async () => setConferencia(await acao('admin.conferir'))}>Conferir agora</button>
+          <button class="botao" style={{ marginTop: 12 }} onClick={async () => setConferencia(await acao('admin.conferir'))}>{ic(ListChecks)}Conferir agora</button>
           {conferencia && (conferencia.ok
             ? <p class="aviso ok" style={{ marginTop: 12 }}>Tudo certo: {conferencia.candidatos} candidatos conferidos (dinâmica {conferencia.etapa}).</p>
             : <div class="aviso erro" style={{ marginTop: 12 }}><b>Diferenças encontradas:</b><ul>{conferencia.diferencas.slice(0, 20).map((x: string) => <li>{x}</li>)}</ul></div>)}
@@ -96,7 +130,7 @@ export function EnsaioDados({ d, acao, recarregar, sessao }: PropsAba) {
         <div class="bloco">
           <h2>Backup completo</h2>
           <p class="ajuda">Baixa todas as abas de dados (inclui tokens e contatos). Guarde em local seguro.</p>
-          <button class="botao" style={{ marginTop: 12 }} onClick={async () => { const r = await acao('admin.backup', {}, 'Backup gerado'); if (r) baixarJson(`backup_${dataArquivo()}.json`, r); }}>Baixar backup</button>
+          <button class="botao" style={{ marginTop: 12 }} onClick={async () => { const r = await acao('admin.backup', {}, 'Backup gerado'); if (r) baixarJson(`backup_${dataArquivo()}.json`, r); }}>{ic(Download)}Baixar backup</button>
         </div>
       </div>
 
@@ -110,7 +144,7 @@ export function EnsaioDados({ d, acao, recarregar, sessao }: PropsAba) {
         <button class="botao perigo cheio" disabled={confirmacao !== 'APAGAR'} onClick={async () => {
           if (!confirm('Última confirmação: apagar todos os dados do processo agora?')) return;
           if (await acao('admin.apagarDados', { confirmacao }, 'Dados do processo apagados')) { setConfirmacao(''); recarregar(); }
-        }}>Apagar dados do processo</button>
+        }}>{ic(Trash2)}Apagar dados do processo</button>
       </div>
     </section>
   );

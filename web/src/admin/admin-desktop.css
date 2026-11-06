@@ -1,0 +1,257 @@
+/* =====================================================================
+ * ADMIN NO DESKTOP (≥ 1024 px) · Direção B "Linha ascendente"
+ * Kit de marca Proativa Jr. v1.0: só os tokens oficiais, Poppins, raio de 4 px,
+ * espaçamento 4/8/12/16/24/32/48/64, um destaque amarelo por tela e foco com anel amarelo.
+ *
+ * Tudo aqui vale só dentro de .adm-desk, classe que o Admin põe apenas no desktop.
+ * O app do avaliador e o admin no celular e no tablet não são tocados por este arquivo.
+ * ===================================================================== */
+@media (min-width: 1024px) {
+  /* Paleta clara do kit também quando o sistema está no tema escuro (o kit é claro) */
+  .adm-desk {
+    --fundo: #F7F8FA; --superficie: #FFFFFF; --superficie-2: #EEF0F4; --texto: #0F1626; --suave: #5B6577;
+    --linha: #D8DCE4; --linha-suave: #D8DCE4; --borda-forte: #8C94A3; --marca: #2A3756; --marca-texto: #FFFFFF;
+    --cabecalho-tabela: #2A3756; --ok: #1B7A55; --ok-suave: #F7F8FA; --alerta: #9A6B00; --alerta-suave: #FFFFFF;
+    --erro: #B3261E; --erro-suave: #FBEAE9; --destaque: #FAD20A; --destaque-texto: #2A3756;
+    --rapido: 140ms;
+    color-scheme: light;
+    background: #FFFFFF; color: #0F1626;
+  }
+  .adm-desk .adm-corpo { display: block; }
+
+  /* Ícones Lucide no padrão da marca: traço de 2 px e cantos retos */
+  .adm-desk .i { flex: none; stroke-width: 2; stroke-linecap: square; stroke-linejoin: miter; }
+
+  /* Foco: anel amarelo de 3 px com borda azul de 2 px por fora, visível sobre branco e sobre azul */
+  .adm-desk :focus-visible { outline: 3px solid #FAD20A; outline-offset: 0; box-shadow: 0 0 0 5px #2A3756; }
+  .adm-desk .campo-azul :focus-visible { box-shadow: none; }
+
+  /* ---------- Faixa de ensaio (sem caixa-alta) ---------- */
+  .adm-desk .faixa-ensaio { display: flex; gap: 8px; align-items: center; padding: 8px 48px; background: #FEFBEA; color: #0F1626; font-size: 14px; border-bottom: 1px solid #D8DCE4; }
+  .adm-desk .faixa-ensaio .i { color: #9A6B00; }
+
+  /* ---------- Campo azul com o recorte diagonal ascendente (um por tela) ---------- */
+  .adm-desk .campo-azul {
+    background: #2A3756; color: #FFFFFF; padding: 24px 48px 80px;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 80px), 0 100%);
+  }
+  .adm-desk .barra { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+  .adm-desk .marca-campo { width: 160px; height: auto; flex: none; }
+  .adm-desk .abas { display: flex; gap: 4px; flex-wrap: wrap; }
+  .adm-desk .aba {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 0; border-radius: 4px;
+    background: transparent; color: #FFFFFF; font-size: 16px; font-weight: 500; cursor: pointer;
+    transition: background-color var(--rapido), color var(--rapido);
+  }
+  .adm-desk .aba:hover { background: rgba(255, 255, 255, 0.12); }
+  .adm-desk .aba[aria-current='page'] { background: #FFFFFF; color: #2A3756; font-weight: 600; }
+  .adm-desk .status-campo { display: inline-flex; align-items: center; gap: 8px; color: #D8DCE4; font-size: 14px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .adm-desk .status-campo.salvando { color: #FFFFFF; font-weight: 600; }
+  .adm-desk .status-campo.salvando .i { animation: girar 0.9s linear infinite; }
+
+  .adm-desk .titulo-campo { margin-top: 32px; display: grid; gap: 16px; justify-items: start; }
+  .adm-desk .titulo-campo:empty { display: none; }
+  .adm-desk .slot-campo { display: grid; gap: 16px; justify-items: start; width: 100%; }
+  .adm-desk .slot-campo:empty { display: none; }
+  .adm-desk .titulo-campo h1, .adm-desk .campo-azul .titulo { margin: 0; font-size: 48px; font-weight: 600; line-height: 1.1; color: #FFFFFF; letter-spacing: 0; }
+  .adm-desk .titulo-linha { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .adm-desk .titulo-linha h1 { margin-right: 12px; }
+  .adm-desk .linha-status { margin: 0; color: #D8DCE4; font-size: 16px; }
+
+  /* Botões de escolha sobre o azul: dinâmica, filtro do ranking e abas internas */
+  .adm-desk .dinamicas-campo, .adm-desk .campo-azul .segmentado {
+    display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 0; background: transparent; width: auto; overflow: visible;
+  }
+  .adm-desk .dinamicas-campo button, .adm-desk .campo-azul .segmentado button {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 4px;
+    border: 2px solid rgba(255, 255, 255, 0.5); background: transparent; color: #FFFFFF;
+    font-size: 16px; font-weight: 500; cursor: pointer; box-shadow: none; transition: background-color var(--rapido);
+  }
+  .adm-desk .dinamicas-campo button small { font-size: 14px; color: #D8DCE4; font-weight: 400; }
+  .adm-desk .dinamicas-campo button:hover, .adm-desk .campo-azul .segmentado button:hover { background: rgba(255, 255, 255, 0.12); }
+  .adm-desk .dinamicas-campo button[aria-checked='true'],
+  .adm-desk .campo-azul .segmentado button[aria-selected='true'],
+  .adm-desk .campo-azul .segmentado button[aria-checked='true'] { background: #FFFFFF; border-color: #FFFFFF; color: #2A3756; font-weight: 600; box-shadow: none; }
+  .adm-desk .dinamicas-campo button[aria-checked='true'] small { color: #5B6577; }
+
+  /* Ranking: o cabeçalho da página vai para o campo azul */
+  .adm-desk .campo-azul .cabeca-pagina { margin: 0; width: 100%; align-items: flex-end; gap: 16px 32px; }
+  .adm-desk .campo-azul .cabeca-pagina .sub { color: #D8DCE4; font-size: 16px; margin-top: 8px; }
+  .adm-desk .campo-azul .link { color: #FFFFFF; display: inline-flex; align-items: center; gap: 4px; }
+
+  /* ---------- Conteúdo ---------- */
+  .adm-desk .adm-conteudo { padding: 8px 48px 64px; margin: 0; max-width: 1440px; width: 100%; }
+  .adm-desk .adm-conteudo h2 { font-size: 24px; color: #2A3756; }
+  .adm-desk .adm-conteudo .subtitulo { color: #5B6577; font-size: 16px; margin-bottom: 24px; }
+  .adm-desk .bloco, .adm-desk .painel, .adm-desk .metrica, .adm-desk .tabela-box, .adm-desk .cartao-simples { box-shadow: none; border: 1px solid #D8DCE4; }
+  .adm-desk .bloco { padding: 24px; }
+  .adm-desk .bloco > h2, .adm-desk .bloco-topo h2 { font-size: 21px; }
+  .adm-desk .bloco.perigo { border-color: #D8DCE4; border-left: 4px solid #B3261E; }
+  .adm-desk .metrica.destaque { border-color: #2A3756; }
+  .adm-desk .adm-conta { margin-top: 48px; padding-top: 24px; border-top: 1px solid #D8DCE4; gap: 12px; }
+
+  /* ---------- Botões (item 9 do DESIGN.md) ---------- */
+  .adm-desk .botao {
+    min-height: 48px; padding: 0 24px; gap: 8px; border: 2px solid #2A3756; border-radius: 4px; background: #FFFFFF; color: #2A3756;
+    font-size: 16px; font-weight: 600; filter: none; opacity: 1;
+    transition: background-color var(--rapido), border-color var(--rapido), color var(--rapido), box-shadow var(--rapido);
+  }
+  .adm-desk .botao:hover, .adm-desk .botao.leve:hover { background: #EEF0F4; color: #2A3756; }
+  .adm-desk .botao.leve { background: #FFFFFF; border-color: #2A3756; color: #2A3756; }
+  .adm-desk .botao.principal { background: #2A3756; border-color: #2A3756; color: #FFFFFF; }
+  .adm-desk .botao.principal:hover { background: #0F1626; border-color: #0F1626; color: #FFFFFF; filter: none; }
+  .adm-desk .botao.destaque { background: #FAD20A; border-color: #FAD20A; color: #2A3756; }
+  .adm-desk .botao.destaque:hover { background: #FAD20A; border-color: #2A3756; }
+  .adm-desk .botao.perigo { border-color: #B3261E; color: #B3261E; background: #FFFFFF; }
+  .adm-desk .botao.perigo:hover { background: #FBEAE9; color: #B3261E; }
+  .adm-desk .botao.perigo.cheio { background: #B3261E; color: #FFFFFF; }
+  .adm-desk .botao.perigo.cheio:hover { background: #0F1626; border-color: #0F1626; color: #FFFFFF; }
+  .adm-desk .botao.pequeno { min-height: 44px; padding: 0 16px; font-size: 14px; }
+  .adm-desk .botao.vaga { border-style: dashed; }
+  .adm-desk .botao.vaga:hover { border-style: solid; }
+  .adm-desk .botao.inverso { background: transparent; border-color: #FFFFFF; color: #FFFFFF; }
+  .adm-desk .botao.inverso:hover { background: rgba(255, 255, 255, 0.12); color: #FFFFFF; }
+  .adm-desk .botao:disabled, .adm-desk .botao.leve:disabled, .adm-desk .botao.principal:disabled,
+  .adm-desk .botao.perigo:disabled, .adm-desk .botao.perigo.cheio:disabled, .adm-desk .botao.destaque:disabled {
+    cursor: not-allowed; opacity: 1; background: #EEF0F4; border-color: #D8DCE4; border-style: solid; color: #5B6577;
+  }
+  .adm-desk .link { display: inline-flex; align-items: center; gap: 4px; color: #2A3756; font-weight: 600; }
+  .adm-desk .mais-menu .botao { border-color: transparent; width: 100%; }
+  .adm-desk .mais-menu .botao:hover { border-color: #2A3756; }
+  .adm-desk .em-dia { display: inline-flex; align-items: center; gap: 4px; color: #1B7A55; font-weight: 500; font-size: 14px; }
+
+  /* ---------- Campos ---------- */
+  .adm-desk .campo > span { color: #2A3756; font-size: 14px; font-weight: 500; }
+  .adm-desk .campo input, .adm-desk .campo select, .adm-desk .campo textarea, .adm-desk .entrada {
+    min-height: 48px; border: 2px solid #8C94A3; border-radius: 4px; padding: 8px 16px; background: #FFFFFF; color: #0F1626;
+  }
+  .adm-desk .campo input:focus-visible, .adm-desk .campo select:focus-visible, .adm-desk .campo textarea:focus-visible, .adm-desk .entrada:focus-visible {
+    border-color: #2A3756; outline: none; box-shadow: 0 0 0 3px #FAD20A;
+  }
+  .adm-desk .busca-campo { border: 2px solid #8C94A3; background: #FFFFFF; color: #5B6577; }
+  .adm-desk .busca-campo:focus-within { border-color: #2A3756; outline: none; box-shadow: 0 0 0 3px #FAD20A; }
+  .adm-desk .busca-campo input:focus-visible { outline: none; box-shadow: none; }
+
+  /* ---------- Abas internas fora do azul (controle segmentado) ---------- */
+  .adm-desk .segmentado { background: transparent; padding: 0; gap: 8px; }
+  .adm-desk .segmentado button { border: 2px solid #8C94A3; color: #2A3756; font-size: 14px; font-weight: 500; min-height: 44px; }
+  .adm-desk .segmentado button:hover { background: #EEF0F4; }
+  .adm-desk .segmentado button[aria-selected='true'], .adm-desk .segmentado button[aria-checked='true'] { background: #2A3756; border-color: #2A3756; color: #FFFFFF; box-shadow: none; }
+
+  /* ---------- Alertas: faixa lateral, ícone e texto ---------- */
+  .adm-desk .aviso { background: #F7F8FA; border-left: 4px solid #5B6577; color: #0F1626; }
+  .adm-desk .aviso.erro { background: #FBEAE9; border-left-color: #B3261E; }
+  .adm-desk .aviso.ok { background: #F7F8FA; border-left-color: #1B7A55; }
+  .adm-desk .aviso.alerta { background: #FFFFFF; border: 1px solid #D8DCE4; border-left: 4px solid #9A6B00; }
+  .adm-desk .alerta-desk { display: flex; gap: 12px; align-items: flex-start; margin: 0; padding: 12px 16px; background: #FFFFFF; border: 1px solid #D8DCE4; border-left: 4px solid #9A6B00; border-radius: 4px; color: #0F1626; font-size: 16px; }
+  .adm-desk .alerta-desk .i { color: #9A6B00; margin-top: 2px; }
+  .adm-desk .alerta-desk b { font-weight: 600; }
+  .adm-desk .alerta-desk > span > b:first-child { color: #9A6B00; }
+  .adm-desk .alerta-desk.erro { background: #FBEAE9; border-color: #FBEAE9; border-left-color: #B3261E; }
+  .adm-desk .alerta-desk.erro .i, .adm-desk .alerta-desk.erro > span > b:first-child { color: #B3261E; }
+  .adm-desk .ajuda:has(> .i) { display: flex; gap: 8px; align-items: flex-start; max-width: 64ch; }
+  .adm-desk .ajuda > .i { width: 18px; height: 18px; margin-top: 1px; color: #5B6577; }
+  .adm-desk .selo { border-radius: 4px; }
+  .adm-desk .estado { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; color: #5B6577; }
+  .adm-desk .estado.ok { color: #1B7A55; }
+  .adm-desk .estado.falta { color: #B3261E; }
+  .adm-desk .estado.andamento { color: #2A3756; font-weight: 600; }
+
+  /* ---------- Tabelas da marca ---------- */
+  .adm-desk .tabela th { font-weight: 600; background: #2A3756; color: #FFFFFF; }
+  .adm-desk .tabela tbody tr:nth-child(even) td { background: #F7F8FA; }
+  .adm-desk .tabela tbody tr:hover td { background: #EEF0F4; }
+  .adm-desk .tabela .acoes-linha { gap: 8px; }
+
+  /* ---------- Janela (modal) com véu Azul Proativa a 70% ---------- */
+  .adm-desk .modal-fundo { background: rgba(42, 55, 86, 0.7); padding: 24px; }
+  .adm-desk .modal { max-width: 720px; padding: 32px; border-radius: 4px; box-shadow: none; }
+  .adm-desk .modal h2 { font-size: 24px; color: #2A3756; margin-bottom: 16px; }
+  .adm-desk .modal h3 { color: #2A3756; }
+  .adm-desk .modal .acoes { gap: 12px; margin-top: 24px; }
+  .adm-desk .modal > .bloco { border: 0; padding: 0; }
+  .adm-desk .chips { gap: 8px; }
+  .adm-desk .chips button { border: 2px solid #8C94A3; color: #2A3756; font-size: 14px; font-weight: 500; }
+  .adm-desk .chips button:hover { background: #EEF0F4; }
+  .adm-desk .chips button[aria-pressed='true'] { background: #2A3756; border-color: #2A3756; color: #FFFFFF; }
+  .adm-desk .montar .passo { border: 2px solid #2A3756; color: #2A3756; display: grid; place-items: center; }
+  .adm-desk .montar .passo:hover { background: #EEF0F4; }
+  .adm-desk .montar .passo:disabled { opacity: 1; background: #EEF0F4; border-color: #D8DCE4; color: #5B6577; cursor: not-allowed; }
+  .adm-desk .alocar .nums button { border-radius: 4px; border: 2px solid #8C94A3; color: #2A3756; font-size: 14px; }
+  .adm-desk .alocar .nums button:hover { background: #EEF0F4; }
+  .adm-desk .alocar .nums button[aria-checked='true'] { background: #2A3756; border-color: #2A3756; color: #FFFFFF; }
+  .adm-desk .alocar li.sem .nome { color: #5B6577; }
+
+  /* Reset: o que apaga e o que fica, lado a lado */
+  .adm-desk .troca { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border: 1px solid #D8DCE4; border-radius: 4px; margin: 16px 0; }
+  .adm-desk .troca > div { padding: 16px; }
+  .adm-desk .troca > div + div { border-left: 1px solid #D8DCE4; }
+  .adm-desk .troca h3 { font-size: 16px; font-weight: 600; display: flex; gap: 8px; align-items: center; margin: 0 0 8px; }
+  .adm-desk .troca .apaga h3 { color: #B3261E; }
+  .adm-desk .troca .mantem h3 { color: #2A3756; }
+  .adm-desk .troca ul { margin: 0; padding-left: 24px; font-size: 14px; }
+  .adm-desk .modal .alerta-desk { margin-bottom: 24px; }
+
+  /* ---------- Ao vivo: equipes em degraus e o painel da equipe escolhida ---------- */
+  .adm-desk .aovivo-desk { display: grid; gap: 32px; }
+  .adm-desk .degraus-topo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .adm-desk .degraus-topo h2 { margin: 0; font-size: 21px; display: flex; gap: 8px; align-items: center; }
+  .adm-desk .degraus { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; align-items: end; }
+  /* A linha sobe: cada equipe um degrau acima da anterior, na ordem de apresentação */
+  .adm-desk .degraus li:nth-child(4n + 2) { padding-bottom: 24px; }
+  .adm-desk .degraus li:nth-child(4n + 3) { padding-bottom: 48px; }
+  .adm-desk .degraus li:nth-child(4n + 4) { padding-bottom: 72px; }
+  .adm-desk .degrau {
+    width: 100%; text-align: left; display: grid; gap: 8px; padding: 16px; background: #FFFFFF; color: #0F1626;
+    border: 1px solid #D8DCE4; border-radius: 4px; cursor: pointer; font: inherit;
+    transition: border-color var(--rapido), background-color var(--rapido);
+  }
+  .adm-desk .degrau:hover { border-color: #2A3756; background: #F7F8FA; }
+  .adm-desk .degrau[aria-pressed='true'] { border: 2px solid #2A3756; padding: 15px; }
+  /* O único amarelo da tela: filete de 5 px no topo da equipe que está apresentando */
+  .adm-desk .degrau.no-ar { border-top: 5px solid #FAD20A; padding-top: 12px; }
+  .adm-desk .degrau .ordem { font-size: 14px; color: #5B6577; font-weight: 500; }
+  .adm-desk .degrau b { font-size: 24px; font-weight: 600; color: #2A3756; line-height: 1.2; }
+  .adm-desk .degrau .quem { font-size: 14px; color: #0F1626; overflow-wrap: anywhere; }
+
+  .adm-desk .detalhe { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; border-top: 1px solid #D8DCE4; padding-top: 32px; }
+  .adm-desk .detalhe > h2 { grid-column: 1 / -1; margin: 0; font-size: 36px; font-weight: 600; color: #2A3756; line-height: 1.15; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .adm-desk .detalhe > h2 .acoes { margin-left: auto; display: flex; gap: 12px; }
+  .adm-desk .det-col { min-width: 0; display: grid; align-content: start; }
+  .adm-desk .det-col h3 { font-size: 18px; font-weight: 600; color: #2A3756; display: flex; gap: 8px; align-items: center; margin: 0 0 16px; }
+  .adm-desk .det-col h3 small { color: #5B6577; font-weight: 400; font-size: 16px; }
+  .adm-desk .momentos { list-style: none; padding: 0; margin: 0 0 32px; display: grid; gap: 12px; }
+  .adm-desk .momentos li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; align-items: center; padding: 16px; border: 1px solid #D8DCE4; border-radius: 4px; }
+  .adm-desk .momentos li > b { font-weight: 600; color: #2A3756; display: flex; gap: 8px; align-items: center; }
+  .adm-desk .momentos li > .estado { white-space: normal; }
+  .adm-desk .momentos li > .botao { grid-row: 1 / span 2; grid-column: 2; }
+  .adm-desk .fotos { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+  .adm-desk .fotos li { display: flex; gap: 12px; align-items: center; font-size: 14px; min-width: 0; }
+  .adm-desk .fotos .n, .adm-desk .pessoas .n { min-width: 0; display: grid; }
+  .adm-desk .fotos .n small { color: #5B6577; font-size: 14px; }
+  .adm-desk .avatar { position: relative; overflow: hidden; flex: none; display: inline-grid; place-items: center; border-radius: 4px; background: #EEF0F4; border: 1px solid #D8DCE4; color: #2A3756; font-weight: 600; }
+  .adm-desk .avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .adm-desk .pessoas { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  .adm-desk .pessoas li { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 12px; background: #F7F8FA; border-radius: 4px; }
+  .adm-desk .avatar-av { width: 40px; height: 40px; border-radius: 50%; background: #2A3756; color: #FFFFFF; display: grid; place-items: center; font-size: 14px; font-weight: 600; }
+  .adm-desk .pessoas b { font-weight: 600; overflow-wrap: anywhere; }
+  .adm-desk .pessoas small { color: #5B6577; font-size: 14px; }
+  .adm-desk .det-col > .botao.vaga { justify-self: start; margin-top: 12px; }
+  .adm-desk .det-col > .ajuda { margin-top: 12px; }
+  .adm-desk .vazio-desk { display: grid; gap: 12px; justify-items: start; padding: 32px; border: 1px solid #D8DCE4; border-radius: 4px; }
+  .adm-desk .vazio-desk h2 { margin: 0; }
+}
+
+/* Telas largas: mais respiro lateral, mesmo alinhamento do campo azul */
+@media (min-width: 1440px) {
+  .adm-desk .campo-azul { padding-left: 64px; padding-right: 64px; }
+  .adm-desk .faixa-ensaio { padding-left: 64px; padding-right: 64px; }
+  .adm-desk .adm-conteudo { padding-left: 64px; padding-right: 64px; max-width: 1568px; }
+}
+/* Desktop estreito (1024 a 1199 px): o painel da equipe empilha as colunas */
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .adm-desk .detalhe { grid-template-columns: minmax(0, 1fr); }
+}
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+  .adm-desk .status-campo.salvando .i { animation: none; }
+}

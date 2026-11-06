@@ -6,6 +6,8 @@ import { linkAvaliador } from '../api';
 import { copiar, dataRelativa, Modal, num2 } from '../ui';
 import { baixarCsv, baixarJson, baixarXlsx, dataArquivo, type Celula } from './exportar';
 import type { PropsAba } from './Admin';
+import { I, NoCampo, useLargo } from './desktop';
+import { BellRing, CircleCheck, Download, FileStack, RefreshCw } from 'lucide-preact';
 
 type Linha = ReturnType<typeof calcularResultados>['linhas'][number];
 const ORDENS = [['ranking', 'Ranking'], ['nome', 'Nome'], ['media', 'Média'], ['nAvaliadores', 'Nº de avaliadores'], ['desvio', 'Desvio']] as const;
@@ -17,6 +19,7 @@ export function Resultados({ d, setD, acao, sessao }: PropsAba) {
   const [porCriterio, setPorCriterio] = useState(false);
   const [detalhe, setDetalhe] = useState<string | null>(null);
   const [atualizado, setAtualizado] = useState(new Date());
+  const largo = useLargo();
 
   // Atualiza as notas a cada 30 s
   const atualizar = async (silencioso = true) => {
@@ -99,12 +102,12 @@ export function Resultados({ d, setD, acao, sessao }: PropsAba) {
   const pct = totalPossivel ? Math.round((totalCompletos / totalPossivel) * 100) : 0;
   const ativosN = d.candidatos.filter((c) => c.status === 'ATIVO').length;
 
-  return (
-    <section class="ranking">
+  // Título e filtro de dinâmica: no desktop vão para o campo azul do topo
+  const cabeca = (
       <div class="cabeca-pagina">
         <div>
           <h1 class="titulo">Ranking</h1>
-          <span class="sub">Atualizado {dataRelativa(atualizado.toISOString())} · <button class="link" onClick={() => atualizar(false)}>atualizar agora</button></span>
+          <span class="sub">Atualizado {dataRelativa(atualizado.toISOString())} · <button class="link" onClick={() => atualizar(false)}>{largo && <I c={RefreshCw} t={16} />}atualizar agora</button></span>
         </div>
         <div class="segmentado" role="radiogroup" aria-label="Dinâmica">
           {[['*', 'Todas'], ...d.etapas.map((e) => [e.id, e.nome])].map(([id, rot]) => (
@@ -112,6 +115,10 @@ export function Resultados({ d, setD, acao, sessao }: PropsAba) {
           ))}
         </div>
       </div>
+  );
+  return (
+    <section class="ranking">
+      {largo ? <NoCampo>{cabeca}</NoCampo> : cabeca}
 
       <div class="metricas" role="group" aria-label="Resumo">
         <div class="metrica destaque"><b>{pct}%</b><span>de conclusão</span></div>
@@ -125,9 +132,9 @@ export function Resultados({ d, setD, acao, sessao }: PropsAba) {
           <div class="bloco-topo">
             <h2>Candidatos</h2>
             <div class="acoes-topo">
-              <button class="botao" onClick={() => baixarXlsx(`ranking_${sufixo}.xlsx`, 'Ranking', tabelaRanking())}>Baixar ranking</button>
+              <button class="botao" onClick={() => baixarXlsx(`ranking_${sufixo}.xlsx`, 'Ranking', tabelaRanking())}>{largo && <I c={Download} />}Baixar ranking</button>
               <details class="mais">
-                <summary class="botao leve">Outros arquivos</summary>
+                <summary class="botao leve">{largo && <I c={FileStack} />}Outros arquivos</summary>
                 <div class="mais-menu">
                   <button class="botao leve" onClick={() => baixarCsv(`ranking_${sufixo}.csv`, tabelaRanking())}>Ranking CSV</button>
                   <button class="botao leve" onClick={() => baixarXlsx(`avaliacoes_${sufixo}.xlsx`, 'Avaliações', tabelaAvaliacoes())}>Avaliações XLSX</button>
@@ -191,8 +198,8 @@ export function Resultados({ d, setD, acao, sessao }: PropsAba) {
                     <span class="pct">{Math.round(p.pct * 100)}%</span>
                   </span>
                   {p.pendentes + p.parciais > 0
-                    ? <button class="botao leve pequeno" onClick={() => copiar(lembrete(p), 'Lembrete copiado: cole no WhatsApp')} aria-label={`Copiar lembrete para ${p.av.nome}`}>Lembrete</button>
-                    : <span class="em-dia">em dia ✓</span>}
+                    ? <button class="botao leve pequeno" onClick={() => copiar(lembrete(p), 'Lembrete copiado: cole no WhatsApp')} aria-label={`Copiar lembrete para ${p.av.nome}`}>{largo && <I c={BellRing} />}Lembrete</button>
+                    : <span class="em-dia">{largo ? <><I c={CircleCheck} t={18} />em dia</> : 'em dia ✓'}</span>}
                 </li>
               ))}
             </ul>

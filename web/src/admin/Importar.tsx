@@ -3,6 +3,8 @@ import { useMemo, useState } from 'preact/hooks';
 import { CAMPOS, detectarCabecalho, montarPrevia, nomesDeColuna, paraEnvio, resumoPrevia, sugerirMapeamento } from '@shared/importacao.js';
 import { lerArquivo, lerTexto } from './lerArquivo';
 import type { PropsAba } from './Admin';
+import { I, useLargo } from './desktop';
+import { ArrowLeft, ArrowRight, ClipboardPaste, FileUp, Upload, Users } from 'lucide-preact';
 
 type Linha = ReturnType<typeof montarPrevia>[number];
 const PASSOS = ['Arquivo ou colagem', 'Colunas', 'Revisão', 'Pronto'];
@@ -14,6 +16,8 @@ const ROTULO_TIPO: Record<string, [string, string]> = {
 
 export function Importar({ d, setD, acao, aoTerminar }: PropsAba & { aoTerminar: () => void }) {
   const [passo, setPasso] = useState(0);
+  const largo = useLargo();
+  const ic = (c: any) => largo && <I c={c} />;   // ícones Lucide só no desktop
   const [matriz, setMatriz] = useState<string[][]>([]);
   const [origem, setOrigem] = useState<{ origem: string; nome_arquivo: string }>({ origem: '', nome_arquivo: '' });
   const [iCab, setICab] = useState(0);
@@ -72,13 +76,13 @@ export function Importar({ d, setD, acao, aoTerminar }: PropsAba & { aoTerminar:
             <b>Escolher arquivo CSV ou XLSX</b>
             <p class="ajuda">No Google Forms: Respostas → Vincular ao Planilhas → Arquivo → Fazer download (.csv ou .xlsx). Ou arraste o arquivo para cá.</p>
             <input type="file" accept=".csv,.xlsx,.txt,text/csv" style={{ display: 'none' }} onChange={(e) => escolherArquivo((e.target as HTMLInputElement).files?.[0])} />
-            <span class="botao principal">Escolher arquivo</span>
+            <span class="botao principal">{ic(FileUp)}Escolher arquivo</span>
           </label>
           <div class="bloco">
             <h2>Ou cole as linhas</h2>
             <p class="ajuda">Selecione as células na planilha de respostas (com o cabeçalho), copie e cole aqui.</p>
             <textarea class="entrada" style={{ minHeight: 140 }} value={colado} onInput={(e) => setColado((e.target as HTMLTextAreaElement).value)} aria-label="Linhas coladas" />
-            <button class="botao" style={{ marginTop: 8 }} disabled={!colado.trim()} onClick={() => carregar(lerTexto(colado), { origem: 'colagem', nome_arquivo: '' })}>Ler linhas coladas</button>
+            <button class="botao" style={{ marginTop: 8 }} disabled={!colado.trim()} onClick={() => carregar(lerTexto(colado), { origem: 'colagem', nome_arquivo: '' })}>{ic(ClipboardPaste)}Ler linhas coladas</button>
           </div>
         </div>
       )}
@@ -118,8 +122,8 @@ export function Importar({ d, setD, acao, aoTerminar }: PropsAba & { aoTerminar:
               })}
             </div>
             <div class="barra-acoes" style={{ marginTop: 8 }}>
-              <button class="botao" onClick={() => setPasso(0)}>Voltar</button>
-              <button class="botao principal" onClick={irParaRevisao}>Revisar inscrições</button>
+              <button class="botao" onClick={() => setPasso(0)}>{ic(ArrowLeft)}Voltar</button>
+              <button class="botao principal" onClick={irParaRevisao}>{ic(ArrowRight)}Revisar inscrições</button>
             </div>
           </div>
         </>
@@ -139,7 +143,7 @@ export function Importar({ d, setD, acao, aoTerminar }: PropsAba & { aoTerminar:
               <option value="problemas">Só com aviso ({previa.filter((l) => l.problemas.length).length})</option>
             </select>
             <span class="espaco" />
-            <button class="botao" onClick={() => setPasso(1)}>Voltar</button>
+            <button class="botao" onClick={() => setPasso(1)}>{ic(ArrowLeft)}Voltar</button>
             <button class="botao principal" disabled={!resumo.criar && !resumo.atualizar} onClick={confirmar}>
               Importar {resumo.criar ? `${resumo.criar} novo(s)` : ''}{resumo.criar && resumo.atualizar ? ' e ' : ''}{resumo.atualizar ? `atualizar ${resumo.atualizar}` : ''}
             </button>
@@ -179,8 +183,8 @@ export function Importar({ d, setD, acao, aoTerminar }: PropsAba & { aoTerminar:
           <p>{resultado.criados} candidato(s) criados, {resultado.atualizados} atualizados e {resultado.ignorados} ignorados.</p>
           <p class="ajuda">A linha original de cada inscrição ficou guardada na aba Inscricoes_Original e pode ser vista no cadastro do candidato.</p>
           <div class="barra-acoes">
-            <button class="botao" onClick={() => { setPasso(0); setColado(''); setResultado(null); }}>Importar outro arquivo</button>
-            <button class="botao principal" onClick={aoTerminar}>Ver candidatos</button>
+            <button class="botao" onClick={() => { setPasso(0); setColado(''); setResultado(null); }}>{ic(Upload)}Importar outro arquivo</button>
+            <button class="botao principal" onClick={aoTerminar}>{ic(Users)}Ver candidatos</button>
           </div>
         </div>
       )}
