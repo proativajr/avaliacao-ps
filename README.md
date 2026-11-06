@@ -124,6 +124,7 @@ O ensaio e a produção ficam separados: links de ensaio terminam em `&amb=ensai
   Empate na última vaga classifica todos os empatados.
 - Tudo é ligado por **ID** (candidato `c001`, avaliador `a001`, critério `valores_proatividade`), nunca pelo texto do nome.
 - **PS Proativa → Conferir cálculos** recalcula tudo por fora e compara com a Tabela Geral.
+- **PS Proativa → Verificar duplicados** lista avaliadores com nome ou email repetido e candidatos com email repetido. Não apaga nada.
 
 ---
 

@@ -89,3 +89,35 @@ export function diretoriaValida(texto) {
   for (const d of DIRETORIAS) if (normalizarNome(d) === n) return d;
   return '';
 }
+
+/**
+ * Grupos de registros repetidos por nome (sem acento e caixa) e/ou email.
+ * campos: lista de [rótulo, função que devolve a chave]. Chave vazia não conta.
+ * Devolve [{campo, valor, ids: [...]}] só para chaves com 2 ou mais registros. Não altera nada.
+ */
+export function gruposDuplicados(lista, campos) {
+  const grupos = [];
+  campos.forEach(function (c) {
+    const porChave = {};
+    lista.forEach(function (o) {
+      const k = c[1](o);
+      if (!k) return;
+      (porChave[k] = porChave[k] || []).push(String(o.id));
+    });
+    Object.keys(porChave).forEach(function (k) {
+      if (porChave[k].length > 1) grupos.push({ campo: c[0], valor: k, ids: porChave[k] });
+    });
+  });
+  return grupos;
+}
+
+/** Duplicados de avaliadores (mesmo nome ou mesmo email) e de candidatos (mesmo email). */
+export function duplicadosCadastro(avaliadores, candidatos) {
+  return {
+    avaliadores: gruposDuplicados(avaliadores || [], [
+      ['nome', function (a) { return normalizarNome(a.nome); }],
+      ['email', function (a) { return normalizarEmail(a.email); }],
+    ]),
+    candidatos: gruposDuplicados(candidatos || [], [['email', function (c) { return normalizarEmail(c.email); }]]),
+  };
+}

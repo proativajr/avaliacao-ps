@@ -184,6 +184,11 @@ a { color: var(--marca); }
 .carregando { color: var(--suave); padding: var(--e7) var(--e4); text-align: center; display: grid; justify-items: center; gap: var(--e3); }
 .carregando::before { content: ''; width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--superficie-2); border-top-color: var(--marca); animation: girar 0.9s linear infinite; }
 @keyframes girar { to { transform: rotate(360deg); } }
+/* Botão de ação com carregamento (BotaoAcao): mantém as cores do botão, troca o ícone pelo anel girando */
+.botao[aria-busy="true"]:disabled { opacity: 0.85; cursor: progress; }
+.botao[aria-busy="true"] > svg { display: none; }
+.giro-botao { flex: none; width: 1em; height: 1em; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: girar 0.8s linear infinite; }
+.aviso-form { margin: var(--e3) 0 0; }
 .faixa-teste { position: sticky; top: 0; z-index: 50; background: var(--teste); color: #fff; text-align: center; font-size: var(--fs-legenda); font-weight: 500; padding: 2px var(--e2); letter-spacing: 0.06em; line-height: 21px; }
 
 .centro { min-height: 100vh; display: grid; place-items: center; padding: var(--e5) var(--margem); }

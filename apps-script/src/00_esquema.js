@@ -3,7 +3,7 @@
  * Mexer aqui muda a estrutura criada pelo setup().
  * ===================================================================== */
 
-var VERSAO_SISTEMA = '1.3.0';
+var VERSAO_SISTEMA = '1.4.0';
 
 var ABAS = {
   CONFIG: 'Config',
@@ -46,7 +46,7 @@ CABECALHOS[ABAS.AVALIADORES] = ['id', 'nome', 'email', 'area', 'token', 'ativo',
 CABECALHOS[ABAS.CANDIDATOS] = ['id', 'nome_exibicao', 'nome_normalizado', 'email', 'telefone', 'curso', 'semestre',
   'foto_url', 'status', 'origem', 'importado_em', 'chave_inscricao', 'criado_em', 'atualizado_em'];
 CABECALHOS[ABAS.INSCRICOES] = ['candidato_id', 'lote_id', 'importado_em', 'hash_linha', 'dados_json'];
-CABECALHOS[ABAS.IMPORTACOES] = ['lote_id', 'em', 'origem', 'nome_arquivo', 'linhas', 'criados', 'atualizados', 'ignorados'];
+CABECALHOS[ABAS.IMPORTACOES] = ['lote_id', 'em', 'origem', 'nome_arquivo', 'linhas', 'criados', 'atualizados', 'ignorados', 'envio'];
 CABECALHOS[ABAS.AVALIACOES] = ['chave', 'etapa', 'avaliador_id', 'candidato_id', 'criterio_id', 'nota', 'atualizado_em', 'cliente_ts', 'momento'];
 CABECALHOS[ABAS.OBSERVACOES] = ['chave', 'etapa', 'avaliador_id', 'candidato_id', 'texto', 'atualizado_em', 'cliente_ts', 'momento'];
 

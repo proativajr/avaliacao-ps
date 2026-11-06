@@ -1,8 +1,8 @@
 // Painel do admin: carrega tudo da planilha e organiza em 4 seções.
 // No celular a navegação fica numa barra fixa embaixo; no tablet, no topo.
 // No desktop (≥ 1024 px) o topo vira o campo azul da direção B, com abas e o título da seção.
-import { useCallback, useEffect, useState } from 'preact/hooks';
-import { chamar, ErroApi, Sessao, sair, trocarSessao } from '../api';
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
+import { chamar, ErroApi, ErroRede, Sessao, sair, trocarSessao } from '../api';
 import type { AdminDados } from '../tipos';
 import { FaixaTeste, toast } from '../ui';
 import { Assinatura } from '../marca';
@@ -16,7 +16,16 @@ import { AlvoCampo, I, useLargo } from './desktop';
 import './admin-desktop.css';
 import { FlaskConical, LoaderCircle, LogOut, Radio, Settings2, Sheet, Trophy, Users } from 'lucide-preact';
 
-export type Acao = <T = any>(nome: string, dados?: unknown, sucesso?: string) => Promise<T | null>;
+/** Opções de uma ação: aoErro recebe a mensagem (para mostrar dentro da janela, em vez do aviso no rodapé);
+ *  semIndicador não acende o "Salvando…" do topo (consultas periódicas). */
+export interface OpcoesAcao { aoErro?: (mensagem: string, codigo: string) => void; semIndicador?: boolean; }
+export type Acao = <T = any>(nome: string, dados?: unknown, sucesso?: string, opcoes?: OpcoesAcao) => Promise<T | null>;
+
+/** Texto do erro para o admin: conflito vem pronto do servidor; rede ganha a orientação de tentar de novo. */
+export function mensagemErro(e: any) {
+  if (e instanceof ErroRede) return e.message + ' Tente de novo: se já tiver sido gravado, o app avisa e não duplica.';
+  return e?.message || 'Erro no servidor.';
+}
 export interface PropsAba { d: AdminDados; setD: (f: (d: AdminDados) => AdminDados) => void; acao: Acao; sessao: Sessao; recarregar: () => Promise<void>; }
 
 const ICONES: Record<string, string> = {
@@ -71,17 +80,22 @@ export function Admin({ sessao, outras }: { sessao: Sessao; outras: Sessao[] }) 
 
   const setD = useCallback((f: (d: AdminDados) => AdminDados) => setDBruto((x) => (x ? f(x) : x)), []);
 
-  const acao: Acao = useCallback(async (nome, dados = {}, sucesso) => {
-    setOcupado(true);
+  // Quantas ações estão em andamento: o "Salvando…" só apaga quando a última termina
+  const emAndamento = useRef(0);
+  const acao: Acao = useCallback(async (nome, dados = {}, sucesso, opcoes = {}) => {
+    const conta = !opcoes.semIndicador;
+    if (conta) { emAndamento.current++; setOcupado(true); }
     try {
       const r = await chamar(sessao, nome, dados, 90000);
       if (sucesso) toast(sucesso);
       return r;
     } catch (e: any) {
-      toast(e.message || 'Erro');
+      const msg = mensagemErro(e);
+      if (opcoes.aoErro) opcoes.aoErro(msg, e instanceof ErroApi ? e.codigo : 'REDE');
+      else toast(msg, 6000);
       return null;
     } finally {
-      setOcupado(false);
+      if (conta && --emAndamento.current <= 0) { emAndamento.current = 0; setOcupado(false); }
     }
   }, [sessao]);
 
