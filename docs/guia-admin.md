@@ -62,4 +62,4 @@ O painel do admin abre pelo link de admin (planilha → **PS Proativa → Mostra
 | Avaliador com Gmail não entra | No Apps Script, a implantação precisa estar como **Qualquer pessoa** (ver README). |
 | Mudei critérios e o app não atualizou | O app atualiza em até 5 minutos, ou ao reabrir. |
 | "Conferir cálculos" acusa diferença | Rode `setup` de novo pelo menu e confira de novo; se continuar, mande a mensagem ao responsável técnico. |
-| Foto do candidato não aparece | O arquivo do Drive precisa estar compartilhado como "Qualquer pessoa com o link". A foto é opcional. |
+| Foto do candidato não aparece (aparecem as iniciais) | O avaliador precisa conseguir abrir o arquivo no Drive. Opção mais restrita: compartilhar a pasta de uploads do formulário com as contas Google dos avaliadores (eles precisam estar logados nessa conta no celular). Opção mais simples: "Qualquer pessoa com o link". A foto é opcional e o app nunca baixa nem guarda a imagem. |

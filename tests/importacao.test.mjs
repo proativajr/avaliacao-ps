@@ -97,5 +97,20 @@ test('colagem do Google Sheets (separada por tab) sem cabeçalho na primeira lin
 test('nomes para avaliadores: mostra sobrenome quando o primeiro nome se repete', () => {
   const r = nomesParaAvaliador([{ id: 'c1', nome: 'Ana Teste Albuquerque' }, { id: 'c2', nome: 'Ana Teste Barros' }, { id: 'c3', nome: 'Caio Simulado' }]);
   assert.deepEqual({ ...r }, { c1: 'Ana Albuquerque', c2: 'Ana Barros', c3: 'Caio' });
-  assert.equal(linkFoto('https://drive.google.com/open?id=1AbCdEfGhIjKlMnOp'), 'https://drive.google.com/thumbnail?id=1AbCdEfGhIjKlMnOp&sz=w240');
+  assert.equal(linkFoto('https://drive.google.com/open?id=1AbCdEfGhIjKlMnOp'), 'https://drive.google.com/thumbnail?id=1AbCdEfGhIjKlMnOp&sz=w400');
+});
+
+test('foto: converte links do Drive em miniatura e recusa links sem ID', () => {
+  const id = '1AbCdEfGhIjKlMnOpQrStUvWx';
+  const esperado = `https://drive.google.com/thumbnail?id=${id}&sz=w400`;
+  assert.equal(linkFoto(`https://drive.google.com/file/d/${id}/view?usp=sharing`), esperado);
+  assert.equal(linkFoto(`https://drive.google.com/file/d/${id}/view?usp=drive_link`), esperado);
+  assert.equal(linkFoto(`https://drive.google.com/open?id=${id}`), esperado);
+  assert.equal(linkFoto(`https://drive.google.com/uc?export=view&id=${id}`), esperado);
+  assert.equal(linkFoto(`https://drive.google.com/thumbnail?id=${id}&sz=w240`), esperado);
+  assert.equal(linkFoto(`  https://drive.google.com/open?id=${id}, https://drive.google.com/open?id=outroIdQualquer1 `), esperado);
+  assert.equal(linkFoto('https://drive.google.com/drive/folders'), '');
+  assert.equal(linkFoto('foto.jpg'), '');
+  assert.equal(linkFoto(''), '');
+  assert.equal(linkFoto('https://exemplo.com/f.jpg'), 'https://exemplo.com/f.jpg');
 });

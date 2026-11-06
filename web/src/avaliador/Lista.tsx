@@ -4,6 +4,7 @@ import { normalizarNome } from '@shared/texto.js';
 import type { Contexto, Pacote } from './Avaliador';
 import type { EstadoFila } from './fila';
 import { Simbolo } from '../marca';
+import { Foto } from './Foto';
 
 export interface PropsTela {
   ctx: Contexto; estadoFila: { e: EstadoFila; n: number }; semConexao: boolean; erro: string;
@@ -21,13 +22,6 @@ export function Salvamento({ e, n, semConexao, curto }: { e: EstadoFila; n: numb
   return <span class="salv ok" role="status">{semConexao ? 'Sem conexão' : 'Salvo ✓'}</span>;
 }
 
-export function Iniciais({ nome, foto, tam = 40 }: { nome: string; foto?: string; tam?: number }) {
-  const [falhou, setFalhou] = useState(false);
-  const ini = nome.split(' ').filter(Boolean).map((p) => p[0]).slice(0, 2).join('').toUpperCase();
-  if (foto && !falhou) return <img class="avatar" src={foto} alt="" width={tam} height={tam} referrerPolicy="no-referrer" onError={() => setFalhou(true)} />;
-  return <span class="avatar" style={{ width: tam, height: tam }} aria-hidden="true">{ini}</span>;
-}
-
 const CHECK = <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Avaliado"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>;
 const SETA = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>;
 
@@ -36,7 +30,7 @@ function Linha({ c, s, abrir, sufixo = '' }: { c: Pacote['candidatos'][number]; 
   return (
     <li>
       <button onClick={() => abrir(c.id + sufixo)}>
-        <span class={'av-ini' + (feito ? ' feito' : '')}><Iniciais nome={c.nome} foto={c.foto_url} tam={44} /></span>
+        <span class={'av-ini' + (feito ? ' feito' : '')}><Foto nome={c.nome} foto={c.foto_url} tam={44} /></span>
         <span class="nome">{c.nome_curto}</span>
         <span class={'estado ' + s.tipo}>
           {feito ? (s.tudoNA ? 'Não avaliei' : CHECK) : s.tipo === 'parcial' ? `${s.feitos} de ${s.total}` : SETA}

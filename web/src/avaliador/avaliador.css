@@ -80,7 +80,9 @@ body:has(.av) { background: #F7F5F0; }
 .cands .nome { flex: 1; min-width: 0; font-size: 16px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cands.grande .nome { font-size: 17px; }
 .cands .vazio { color: var(--suave); padding: 16px; }
-.avatar { flex: none; border-radius: 50%; object-fit: cover; background: var(--av-pressionado); color: var(--marca); display: inline-grid; place-items: center; font-weight: 500; font-size: 14px; width: 44px; height: 44px; }
+.avatar { position: relative; overflow: hidden; flex: none; border-radius: 50%; background: var(--av-pressionado); color: var(--marca); display: inline-grid; place-items: center; font-weight: 500; font-size: 14px; width: 44px; height: 44px; }
+.avatar.quadrada { border-radius: var(--raio); font-weight: 600; }
+.avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .av-ini .avatar { transition: background-color 0.2s var(--av-ease), color 0.2s var(--av-ease); }
 .av-ini.feito .avatar { background: var(--cor-marca-azul); color: #FFFFFF; }
 .estado { font-size: var(--fs-legenda); white-space: nowrap; display: inline-flex; color: var(--borda-forte); }
@@ -94,6 +96,9 @@ body:has(.av) { background: #F7F5F0; }
 
 /* ---------- Tela do candidato ---------- */
 .av-conteudo.cand { padding: var(--e4) var(--margem) 128px; gap: var(--e4); }
+.cand-cabeca { display: flex; align-items: center; gap: var(--e4); min-width: 0; }
+.cand-cabeca .cand-nome { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+@media (min-width: 600px) { .cand-cabeca .avatar.quadrada { width: 144px !important; height: 144px !important; } }
 .cand-nome { margin: 0; font-size: var(--fs-h1); font-weight: 600; color: var(--marca); letter-spacing: -0.01em; line-height: 1.2; }
 .blocos { display: flex; gap: var(--e5); border-bottom: 1px solid var(--av-sep); overflow-x: auto; scrollbar-width: none; }
 .blocos button { border: 0; background: none; padding: 0; min-height: var(--toque); font-size: var(--fs-legenda); font-weight: 500; color: var(--suave); cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s var(--av-ease), border-color 0.15s var(--av-ease); }
