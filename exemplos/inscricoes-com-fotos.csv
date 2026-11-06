@@ -1,0 +1,5 @@
+Carimbo de data/hora,Endereço de e-mail,Nome completo,Telefone (WhatsApp),Curso,Semestre atual,Foto de rosto
+05/11/2026 10:00:00,foto.view@exemplo.com,Teste Foto View,(85) 98888-2001,Engenharia de Produção,2,https://drive.google.com/file/d/COLE_O_ID_DA_FOTO_1/view?usp=sharing
+05/11/2026 10:05:00,foto.open@exemplo.com,Teste Foto Open,(85) 98888-2002,Engenharia de Produção,3,https://drive.google.com/open?id=COLE_O_ID_DA_FOTO_2
+05/11/2026 10:10:00,foto.quebrada@exemplo.com,Teste Foto Quebrada,(85) 98888-2003,Engenharia Civil,4,https://drive.google.com/open?id=1ArquivoQueNaoExiste0000000
+05/11/2026 10:15:00,sem.foto@exemplo.com,Teste Sem Foto,(85) 98888-2004,Administração,1,

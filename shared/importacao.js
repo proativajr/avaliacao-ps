@@ -98,12 +98,28 @@ export function chaveInscricao(d) {
   return hashTexto([normalizarNome(d.nome_exibicao), normalizarEmail(d.email), soDigitos(d.telefone)].join('|'));
 }
 
-/** Link de arquivo do Google Drive (upload do Forms) -> miniatura. */
+/** Tamanho pedido ao Drive: largura máxima de 400 px (sobra para telas de alta densidade). */
+export const TAMANHO_FOTO = 'w400';
+
+/** ID de um arquivo do Drive em links "/file/d/ID/view", "open?id=ID", "uc?id=ID" ou "thumbnail?id=ID". */
+export function idDrive(url) {
+  const u = String(url || '').trim();
+  if (!/^https?:\/\/(?:drive|docs)\.google\.com\//i.test(u)) return '';
+  const m = u.match(/\/d\/([A-Za-z0-9_-]{10,})/) || u.match(/[?&]id=([A-Za-z0-9_-]{10,})/);
+  return m ? m[1] : '';
+}
+
+/**
+ * Link da foto (upload do Forms) -> URL de imagem que o navegador mostra.
+ * Drive vira "https://drive.google.com/thumbnail?id=ID&sz=w400". Outro link http(s) fica como está.
+ * Se a célula tiver vários links (upload múltiplo), usa o primeiro.
+ */
 export function linkFoto(url) {
-  const u = String(url || '').split(/[\s,]+/)[0];
-  const m = u.match(/(?:id=|\/d\/)([A-Za-z0-9_-]{10,})/);
-  if (m && /drive\.google\.com/.test(u)) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w240`;
-  return /^https?:\/\//.test(u) ? u : '';
+  const u = String(url || '').split(/[\s,]+/).filter(Boolean)[0] || '';
+  const id = idDrive(u);
+  if (id) return `https://drive.google.com/thumbnail?id=${id}&sz=${TAMANHO_FOTO}`;
+  if (/(?:drive|docs)\.google\.com/i.test(u)) return '';
+  return /^https?:\/\//i.test(u) ? u : '';
 }
 
 function ajeitarNome(n) {

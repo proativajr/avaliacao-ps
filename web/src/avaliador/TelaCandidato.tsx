@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { toast } from '../ui';
 import { chaveNota, chaveObs, Momento } from './fila';
 import { PropsTela, Salvamento } from './Lista';
+import { Foto } from './Foto';
 
 const NOTAS = [1, 2, 3, 4, 5] as const;
 
@@ -116,7 +117,10 @@ export function TelaCandidato({ ctx, estadoFila, semConexao, abrir, candId, mome
       {offline && <p class="faixa-offline" role="status">Sem conexão: {estadoFila.n} {estadoFila.n === 1 ? 'nota guardada' : 'notas guardadas'} no celular, enviadas quando a internet voltar.</p>}
 
       <main class="av-conteudo cand">
-        <h1 class="cand-nome">{cand.nome}</h1>
+        <div class="cand-cabeca">
+          <Foto key={cand.id} nome={cand.nome} foto={cand.foto_url} tam={120} forma="quadrada" />
+          <h1 class="cand-nome">{cand.nome}</h1>
+        </div>
         {!aberta && <p class="aviso alerta">Avaliação fechada: somente leitura.</p>}
 
         {blocos.length > 1 && (
