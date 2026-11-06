@@ -24,6 +24,7 @@ function setup() {
   criarAbas_(ss);
   Object.keys(CABECALHOS).forEach(function (nome) { garantirCabecalho_(nome); });
   preencherPadroes_();
+  aplicarMigracoes_();
   montarAbasDeCalculo_();
   // Conferência de segurança: se as fórmulas não forem entendidas (problema de idioma da planilha),
   // troca o idioma para inglês (EUA), que sempre funciona, e refaz as fórmulas.

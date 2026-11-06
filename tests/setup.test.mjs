@@ -10,14 +10,14 @@ test('setup cria todas as abas, cabeçalhos e critérios, e é idempotente', () 
   assert.deepEqual(nomes, [...gas.ORDEM_ABAS], 'abas na ordem certa e sem a "Página1"');
   assert.equal(planilha.getSheetByName('_Aux').oculta, true);
   const crit = gas.lerObjetos_('Config_Criterios');
-  assert.equal(crit.length, 14);
+  assert.equal(crit.length, 15);
   assert.equal(crit.filter((c) => c.sigla === 'D').length, 2, 'duas siglas D no PREDADOR');
-  assert.equal(new Set(crit.map((c) => c.id)).size, 14, 'IDs únicos');
+  assert.equal(new Set(crit.map((c) => c.id)).size, 15, 'IDs únicos');
   assert.ok(props.get('ADMIN_TOKEN').length >= 40, 'token de admin longo');
   // Rodar de novo não duplica nada
   gas.gravarConfig_('nota_de_corte', 3.5);
   gas.setup();
-  assert.equal(gas.lerObjetos_('Config_Criterios').length, 14);
+  assert.equal(gas.lerObjetos_('Config_Criterios').length, 15);
   assert.equal(gas.lerObjetos_('Config').length, gas.CONFIG_PADRAO.length);
   assert.equal(gas.lerConfig_().nota_de_corte, 3.5, 'setup não sobrescreve configuração editada');
   assert.equal(gas.lerObjetos_('Config_Etapas').length, 1);
@@ -48,7 +48,7 @@ test('dados fictícios só no ENSAIO, com IDs que nunca se repetem; zerar manté
 
   gas.apagarDados_(true);
   assert.equal(gas.lerObjetos_('Candidatos').length, 0);
-  assert.equal(gas.lerObjetos_('Config_Criterios').length, 14);
+  assert.equal(gas.lerObjetos_('Config_Criterios').length, 15);
 
   gas.gravarConfig_('modo', 'PRODUCAO');
   assert.throws(() => gas.gerarDadosFicticios_(3, 1), /ENSAIO/);

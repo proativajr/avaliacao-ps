@@ -5,7 +5,7 @@ export type EstadoMomento = '' | 'ANDAMENTO' | 'CONCLUIDO';
 export interface Equipe { id: string; etapa: string; nome: string; ordem: number; membros: string[]; avaliadores: string[]; construcao: EstadoMomento; apresentacao: EstadoMomento; }
 export interface Bloco { id: string; nome: string; nome_curto: string; ordem: number; ativo?: string; }
 export interface Criterio { id: string; bloco: string; ordem: number; sigla: string; nome: string; descricao: string; peso?: number | string; ativo?: string; etapas: string; }
-export interface Avaliador { id: string; nome: string; email: string; area: string; token: string; ativo: string; criado_em: string; ultimo_acesso: string; }
+export interface Avaliador { id: string; nome: string; email: string; area: string; token: string; ativo: string; criado_em: string; ultimo_acesso: string; area_revisar?: string; }
 export interface Candidato {
   id: string; nome_exibicao: string; nome_normalizado?: string; email: string; telefone: string; curso: string; semestre: string | number;
   foto_url: string; status: string; origem: string; importado_em: string; chave_inscricao?: string; criado_em?: string; atualizado_em?: string;

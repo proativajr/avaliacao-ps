@@ -79,9 +79,56 @@ function migrarEsquema_() {
   comTrava_(function () {
     Object.keys(CABECALHOS).forEach(function (nome) { garantirCabecalho_(nome); });
     preencherPadroes_();
+    aplicarMigracoes_();
     props_().setProperty('versao', VERSAO_SISTEMA);
     limparCache_();
   });
+}
+
+/** Ajustes de dados de versões novas. Idempotente: pode rodar de novo sem efeito. */
+function aplicarMigracoes_() {
+  migrarCriterios130_();
+  migrarDiretorias_();
+}
+
+/** 1.3.0: acrescenta o critério Respeito ao bloco comportamental e troca a descrição antiga da Proatividade. */
+function migrarCriterios130_() {
+  var crits = lerObjetos_(ABAS.CRITERIOS);
+  var temBloco = lerObjetos_(ABAS.BLOCOS).some(function (b) { return String(b.id) === 'comport'; });
+  var prot = crits.filter(function (c) { return String(c.id) === 'comport_proatividade'; })[0];
+  if (prot && String(prot.descricao).trim() === DESCRICAO_PROATIVIDADE_ANTIGA) {
+    prot.descricao = DESCRICAO_PROATIVIDADE;
+    reescrever_(ABAS.CRITERIOS, [prot]);
+  }
+  if (!temBloco || crits.some(function (c) { return String(c.id) === CRITERIO_RESPEITO[0]; })) return;
+  var o = {};
+  CABECALHOS[ABAS.CRITERIOS].forEach(function (k, i) { o[k] = CRITERIO_RESPEITO[i]; });
+  var ordens = crits.filter(function (c) { return String(c.bloco) === 'comport'; }).map(function (c) { return Number(c.ordem) || 0; });
+  o.ordem = (ordens.length ? Math.max.apply(null, ordens) : 0) + 1;
+  acrescentar_(ABAS.CRITERIOS, [o]);
+}
+
+/** Área em texto livre -> uma das DIRETORIAS. O que não bater fica vazio e o texto original vai para area_revisar. */
+function migrarDiretorias_() {
+  var mudar = [];
+  lerObjetos_(ABAS.AVALIADORES).forEach(function (a) {
+    var txt = String(a.area == null ? '' : a.area).trim();
+    if (!txt) return;
+    var valida = diretoriaValida(txt);
+    if (valida) { if (valida !== a.area || a.area_revisar) { a.area = valida; a.area_revisar = ''; mudar.push(a); } return; }
+    var m = mapearDiretoria(txt);
+    if (m) { a.area = m; a.area_revisar = ''; } else { a.area_revisar = txt; a.area = ''; }
+    mudar.push(a);
+  });
+  reescrever_(ABAS.AVALIADORES, mudar);
+}
+
+/** Diretoria obrigatória e só da lista. Devolve a forma oficial. */
+function exigirDiretoria_(valor, nome) {
+  var d = diretoriaValida(valor);
+  if (!d) throw erroApi_('VALIDACAO', (String(valor || '').trim() ? 'Diretoria inválida para ' : 'Escolha a diretoria de ') + nome +
+    '. Opções: ' + DIRETORIAS.join(', ') + '.');
+  return d;
 }
 
 function identificar_(token) {
@@ -736,8 +783,8 @@ ACOES_ADMIN['admin.salvarAvaliadores'] = function (dados) {
     var novos = novosItens.map(function (a, i) {
       var nome = String(a.nome || '').replace(/\s+/g, ' ').trim();
       if (!nome) throw erroApi_('VALIDACAO', 'Avaliador sem nome.');
-      return { id: ids[i], nome: nome, email: normalizarEmail(a.email), area: String(a.area || '').trim(), token: gerarToken_(),
-        ativo: 'SIM', criado_em: agora, ultimo_acesso: '' };
+      return { id: ids[i], nome: nome, email: normalizarEmail(a.email), area: exigirDiretoria_(a.area, nome), token: gerarToken_(),
+        ativo: 'SIM', criado_em: agora, ultimo_acesso: '', area_revisar: '' };
     });
     var atualizar = lista.filter(function (a) { return a.id; }).map(function (a) {
       var ex = porId[String(a.id)];
@@ -746,7 +793,7 @@ ACOES_ADMIN['admin.salvarAvaliadores'] = function (dados) {
       Object.keys(ex).forEach(function (k) { o[k] = ex[k]; });
       if (a.nome !== undefined) o.nome = String(a.nome).replace(/\s+/g, ' ').trim() || ex.nome;
       if (a.email !== undefined) o.email = normalizarEmail(a.email);
-      if (a.area !== undefined) o.area = String(a.area).trim();
+      if (a.area !== undefined) { o.area = exigirDiretoria_(a.area, o.nome); o.area_revisar = ''; }
       if (a.ativo !== undefined) o.ativo = simNao_(a.ativo);
       return o;
     });

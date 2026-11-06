@@ -11,6 +11,9 @@ O painel do admin abre pelo link de admin (planilha → **PS Proativa → Mostra
    O avaliador vê a primeira frase da descrição; o resto fica em "ver mais".
    Critério que já tem nota não pode ser apagado: desative.
 4. **Avaliadores → Colar lista**, depois envie os links (**WhatsApp** ou **Copiar todos os links**).
+   Cada avaliador precisa de uma **diretoria**: Projetos, Vice-presidência, Comercial ou Presidência Executiva.
+   Ao colar a lista, escolha a diretoria de cada nome (se a lista já tiver uma coluna com a diretoria, ela vem preenchida).
+   A diretoria é só cadastro: não muda quem avalia qual equipe. Avaliador antigo sem diretoria aparece num aviso amarelo para revisar.
    Junto com o link, mande o [guia do avaliador](guia-avaliador.md).
 5. **Candidatos → Importar inscrições** com a planilha de respostas do Forms. Revise:
    - **Já importado / Possível duplicado:** escolha *Ignorar*, *Atualizar cadastro* ou *Criar mesmo assim*;

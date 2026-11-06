@@ -485,3 +485,9 @@ table.tabela { width: 100%; border-collapse: collapse; font-size: var(--fs-legen
 .campo { align-content: start; }
 .cabeca-pagina > div:not(.segmentado) { display: grid; gap: var(--e1); }
 .ranking-grade > .bloco, .aovivo-grade .bloco { margin-top: 0; }
+
+/* Colar lista de avaliadores: um nome por linha com a seleção de diretoria ao lado */
+.lista-diretorias { list-style: none; margin: 0 0 var(--e3); padding: 0; display: grid; gap: var(--e2); max-height: 40vh; overflow: auto; }
+.lista-diretorias li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: var(--e3); align-items: center; }
+.lista-diretorias .n { overflow-wrap: anywhere; }
+@media (max-width: 480px) { .lista-diretorias li { grid-template-columns: 1fr; gap: var(--e1); } }

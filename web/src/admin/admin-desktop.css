@@ -255,3 +255,8 @@
 @media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
   .adm-desk .status-campo.salvando .i { animation: none; }
 }
+
+/* Aviso de avaliadores sem diretoria: ícone separado do texto */
+@media (min-width: 1024px) {
+  .adm-desk .aviso-diretoria .i { margin-right: 8px; vertical-align: -4px; color: #9A6B00; }
+}

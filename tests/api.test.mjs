@@ -14,7 +14,7 @@ function preparar() {
   };
   const ok = (token, acao, dados) => { const r = chamar(token, acao, dados); assert.equal(r.ok, true, acao + ': ' + r.erro); return r.dados; };
   // 2 avaliadores e 3 candidatos
-  const avs = ok(adm, 'admin.salvarAvaliadores', { lista: [{ nome: 'Avaliadora Um', email: 'um@exemplo.com' }, { nome: 'Avaliador Dois' }] }).avaliadores;
+  const avs = ok(adm, 'admin.salvarAvaliadores', { lista: [{ nome: 'Avaliadora Um', email: 'um@exemplo.com', area: 'Projetos' }, { nome: 'Avaliador Dois', area: 'Comercial' }] }).avaliadores;
   ok(adm, 'admin.salvarCandidatos', { lista: [
     { nome_exibicao: 'Maria Teste Souza', email: 'maria@exemplo.com', telefone: '85 99999-0000' },
     { nome_exibicao: 'Maria Ficção Lima', email: 'maria2@exemplo.com' },
@@ -92,7 +92,7 @@ test('etapa fechada, candidato inativo, critério inválido e nota inválida sã
 
 test('15 avaliadores salvando lotes embaralhados, com reenvios: nenhuma perda e nenhuma duplicata', () => {
   const { ok, adm, gas } = preparar();
-  const lista = Array.from({ length: 13 }, (_, i) => ({ nome: 'Fictício ' + i }));
+  const lista = Array.from({ length: 13 }, (_, i) => ({ nome: 'Fictício ' + i, area: 'Projetos' }));
   const todos = ok(adm, 'admin.salvarAvaliadores', { lista }).avaliadores; // 15 no total
   const crits = gas.lerObjetos_('Config_Criterios').map((c) => c.id);
   const esperado = {};
