@@ -25,7 +25,11 @@ O painel do admin abre pelo link de admin (planilha → **PS Proativa → Mostra
   1. Escolha a dinâmica no topo.
   2. Toque em **Montar** e use **+** para criar as equipes (3, 4…).
   3. Toque no número da equipe ao lado de cada candidato presente, ou em **Sortear** para distribuir quem falta.
-  4. Em **Montar**, abra **Avaliadores de cada equipe** e toque nos nomes de quem acompanha a equipe na **Construção** (1 ou mais).
+  4. Em cada equipe da lista, toque em **Avaliadores**, marque ou desmarque os nomes e toque em **Salvar**. Pode ser nenhum, um ou vários,
+     e o mesmo avaliador pode estar em várias equipes. Dá para fazer isso antes de importar os candidatos (crie as equipes com **Criar 3 equipes**).
+     Mexer nos membros em **Montar** não apaga os designados. Equipe sem avaliador aparece com um aviso amarelo: a Construção dela não começa,
+     o resto funciona. Na Construção só os designados avaliam. Na Apresentação todos avaliam, a menos que **Configuração → Processo →
+     "Na Apresentação, só os avaliadores designados à equipe avaliam"** esteja marcado.
   5. Cada equipe tem dois momentos, com status **Pendente**, **Em andamento** ou **Concluído** e "X de Y avaliadores completaram":
      - **Construção:** toque em **Iniciar**. Só os avaliadores designados veem a equipe (várias equipes podem estar em construção ao mesmo tempo). **Concluir** tira a equipe dos celulares.
      - **Apresentação:** quando a equipe apresentar, toque em **Avaliar**. Em até 10 segundos todos os celulares mostram só essa equipe.
@@ -46,6 +50,14 @@ O painel do admin abre pelo link de admin (planilha → **PS Proativa → Mostra
 - **Dados insuficientes:** poucos avaliadores deram nota. Peça a mais gente para avaliar esse candidato.
 - **Divergência:** os avaliadores discordam muito. Vale discutir na deliberação.
 - **Calibracao** (na planilha): mostra quem dá notas muito acima ou abaixo da média e quem usa muito "não posso avaliar".
+
+## Resetar o processo seletivo
+
+**Ensaio e dados → Resetar processo…** mostra o que vai ser apagado e pede para digitar `RESETAR`.
+Apaga candidatos, inscrições, importações, notas e observações, esvazia as equipes e zera o Ao vivo.
+Mantém avaliadores (os links continuam valendo), equipes com os avaliadores designados, dinâmicas, configuração e critérios.
+Depois, é só importar a planilha de inscrições de novo. Se algo falhar no meio, nada é apagado. Também existe no menu da planilha:
+**PS Proativa → Resetar processo seletivo…**.
 
 ## Depois do processo
 

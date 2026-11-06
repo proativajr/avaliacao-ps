@@ -31,11 +31,14 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
   // Equipes da dinâmica escolhida, editadas aqui e salvas sozinhas
   const doServidor = (et: string) => (d.equipes || []).filter((q) => q.etapa === et).sort((a, b) => a.ordem - b.ordem);
   const [grupos, setGrupos] = useState<string[][]>(() => doServidor(etapa).map((q) => q.membros));
-  // Avaliadores designados de cada equipe (mesma posição de "grupos")
-  const [designados, setDesignados] = useState<string[][]>(() => doServidor(etapa).map((q) => q.avaliadores || []));
-  useEffect(() => { setGrupos(doServidor(etapa).map((q) => q.membros)); setDesignados(doServidor(etapa).map((q) => q.avaliadores || [])); }, [etapa]); // eslint-disable-line
+  useEffect(() => { setGrupos(doServidor(etapa).map((q) => q.membros)); }, [etapa]); // eslint-disable-line
+  // Avaliadores designados de cada equipe (mesma posição de "grupos"). Vêm sempre do servidor: a designação
+  // é gravada à parte (admin.designarAvaliadores), então montar ou mexer nos membros nunca apaga quem foi designado.
+  const designados = doServidor(etapa).map((q) => q.avaliadores || []);
+  // Janela "Avaliadores da Equipe N": índice da equipe e a seleção em edição
+  const [designando, setDesignando] = useState<{ i: number; sel: string[] } | null>(null);
   const timer = useRef<any>(null);
-  const pendente = useRef<{ g: string[][]; des: string[][] } | null>(null);
+  const pendente = useRef<{ g: string[][] } | null>(null);
 
   const salvarAgora = async () => {
     clearTimeout(timer.current);
@@ -43,22 +46,28 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
     if (!p) return true;
     pendente.current = null;
     const r = await acao<{ equipes: Equipe[]; config: Record<string, any> }>('admin.salvarEquipes', {
-      etapa, equipes: p.g.map((membros, i) => ({ nome: `Equipe ${i + 1}`, membros, avaliadores: p.des[i] || [] })),
+      etapa, equipes: p.g.map((membros, i) => ({ nome: `Equipe ${i + 1}`, membros })), // sem "avaliadores": o servidor mantém os designados
     });
     if (r) setD((x) => ({ ...x, equipes: r.equipes, config: r.config }));
     return !!r;
   };
-  const mudar = (g: string[][], des: string[][] = designados) => {
-    const dd = g.map((_, i) => des[i] || []);
-    setGrupos(g); setDesignados(dd);
-    pendente.current = { g, des: dd };
+  const mudar = (g: string[][]) => {
+    setGrupos(g);
+    pendente.current = { g };
     clearTimeout(timer.current);
     timer.current = setTimeout(salvarAgora, 800);
   };
-  const alternarAvaliador = (i: number, avId: string) => {
-    const des = designados.map((m) => [...m]);
-    des[i] = (des[i] || []).includes(avId) ? des[i].filter((x) => x !== avId) : [...(des[i] || []), avId];
-    mudar(grupos, des);
+  // Abre a janela de designação (antes grava as equipes pendentes, para a equipe já existir no servidor)
+  const abrirDesignacao = async (i: number) => {
+    if (!(await salvarAgora())) return;
+    setDesignando({ i, sel: [...(designados[i] || [])] });
+  };
+  const salvarDesignacao = async () => {
+    if (!designando) return;
+    const { i, sel } = designando;
+    const r = await acao<{ equipes: Equipe[] }>('admin.designarAvaliadores', { etapa, equipe: idEquipe(etapa, i), avaliadores: sel },
+      sel.length ? `Equipe ${i + 1}: ${sel.length} avaliador${sel.length === 1 ? '' : 'es'}` : `Equipe ${i + 1} ficou sem avaliadores`);
+    if (r) { setD((x) => ({ ...x, equipes: r.equipes })); setDesignando(null); }
   };
   useEffect(() => () => { if (pendente.current) salvarAgora(); }, [etapa]); // eslint-disable-line
 
@@ -125,6 +134,7 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
 
   // Quantos avaliadores já completaram cada candidato nesta dinâmica
   const crits = useMemo(() => criteriosDaEtapa(criteriosAtivos(d.criterios, d.blocos), etapa), [d.criterios, d.blocos, etapa]);
+  const soDesignados = String(d.config.apresentacao_so_designados || '').toUpperCase() === 'SIM';
   const totalAv = d.avaliadores.filter((a) => a.ativo === 'SIM').length;
   const completos = useMemo(() => {
     const ids = new Set(crits.map((k) => k.id));
@@ -148,13 +158,16 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
       const k = a.avaliador_id + '|' + a.candidato_id;
       cont[k] = (cont[k] || 0) + 1;
     });
-    const avs = momento === 'construcao' ? (designados[i] || []) : d.avaliadores.filter((a) => a.ativo === 'SIM').map((a) => a.id);
+    const avs = momento === 'construcao' || soDesignados ? (designados[i] || []) : d.avaliadores.filter((a) => a.ativo === 'SIM').map((a) => a.id);
     const membros = grupos[i] || [];
     const feitos = membros.length ? avs.filter((av) => membros.every((c) => (cont[av + '|' + c] || 0) >= crits.length)).length : 0;
     return { feitos, total: avs.length };
   };
   const nomeAv = (id: string) => d.avaliadores.find((a) => a.id === id)?.nome || id;
   const avaliadoresAtivos = d.avaliadores.filter((a) => a.ativo === 'SIM');
+  // Na janela de designação: ativos e também quem já está designado mas foi desativado (para poder tirar)
+  const paraDesignar = d.avaliadores.filter((a) => a.ativo === 'SIM' || (designando && designando.sel.includes(a.id)));
+  const semAvaliadores = grupos.map((_, i) => i).filter((i) => !(designados[i] || []).length);
 
   const ativaAqui = ativaEtapa === etapa && ativaEquipe.startsWith(etapa + '_eq') ? Number(ativaEquipe.slice(etapa.length + 3)) - 1 : -1;
   const visiveis = presentes.filter((c) => !busca || normalizarNome(c.nome_exibicao).includes(normalizarNome(busca)));
@@ -204,18 +217,6 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
             })}
             {!visiveis.length && <li class="vazio">Ninguém com esse nome.</li>}
           </ul>
-          <h3 class="sub-titulo">Avaliadores de cada equipe</h3>
-          <p class="ajuda">Quem acompanha a equipe na Construção. Na Apresentação, todos avaliam.</p>
-          {!avaliadoresAtivos.length ? <p class="ajuda">Cadastre avaliadores em Pessoas.</p> : grupos.map((_, i) => (
-            <details class="designar">
-              <summary><b>Equipe {i + 1}</b><span>{(designados[i] || []).length ? `${(designados[i] || []).length} avaliador${(designados[i] || []).length === 1 ? '' : 'es'}` : 'Nenhum ainda'}</span></summary>
-              <div class="chips" role="group" aria-label={`Avaliadores da Equipe ${i + 1}`}>
-                {avaliadoresAtivos.map((a) => (
-                  <button aria-pressed={(designados[i] || []).includes(a.id)} onClick={() => alternarAvaliador(i, a.id)}>{a.nome}</button>
-                ))}
-              </div>
-            </details>
-          ))}
           <p class="nota-rodape">Toque no número de novo para tirar da equipe.{grupos.some((g) => g.length) && <> <button class="link" onClick={limpar}>Limpar tudo</button></>}</p>
         </>
       )}
@@ -226,6 +227,8 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
 
   const membrosAtivos = ativaAqui >= 0 ? grupos[ativaAqui] || [] : [];
   const feitos = membrosAtivos.reduce((s, cid) => s + (completos[cid] || 0), 0);
+  // Quantos avaliam a equipe da vez na Apresentação: todos, ou só os designados com a regra ligada
+  const totalAgora = soDesignados && ativaAqui >= 0 ? (designados[ativaAqui] || []).length : totalAv;
   return (
     <section class="aovivo">
       <div class="cabeca-pagina">
@@ -263,19 +266,42 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
         </Modal>
       )}
 
+      {designando && (
+        <Modal titulo={`Avaliadores da Equipe ${designando.i + 1}`} aoFechar={() => setDesignando(null)}>
+          <p class="ajuda">Toque para incluir ou tirar. {soDesignados ? 'Só os escolhidos avaliam esta equipe, na Construção e na Apresentação.' : 'Os escolhidos acompanham a Construção. Na Apresentação, todos avaliam.'}</p>
+          {!paraDesignar.length ? <p class="aviso">Nenhum avaliador cadastrado. Cadastre em Pessoas.</p> : (
+            <div class="chips" role="group" aria-label={`Avaliadores da Equipe ${designando.i + 1}`}>
+              {paraDesignar.map((a) => {
+                const marcado = designando.sel.includes(a.id);
+                return (
+                  <button aria-pressed={marcado} onClick={() => setDesignando({ ...designando, sel: marcado ? designando.sel.filter((x) => x !== a.id) : [...designando.sel, a.id] })}>
+                    {a.nome}{a.ativo !== 'SIM' ? ' (inativo)' : ''}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <p class="ajuda" aria-live="polite">{designando.sel.length ? `${designando.sel.length} selecionado${designando.sel.length === 1 ? '' : 's'}: ${designando.sel.map(nomeAv).join(', ')}` : 'Nenhum selecionado: a equipe fica sem avaliadores.'}</p>
+          <div class="acoes">
+            <button class="botao leve" onClick={() => setDesignando(null)}>Cancelar</button>
+            <button class="botao principal" onClick={salvarDesignacao}>Salvar</button>
+          </div>
+        </Modal>
+      )}
+
       <div class={'aovivo-grade' + (largo ? ' com-montar' : '')}>
         <div class="coluna">
           {ativaAqui >= 0 ? (
             <div class="agora" role="status" aria-label={`Avaliando agora: Equipe ${ativaAqui + 1}`}>
               <div class="agora-topo">
                 <div><small>Avaliando agora</small><b>Equipe {ativaAqui + 1}</b></div>
-                <span>{feitos} de {membrosAtivos.length * totalAv} avaliações</span>
+                <span>{feitos} de {membrosAtivos.length * totalAgora} avaliações</span>
               </div>
               <ul>{membrosAtivos.map((cid) => (
                 <li>
                   <span class="n">{nome(cid)}</span>
-                  <span class="barra" aria-hidden="true"><span style={{ width: `${totalAv ? ((completos[cid] || 0) / totalAv) * 100 : 0}%` }} /></span>
-                  <span class="cont">{completos[cid] || 0}/{totalAv}</span>
+                  <span class="barra" aria-hidden="true"><span style={{ width: `${totalAgora ? ((completos[cid] || 0) / totalAgora) * 100 : 0}%` }} /></span>
+                  <span class="cont">{completos[cid] || 0}/{totalAgora}</span>
                 </li>
               ))}</ul>
               <button class="botao" onClick={() => aoVivo('', 'Avaliação encerrada')}>Encerrar</button>
@@ -292,10 +318,19 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
             {grupos.length === 0 ? (
               <div class="vazio">
                 <p>Nenhuma equipe nesta dinâmica.</p>
-                {!largo && <button class="botao principal" onClick={() => { setMontar(true); qtd(3); }}>Montar equipes</button>}
-                {largo && <button class="botao principal" onClick={() => qtd(3)}>Criar 3 equipes</button>}
+                {!largo && presentes.length > 0 && <button class="botao principal" onClick={() => { setMontar(true); qtd(3); }}>Montar equipes</button>}
+                {(largo || !presentes.length) && <button class="botao principal" onClick={() => qtd(3)}>Criar 3 equipes</button>}
+                {!presentes.length && <p class="ajuda">Dá para criar as equipes e designar os avaliadores antes de importar os candidatos.</p>}
               </div>
             ) : (
+              <>
+              {semAvaliadores.length > 0 && (
+                <p class="aviso alerta" role="status">
+                  {semAvaliadores.length === 1 ? `A Equipe ${semAvaliadores[0] + 1} está` : `As Equipes ${semAvaliadores.map((i) => i + 1).join(', ')} estão`} sem avaliadores designados.
+                  {soDesignados ? (semAvaliadores.length === 1 ? ' Ninguém consegue avaliá-la.' : ' Ninguém consegue avaliá-las.')
+                    : (semAvaliadores.length === 1 ? ' A Construção dela não pode começar' : ' A Construção delas não pode começar') + ', mas a Apresentação funciona normalmente.'} Toque em <b>Avaliadores</b> na equipe para designar.
+                </p>
+              )}
               <ul class="equipes">
                 {grupos.map((g, i) => {
                   const q = doServidor(etapa)[i];
@@ -308,7 +343,10 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
                   return (
                     <li class="equipe-item">
                       <div class="eq-txt"><b>Equipe {i + 1}</b><small>{g.length ? `${g.length} · ${g.map(curto).join(', ')}` : 'Ninguém ainda'}</small></div>
-                      <p class="eq-avs"><span>Avaliadores</span> {nomes || <i>nenhum designado</i>}</p>
+                      <div class="eq-avs">
+                        <p><span>Avaliadores</span> {nomes || <i class="falta">nenhum designado</i>}</p>
+                        <button class="botao leve" onClick={() => abrirDesignacao(i)} aria-label={`Avaliadores da Equipe ${i + 1}`}>Avaliadores</button>
+                      </div>
                       <div class="momento">
                         <div class="mom-txt"><b>Construção</b><small class={'est ' + eC.toLowerCase()}>{status(eC, lc)}</small></div>
                         {eC === 'ANDAMENTO'
@@ -325,6 +363,7 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
                   );
                 })}
               </ul>
+              </>
             )}
           </div>
         </div>

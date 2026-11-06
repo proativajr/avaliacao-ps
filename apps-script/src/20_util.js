@@ -71,6 +71,35 @@ function limparDados_(nomeAba) {
   if (n > 0) sh.getRange(2, 1, n, sh.getMaxColumns()).clearContent();
 }
 
+/**
+ * Executa fn guardando antes uma cópia das abas indicadas e das chaves da Config indicadas.
+ * Se fn falhar no meio, devolve tudo ao estado anterior e repassa o erro: nada fica pela metade.
+ * Use dentro de comTrava_ (a cópia e a restauração não podem disputar com outra escrita).
+ */
+function emTransacao_(nomesAbas, chavesConfig, fn) {
+  var copias = nomesAbas.map(function (nome) {
+    var sh = aba_(nome);
+    var n = sh.getLastRow() - 1;
+    return { nome: nome, valores: n > 0 ? sh.getRange(2, 1, n, CABECALHOS[nome].length).getValues() : [] };
+  });
+  var cfg = lerConfig_();
+  var cfgAntes = (chavesConfig || []).map(function (k) { return [k, cfg[k] === undefined ? '' : cfg[k]]; });
+  try {
+    return fn();
+  } catch (e) {
+    copias.forEach(function (c) {
+      try {
+        limparDados_(c.nome);
+        if (c.valores.length) aba_(c.nome).getRange(2, 1, c.valores.length, c.valores[0].length).setValues(c.valores);
+      } catch (e2) { console.error('Não foi possível restaurar a aba ' + c.nome + ': ' + e2); }
+    });
+    cfgAntes.forEach(function (kv) {
+      try { gravarConfig_(kv[0], kv[1]); } catch (e3) { console.error('Não foi possível restaurar a Config ' + kv[0] + ': ' + e3); }
+    });
+    throw e;
+  }
+}
+
 /** Executa fn com a trava do script (uma escrita por vez). */
 function comTrava_(fn) {
   var trava = LockService.getScriptLock();
