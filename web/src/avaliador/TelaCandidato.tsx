@@ -15,7 +15,7 @@ export function TelaCandidato({ ctx, estadoFila, semConexao, abrir, candId, mome
   // Navegação dentro da equipe em avaliação (se o candidato for dela); senão, entre todos.
   // Na Construção, só dentro da equipe designada ao avaliador.
   const eqConstrucao = momento ? ctx.construcao.find((q) => q.ids.includes(candId)) : undefined;
-  const equipeDaTela = momento ? eqConstrucao : ctx.equipe;
+  const equipeDaTela = momento ? eqConstrucao : (ctx.equipe && ctx.equipe.ids.includes(candId) ? ctx.equipe : ctx.salasAp.find((q) => q.ids.includes(candId)) || ctx.equipe);
   const naEquipe = !!equipeDaTela && equipeDaTela.ids.includes(candId);
   const sufixo = momento ? '@construcao' : '';
   const cands = naEquipe ? equipeDaTela!.ids.map((id) => pacote.candidatos.find((c) => c.id === id)!).filter(Boolean) : pacote.candidatos;
@@ -54,7 +54,7 @@ export function TelaCandidato({ ctx, estadoFila, semConexao, abrir, candId, mome
   const irProximo = () => {
     const p = proximoPendente();
     if (p) abrir(p + sufixo);
-    else { toast(naEquipe ? `${equipeDaTela!.nome}${momento ? ' (construção)' : ''} avaliada ✓` : 'Você avaliou todos os candidatos.'); abrir(null); }
+    else { toast(naEquipe ? `${equipeDaTela!.nome} (${(momento ? ctx.nomeC : ctx.nomeA).toLowerCase()}) avaliado ✓` : 'Você avaliou todos os candidatos.'); abrir(null); }
   };
 
   const marcar = (critId: string, nota: number | 'NA') => {
@@ -102,7 +102,7 @@ export function TelaCandidato({ ctx, estadoFila, semConexao, abrir, candId, mome
     return () => removeEventListener('keydown', f);
   });
 
-  const contexto = naEquipe ? `${equipeDaTela!.nome}${momento ? ' · Construção' : ''}` : pacote.etapas.find((e) => e.id === etapa)?.nome || '';
+  const contexto = naEquipe ? `${equipeDaTela!.nome} · ${momento ? ctx.nomeC : ctx.nomeA}` : pacote.etapas.find((e) => e.id === etapa)?.nome || '';
   const offline = estadoFila.e === 'offline' || (semConexao && estadoFila.n > 0);
 
   return (

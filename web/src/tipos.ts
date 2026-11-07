@@ -1,8 +1,9 @@
 // Formatos dos dados que vêm da API.
-export interface Etapa { id: string; nome: string; ordem: number; aberta: string | boolean; }
+/** formato: PALCO (uma equipe apresenta por vez, todos avaliam) ou SALAS (cada equipe com os seus avaliadores). Vazio = PALCO. */
+export interface Etapa { id: string; nome: string; ordem: number; aberta: string | boolean; formato?: string; nome_construcao?: string; nome_apresentacao?: string; fases?: string; }
 export type EstadoMomento = '' | 'ANDAMENTO' | 'CONCLUIDO';
 /** avaliadores = quem acompanha a equipe na Construção; construcao/apresentacao = estado de cada momento. */
-export interface Equipe { id: string; etapa: string; nome: string; ordem: number; membros: string[]; avaliadores: string[]; construcao: EstadoMomento; apresentacao: EstadoMomento; }
+export interface Equipe { id: string; etapa: string; nome: string; ordem: number; membros: string[]; avaliadores: string[]; construcao: EstadoMomento; apresentacao: EstadoMomento; narrador?: string; personas?: Record<string, string>; }
 export interface Bloco { id: string; nome: string; nome_curto: string; ordem: number; ativo?: string; }
 export interface Criterio { id: string; bloco: string; ordem: number; sigla: string; nome: string; descricao: string; peso?: number | string; ativo?: string; etapas: string; }
 export interface Avaliador { id: string; nome: string; email: string; area: string; token: string; ativo: string; criado_em: string; ultimo_acesso: string; area_revisar?: string; }

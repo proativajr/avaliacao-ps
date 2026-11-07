@@ -4,15 +4,7 @@
  * Os nomes dos avaliadores são os do manual. O admin confere o casamento com o cadastro antes de gravar.
  * ===================================================================== */
 
-/** Personas da Dinâmica 3 (Material de apoio). */
-var PERSONAS_D3 = {
-  cancelar: { nome: 'O Cliente que Ameaça Cancelar', resumo: 'Gestor irritado com a última entrega, pensa em encerrar o contrato e quer respostas concretas, não desculpas.' },
-  nao_sabe: { nome: 'O Cliente que Não Sabe o que Quer', resumo: 'Empresário ansioso que fala muito, pula de assunto, se contradiz e pressiona por soluções rápidas.' },
-  testa: { nome: 'O Cliente que Testa o Consultor', resumo: 'Diretor calmo que fala pouco e faz perguntas cirúrgicas. Aperta, com educação, quando a resposta é vaga.' },
-  culpa: { nome: 'O Cliente que Culpa a Equipe', resumo: 'Sócio na defensiva que atribui os problemas à consultoria e toma qualquer pergunta como ataque.' },
-  comparativo: { nome: 'O Cliente Comparativo', resumo: 'Compara o tempo todo com a consultoria anterior e com concorrentes mais baratos para desestabilizar.' },
-  sabe_tudo: { nome: 'O Cliente que Sabe Tudo', resumo: 'Leu alguns artigos e questiona cada metodologia, interrompendo com sugestões equivocadas.' },
-};
+/* As personas da Dinâmica 3 (PERSONAS_D3) ficam em shared/texto.js: o app e o script usam as mesmas. */
 
 /**
  * Cada dinâmica: id (a 1ª reaproveita a "geral" criada pelo setup), nome, nomes dos dois momentos avaliados,

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'preact/hooks';
 import type { Bloco, Criterio, Etapa } from '../tipos';
 import type { PropsAba } from './Admin';
 import { BotaoAcao } from '../ui';
+import { Roteiro } from './Roteiro';
 import { I, useLargo } from './desktop';
 import { ArrowDown, ArrowUp, Plus, Save, Trash2 } from 'lucide-preact';
 
@@ -77,6 +78,8 @@ export function Configuracao({ d, setD, acao }: PropsAba) {
       <h2>Configuração</h2>
       <p class="subtitulo">As mudanças valem na hora para a planilha e, em até 5 minutos, para o app dos avaliadores.</p>
 
+      <Roteiro d={d} setD={setD} acao={acao} aoGravar={(et) => setEtapas(et.map((e) => ({ ...e })))} />
+
       <div class="bloco">
         <div class="bloco-topo"><h2>Processo</h2></div>
         <div class="form-grade">
@@ -115,6 +118,11 @@ export function Configuracao({ d, setD, acao }: PropsAba) {
               <div class="linha-fim">
                 <SimNao rotulo="Aberta" valor={String(e.aberta)} aoMudar={(v) => setEtapas((l) => l.map((x) => (x === e ? { ...x, aberta: v } : x)))} />
                 <BotaoAcao class="botao pequeno perigo" aoClicar={() => removerEtapa(e)} aria-label={`Apagar ${e.nome}`}>{ic(Trash2)}Apagar</BotaoAcao>
+              </div>
+              <label class="campo"><span>Nome do 1º momento</span><input value={e.nome_construcao || ''} placeholder="Construção" maxLength={40} onInput={(ev) => setEtapas((l) => l.map((x) => (x === e ? { ...x, nome_construcao: (ev.target as HTMLInputElement).value } : x)))} /></label>
+              <label class="campo"><span>Nome do 2º momento</span><input value={e.nome_apresentacao || ''} placeholder="Apresentação" maxLength={40} onInput={(ev) => setEtapas((l) => l.map((x) => (x === e ? { ...x, nome_apresentacao: (ev.target as HTMLInputElement).value } : x)))} /></label>
+              <div class="linha-fim">
+                <SimNao rotulo="Em salas (cada equipe só com os seus avaliadores)" valor={String(e.formato).toUpperCase() === 'SALAS' ? 'SIM' : 'NÃO'} aoMudar={(v) => setEtapas((l) => l.map((x) => (x === e ? { ...x, formato: v === 'SIM' ? 'SALAS' : 'PALCO' } : x)))} />
               </div>
             </div>
           ))}
