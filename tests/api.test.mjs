@@ -13,6 +13,8 @@ function preparar() {
     return resp;
   };
   const ok = (token, acao, dados) => { const r = chamar(token, acao, dados); assert.equal(r.ok, true, acao + ': ' + r.erro); return r.dados; };
+  // Estes testes cobrem outras regras; a trava por momento liberado tem o próprio arquivo (momento-liberado.test.mjs).
+  ok(adm, 'admin.salvarConfig', { config: { avaliar_so_no_momento: 'NÃO' } });
   // 2 avaliadores e 3 candidatos
   const avs = ok(adm, 'admin.salvarAvaliadores', { lista: [{ nome: 'Avaliadora Um', email: 'um@exemplo.com', area: 'Projetos' }, { nome: 'Avaliador Dois', area: 'Comercial' }] }).avaliadores;
   ok(adm, 'admin.salvarCandidatos', { lista: [

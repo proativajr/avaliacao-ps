@@ -10,6 +10,8 @@ function preparar({ candidatos = true } = {}) {
   const adm = amb.props.get('ADMIN_TOKEN');
   const chamar = (token, acao, dados) => JSON.parse(gas.doPost({ postData: { contents: JSON.stringify({ token, acao, dados }) } }).getContent());
   const ok = (token, acao, dados) => { const r = chamar(token, acao, dados); assert.equal(r.ok, true, acao + ': ' + r.erro); return r.dados; };
+  // Estes testes cobrem outras regras; a trava por momento liberado tem o próprio arquivo (momento-liberado.test.mjs).
+  ok(adm, 'admin.salvarConfig', { config: { avaliar_so_no_momento: 'NÃO' } });
   const avs = ok(adm, 'admin.salvarAvaliadores', { lista: ['Um', 'Dois', 'Três', 'Quatro'].map((n) => ({ nome: 'Avaliador ' + n, area: 'Presidência Executiva' })) }).avaliadores;
   if (candidatos) ok(adm, 'admin.salvarCandidatos', { lista: ['Ana Um', 'Bruno Dois', 'Carla Três', 'Davi Quatro'].map((n) => ({ nome_exibicao: n })) });
   // Três equipes na Dinâmica 1 (etapa "geral")

@@ -51,6 +51,7 @@ test('Respeito entra na média com o mesmo cálculo dos outros critérios', () =
   const [a] = ok(adm, 'admin.salvarAvaliadores', { lista: [{ nome: 'Ava', area: 'Projetos' }] }).avaliadores;
   ok(adm, 'admin.salvarCandidatos', { lista: [{ nome_exibicao: 'Ana Um' }] });
   const n = (k, v) => ({ etapa: 'geral', candidato_id: 'c001', criterio_id: k, nota: v, cliente_ts: Date.now() });
+  ok(adm, 'admin.salvarConfig', { config: { avaliar_so_no_momento: 'NÃO' } });
   const r = ok(a.token, 'av.salvar', { notas: [n('comport_proatividade', 5), n('comport_respeito', 2), n('valores_rede', 'NA')] });
   assert.equal(r.salvos.length, 3);
   const d = ok(adm, 'admin.iniciar', {});
