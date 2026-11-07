@@ -94,7 +94,7 @@ test('15 avaliadores salvando lotes embaralhados, com reenvios: nenhuma perda e 
   const { ok, adm, gas } = preparar();
   const lista = Array.from({ length: 13 }, (_, i) => ({ nome: 'Fictício ' + i, area: 'Projetos' }));
   const todos = ok(adm, 'admin.salvarAvaliadores', { lista }).avaliadores; // 15 no total
-  const crits = gas.lerObjetos_('Config_Criterios').map((c) => c.id);
+  const crits = gas.criteriosAtivos(gas.lerObjetos_('Config_Criterios'), gas.lerObjetos_('Config_Blocos')).map((c) => c.id);
   const esperado = {};
   const lotes = [];
   let ts = 1;

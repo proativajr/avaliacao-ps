@@ -12,7 +12,7 @@ export function gerarFixture(gas, semente = 42, { reduzido = false } = {}) {
   const obj = (cab, linha) => Object.fromEntries(cab.map((c, i) => [c, linha[i]]));
   const C = gas.CABECALHOS;
   const etapas = [['geral', 'Geral', 1, 'SIM'], ['dia2', 'Dia 2', 2, 'SIM']].map((l) => obj(C.Config_Etapas, l));
-  const blocos = gas.BLOCOS_PADRAO.map((l) => obj(C.Config_Blocos, l));
+  const blocos = gas.BLOCOS_PADRAO.map((l) => ({ ...obj(C.Config_Blocos, l), ativo: 'SIM' })); // os dois blocos ligados, para testar a média entre blocos
   const criterios = gas.CRITERIOS_PADRAO.map((l) => obj(C.Config_Criterios, l));
   criterios.find((c) => c.id === 'valores_rede').peso = 2;          // peso 2
   criterios.find((c) => c.id === 'comport_criatividade').ativo = 'NÃO'; // desligado

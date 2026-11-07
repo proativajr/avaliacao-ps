@@ -426,7 +426,8 @@ var ETAPAS_PADRAO = [['geral', 'Dinâmica 1', 1, 'SIM']];
 
 var BLOCOS_PADRAO = [
   ['valores', 'Valores PREDADOR', 'PREDADOR', 1, 'SIM'],
-  ['comport', 'Performance comportamental', 'Comport.', 2, 'SIM'],
+  // Desligado desde 07/11/2026: o formulário fica só com os valores PREDADOR. Religar em Ajustes → Configuração → Blocos.
+  ['comport', 'Performance comportamental', 'Comport.', 2, 'NÃO'],
 ];
 
 /** Textos novos de 06/11/2026 (versão 1.3.0). A migração usa os mesmos valores nas planilhas já criadas. */
@@ -1564,6 +1565,16 @@ function migrarEsquema_() {
 function aplicarMigracoes_() {
   migrarCriterios130_();
   migrarDiretorias_();
+  migrarSoPredador140_();
+}
+
+/** 1.4.0: desliga o bloco comportamental uma única vez (nada é apagado). Depois disso, vale o que o admin escolher. */
+function migrarSoPredador140_() {
+  var p = props_();
+  if (p.getProperty('mig_so_predador')) return;
+  var b = lerObjetos_(ABAS.BLOCOS).filter(function (x) { return String(x.id) === 'comport'; })[0];
+  if (b && ehSim_(b.ativo)) { b.ativo = 'NÃO'; reescrever_(ABAS.BLOCOS, [b]); }
+  p.setProperty('mig_so_predador', '1');
 }
 
 /** 1.3.0: acrescenta o critério Respeito ao bloco comportamental e troca a descrição antiga da Proatividade. */
