@@ -21,7 +21,13 @@ export interface Pacote {
   /** Regra opcional: na Apresentação só os designados avaliam. fora_da_equipe = candidatos que eu não posso avaliar, por dinâmica. */
   apresentacao_so_designados?: boolean;
   fora_da_equipe?: Record<string, string[]>;
-  etapas: { id: string; nome: string; ordem: number; aberta: boolean }[];
+  /** Padrão (ausente = sim): só avalia a equipe em Construção ou Apresentação liberada pelo admin. */
+  avaliar_so_no_momento?: boolean;
+  /** Dinâmicas em SALAS: equipes com a Apresentação liberada em que este avaliador foi designado. */
+  apresentacao?: { id: string; nome: string; etapa: string; membros: string[] }[];
+  /** Equipes em que tenho papel (avaliador ou narrador), com colegas, narrador e persona. */
+  papeis?: Papel[];
+  etapas: { id: string; nome: string; ordem: number; aberta: boolean; formato?: string; nome_construcao?: string; nome_apresentacao?: string; fases?: string }[];
   blocos: { id: string; nome: string; nome_curto: string; ordem: number }[];
   criterios: { id: string; bloco: string; ordem: number; sigla: string; nome: string; descricao: string; etapas: string }[];
   candidatos: { id: string; nome: string; nome_curto: string; foto_url: string }[];
@@ -30,16 +36,29 @@ export interface Pacote {
   colegas?: Record<string, { media: number; n: number }>;
 }
 export type Valor = { nota: number | 'NA' | ''; ts: number };
+export interface Papel { id: string; nome: string; etapa: string; papel: 'avaliador' | 'narrador'; colegas: string[]; narrador: string; persona: { nome: string; resumo: string } | null }
 export interface Contexto {
   pacote: Pacote; etapa: string; aberta: boolean;
   /** Membros da equipe em avaliação agora nesta dinâmica (vazio = nenhuma). */
   equipe: { nome: string; ids: string[] } | null;
   /** Equipes em Construção designadas a este avaliador nesta dinâmica. */
   construcao: { id: string; nome: string; ids: string[] }[];
+  /** Em salas: equipes minhas com a Apresentação liberada nesta dinâmica (várias ao mesmo tempo). */
+  salasAp: { id: string; nome: string; ids: string[] }[];
+  /** Dinâmica em salas (cada equipe com os seus avaliadores). */
+  salas: boolean;
+  /** Nome dos dois momentos nesta dinâmica. */
+  nomeC: string; nomeA: string;
+  /** Meus papéis nesta dinâmica (normalmente um). */
+  papeis: Papel[];
   /** Candidatos desta dinâmica que eu não posso avaliar na Apresentação (equipes de outros avaliadores). */
   fora: Set<string>;
   /** Equipe da vez quando ela é de outros avaliadores (só com a regra ligada). */
   equipeDeOutros: string | null;
+  /** Avaliação presa ao momento liberado pelo admin (regra padrão). */
+  soNoMomento: boolean;
+  /** Se este candidato pode receber nota agora, neste momento. */
+  pode: (candId: string, momento?: Momento) => boolean;
   criterios: Pacote['criterios'];
   notas: Record<string, Valor>;
   obs: Record<string, { texto: string; ts: number }>;
@@ -115,11 +134,12 @@ export function Avaliador({ sessao }: { sessao: Sessao; outras: Sessao[] }) {
     const id = setInterval(async () => {
       if (document.visibilityState !== 'visible') return;
       try {
-        const s = await chamar<Pick<Pacote, 'versao' | 'em_votacao' | 'avaliacao_aberta' | 'etapas' | 'dinamica_ativa' | 'equipe' | 'construcao' | 'apresentacao_so_designados' | 'fora_da_equipe'>>(sessao, 'av.sincronizar', {}, 15000);
+        const s = await chamar<Pick<Pacote, 'versao' | 'em_votacao' | 'avaliacao_aberta' | 'etapas' | 'dinamica_ativa' | 'equipe' | 'construcao' | 'apresentacao_so_designados' | 'avaliar_so_no_momento' | 'fora_da_equipe' | 'apresentacao' | 'papeis'>>(sessao, 'av.sincronizar', {}, 15000);
         setSemConexaoInicio(false);
         // Só baixa tudo de novo quando candidatos ou critérios mudam; equipe e dinâmica vêm na consulta leve.
         setPacote((p) => (p ? { ...p, em_votacao: s.em_votacao, avaliacao_aberta: s.avaliacao_aberta, etapas: s.etapas, dinamica_ativa: s.dinamica_ativa, equipe: s.equipe, construcao: s.construcao,
-          apresentacao_so_designados: s.apresentacao_so_designados, fora_da_equipe: s.fora_da_equipe } : p));
+          apresentacao_so_designados: s.apresentacao_so_designados, avaliar_so_no_momento: s.avaliar_so_no_momento, fora_da_equipe: s.fora_da_equipe,
+          apresentacao: s.apresentacao, papeis: s.papeis } : p));
         if (s.versao !== pacote.versao) carregar();
       } catch { /* sem internet: tenta na próxima */ }
     }, 10000);
@@ -164,33 +184,49 @@ export function Avaliador({ sessao }: { sessao: Sessao; outras: Sessao[] }) {
     const noPacote = (id: string) => pacote.candidatos.some((c) => c.id === id);
     const construcao = (pacote.construcao || []).filter((q) => q.etapa === etapa)
       .map((q) => ({ id: q.id, nome: q.nome, ids: q.membros.filter(noPacote) })).filter((q) => q.ids.length);
-    const fora = new Set(pacote.apresentacao_so_designados ? (pacote.fora_da_equipe || {})[etapa] || [] : []);
+    const salasAp = (pacote.apresentacao || []).filter((q) => q.etapa === etapa)
+      .map((q) => ({ id: q.id, nome: q.nome, ids: q.membros.filter(noPacote) })).filter((q) => q.ids.length);
+    // O servidor já manda vazio quando a regra não vale (palco sem "só designados")
+    const fora = new Set((pacote.fora_da_equipe || {})[etapa] || []);
+    const et = pacote.etapas.find((e) => e.id === etapa);
+    const salas = String(et?.formato || '').toUpperCase() === 'SALAS';
     const eq = pacote.equipe && pacote.equipe.etapa === etapa
       ? { nome: pacote.equipe.nome, ids: pacote.equipe.membros.filter((id) => pacote.candidatos.some((c) => c.id === id)) } : null;
     const minhaEq = eq ? { nome: eq.nome, ids: eq.ids.filter((id) => !fora.has(id)) } : null;
+    const soNoMomento = pacote.avaliar_so_no_momento !== false;
+    // Com a regra padrão, só a equipe em Construção (designada a mim) ou a equipe em Apresentação agora recebem nota.
+    const pode = (candId: string, momento?: Momento) => {
+      if (!aberta) return false;
+      if (momento === 'construcao') return !soNoMomento || construcao.some((q) => q.ids.includes(candId));
+      if (fora.has(candId)) return false;
+      return !soNoMomento || !!minhaEq?.ids.includes(candId) || salasAp.some((q) => q.ids.includes(candId));
+    };
     const bloqueado = (candId: string, momento?: Momento) => {
-      if (momento === 'construcao' || !fora.has(candId)) return false;
-      toast('Só os avaliadores designados à equipe deste candidato podem avaliá-lo.');
+      if (pode(candId, momento)) return false;
+      toast(momento !== 'construcao' && fora.has(candId) ? 'Só os avaliadores designados à equipe deste candidato podem avaliá-lo.'
+        : 'A avaliação deste candidato não está liberada agora.');
       return true;
     };
     return {
-      pacote, etapa, aberta, criterios, notas, obs, estado, construcao, fora,
+      pacote, etapa, aberta, criterios, notas, obs, estado, construcao, fora, soNoMomento, pode, salasAp, salas,
+      nomeC: et?.nome_construcao || 'Construção', nomeA: et?.nome_apresentacao || 'Apresentação',
+      papeis: (pacote.papeis || []).filter((p) => p.etapa === etapa),
       equipe: minhaEq && minhaEq.ids.length ? minhaEq : null,
       equipeDeOutros: eq && eq.ids.length && !(minhaEq && minhaEq.ids.length) ? eq.nome : null,
       darNota: (candId, critId, nota, momento) => {
-        if (!aberta || bloqueado(candId, momento)) return;
+        if (bloqueado(candId, momento)) return;
         const ts = agoraTs();
         setNotas((m) => ({ ...m, [chaveNota(etapa, candId, critId, momento)]: { nota, ts } }));
         registrar(candId, critId, nota, ts, momento);
       },
       darVarias: (candId, nota, momento) => {
-        if (!aberta || bloqueado(candId, momento)) return;
+        if (bloqueado(candId, momento)) return;
         const novos: Record<string, Valor> = {};
         criterios.forEach((k) => { const ts = agoraTs(); novos[chaveNota(etapa, candId, k.id, momento)] = { nota, ts }; registrar(candId, k.id, nota, ts, momento); });
         setNotas((m) => ({ ...m, ...novos }));
       },
       salvarObs: (candId, texto, momento) => {
-        if (!aberta || bloqueado(candId, momento)) return;
+        if (bloqueado(candId, momento)) return;
         const k = chaveObs(etapa, candId, momento);
         if ((obs[k]?.texto || '') === texto) return;
         const ts = agoraTs();

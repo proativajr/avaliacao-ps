@@ -3,7 +3,7 @@
  * Mexer aqui muda a estrutura criada pelo setup().
  * ===================================================================== */
 
-var VERSAO_SISTEMA = '1.4.0';
+var VERSAO_SISTEMA = '1.6.0';
 
 var ABAS = {
   CONFIG: 'Config',
@@ -35,11 +35,14 @@ var ORDEM_ABAS = [
 /** Cabeçalhos das abas de dados (linha 1). A ordem das colunas é usada pelo script. */
 var CABECALHOS = {};
 CABECALHOS[ABAS.CONFIG] = ['chave', 'valor', 'descricao'];
-CABECALHOS[ABAS.ETAPAS] = ['id', 'nome', 'ordem', 'aberta'];
+/** formato: '' ou PALCO (uma equipe apresenta por vez, todos avaliam) ou SALAS (cada equipe com os seus avaliadores nos dois momentos).
+ *  nome_construcao/nome_apresentacao: como cada momento aparece no app (vazio = Construção/Apresentação). fases: texto informativo. */
+CABECALHOS[ABAS.ETAPAS] = ['id', 'nome', 'ordem', 'aberta', 'formato', 'nome_construcao', 'nome_apresentacao', 'fases'];
 CABECALHOS[ABAS.BLOCOS] = ['id', 'nome', 'nome_curto', 'ordem', 'ativo'];
 /** Equipes de cada dinâmica (etapa). membros e avaliadores = IDs separados por vírgula.
  *  avaliadores = quem acompanha a equipe na Construção. construcao/apresentacao = '', 'ANDAMENTO' ou 'CONCLUIDO'. */
-CABECALHOS[ABAS.EQUIPES] = ['id', 'etapa', 'nome', 'ordem', 'membros', 'avaliadores', 'construcao', 'apresentacao'];
+/** narrador = ID do avaliador que conduz a equipe sem avaliar. personas = JSON {id do avaliador: chave da persona}. */
+CABECALHOS[ABAS.EQUIPES] = ['id', 'etapa', 'nome', 'ordem', 'membros', 'avaliadores', 'construcao', 'apresentacao', 'narrador', 'personas'];
 CABECALHOS[ABAS.CRITERIOS] = ['id', 'bloco', 'ordem', 'sigla', 'nome', 'descricao', 'peso', 'ativo', 'etapas'];
 /** area = diretoria (uma de DIRETORIAS). area_revisar = texto livre antigo que não deu para converter (o admin revisa). */
 CABECALHOS[ABAS.AVALIADORES] = ['id', 'nome', 'email', 'area', 'token', 'ativo', 'criado_em', 'ultimo_acesso', 'area_revisar'];
@@ -78,6 +81,7 @@ var CONFIG_PADRAO = [
   ['peso_construcao', 1, 'Peso da Construção na nota da dinâmica em equipe'],
   ['peso_apresentacao', 1, 'Peso da Apresentação na nota da dinâmica em equipe'],
   ['apresentacao_so_designados', 'NÃO', 'SIM: na Apresentação, só os avaliadores designados à equipe do candidato podem avaliá-lo'],
+  ['avaliar_so_no_momento', 'SIM', 'SIM: o avaliador só avalia a equipe em Construção ou Apresentação liberada pelo admin. NÃO libera todos os candidatos a qualquer hora'],
 ];
 
 var ETAPAS_PADRAO = [['geral', 'Dinâmica 1', 1, 'SIM']];

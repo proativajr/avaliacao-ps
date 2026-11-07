@@ -69,14 +69,15 @@ body:has(.av) { background: #F7F5F0; }
 
 /* ---------- Listas de candidatos (separador recuado depois do avatar) ---------- */
 .cands { list-style: none; margin: 0; padding: 0; overflow: hidden; }
-.cands li > button {
+.cands li > button, .cands li > .so-ver {
   position: relative; width: 100%; display: flex; align-items: center; gap: 16px; text-align: left; min-height: 64px; padding: 6px 16px;
   border: 0; background: none; cursor: pointer; color: var(--texto); transition: background-color 0.15s var(--av-ease);
 }
-.cands li:not(:last-child) > button::after { content: ''; position: absolute; left: 76px; right: 0; bottom: 0; height: 1px; background: var(--av-sep); }
+.cands li > .so-ver { cursor: default; }
+.cands li:not(:last-child) > button::after, .cands li:not(:last-child) > .so-ver::after { content: ''; position: absolute; left: 76px; right: 0; bottom: 0; height: 1px; background: var(--av-sep); }
 .cands li > button:active { background: var(--av-pressionado); }
 @media (hover: hover) { .cands li > button:hover { background: var(--av-pressionado); } }
-.cands.grande li > button { min-height: 72px; }
+.cands.grande li > button, .cands.grande li > .so-ver { min-height: 72px; }
 .cands .nome { flex: 1; min-width: 0; font-size: 16px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cands.grande .nome { font-size: 17px; }
 .cands .vazio { color: var(--suave); padding: 16px; }
@@ -184,3 +185,8 @@ body:has(.av) { background: #F7F5F0; }
 
 .av .faixa-teste + .av-topo { top: 25px; }
 .faixa-offline { margin: 0; padding: 6px var(--margem); background: var(--alerta-suave); color: var(--alerta); font-size: var(--fs-legenda); font-weight: 500; text-align: center; }
+
+/* Meu papel na dinâmica: grupo, narrador, colegas e persona */
+.papel { display: grid; gap: 4px; background: var(--av-grupo); border: 1px solid var(--av-sep); border-left: 4px solid var(--marca); border-radius: 4px; padding: var(--e3) var(--e4); }
+.papel b { color: var(--marca); font-size: 16px; font-weight: 600; }
+.papel span { color: var(--suave); font-size: 15px; }

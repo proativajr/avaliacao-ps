@@ -11,6 +11,8 @@ function preparar() {
   const adm = amb.props.get('ADMIN_TOKEN');
   const chamar = (token, acao, dados) => JSON.parse(gas.doPost({ postData: { contents: JSON.stringify({ token, acao, dados }) } }).getContent());
   const ok = (token, acao, dados) => { const r = chamar(token, acao, dados); assert.equal(r.ok, true, acao + ': ' + r.erro); return r.dados; };
+  // Estes testes cobrem outras regras; a trava por momento liberado tem o próprio arquivo (momento-liberado.test.mjs).
+  ok(adm, 'admin.salvarConfig', { config: { avaliar_so_no_momento: 'NÃO' } });
   const avs = ok(adm, 'admin.salvarAvaliadores', { lista: [{ nome: 'Avaliadora Um', area: 'Projetos' }, { nome: 'Avaliador Dois', area: 'Comercial' }, { nome: 'Avaliador Três', area: 'Vice-presidência' }] }).avaliadores;
   ok(adm, 'admin.salvarCandidatos', { lista: ['Ana Um', 'Bruno Dois', 'Carla Três', 'Davi Quatro'].map((n) => ({ nome_exibicao: n })) });
   ok(adm, 'admin.salvarEtapas', { lista: [{ nome: 'Dinâmica 2', ordem: 2, aberta: 'SIM' }] });
@@ -119,7 +121,7 @@ test('compatibilidade: planilha com o esquema antigo é completada sozinha na pr
   gas.aba_('Equipes').getRange(1, 1, 1, 5).setValues([antigo]);
   const r = JSON.parse(gas.doPost({ postData: { contents: JSON.stringify({ token: adm, acao: 'admin.iniciar', dados: {} }) } }).getContent());
   assert.equal(r.ok, true, r.erro);
-  assert.deepEqual([...gas.aba_('Equipes').getRange(1, 1, 1, 8).getValues()[0]], [...gas.CABECALHOS.Equipes]);
+  assert.deepEqual([...gas.aba_('Equipes').getRange(1, 1, 1, gas.CABECALHOS.Equipes.length).getValues()[0]], [...gas.CABECALHOS.Equipes]);
   assert.equal(props.get('versao'), gas.VERSAO_SISTEMA);
 });
 

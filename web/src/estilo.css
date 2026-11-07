@@ -496,3 +496,20 @@ table.tabela { width: 100%; border-collapse: collapse; font-size: var(--fs-legen
 .lista-diretorias li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: var(--e3); align-items: center; }
 .lista-diretorias .n { overflow-wrap: anywhere; }
 @media (max-width: 480px) { .lista-diretorias li { grid-template-columns: 1fr; gap: var(--e1); } }
+
+/* Ao vivo, dinâmica em salas: resumo e comandos para todas as equipes */
+.salas-barra { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; border: 1px solid var(--cor-linha-200); border-left: 4px solid var(--cor-marca-azul); border-radius: 4px; padding: 12px 16px; margin: 0 0 16px; background: var(--cor-branco); }
+.salas-status { margin: 0; font-size: 15px; color: var(--cor-tinta-900); min-width: 0; }
+.salas-status small { display: block; color: var(--cor-tinta-600); font-size: 14px; }
+.salas-botoes { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Ajustes: roteiro do manual */
+.roteiro { margin-bottom: 16px; }
+.roteiro-dinamicas { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.roteiro-dinamicas li { border: 1px solid var(--cor-linha-200); border-radius: 4px; padding: 8px 12px; display: grid; gap: 2px; }
+.roteiro-dinamicas b { color: var(--cor-marca-azul); font-weight: 600; }
+.roteiro-dinamicas small { color: var(--cor-tinta-600); font-size: 14px; }
+.roteiro-nomes { display: grid; gap: 8px 16px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); margin-top: 12px; }
+.roteiro .bloco-topo h2 { display: flex; align-items: center; gap: 8px; }
+.roteiro .aviso { display: flex; align-items: flex-start; gap: 8px; }
+.roteiro .aviso svg { flex: none; margin-top: 2px; }

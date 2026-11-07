@@ -22,6 +22,17 @@ O painel do admin abre pelo link de admin (planilha → **PS Proativa → Mostra
    O **nome de exibição** pode ser editado: é o que os avaliadores veem. Se dois candidatos têm o mesmo primeiro nome,
    o app mostra o sobrenome.
 
+## Roteiro do manual e dinâmicas em salas
+
+O Manual do Avaliador 2026.2 tem 5 dinâmicas, e em todas cada grupo tem os seus avaliadores. Para carregar tudo de uma vez:
+
+1. Cadastre os avaliadores em **Pessoas** (os nomes do manual são achados pelo primeiro nome: "Matheus S." casa com "Matheus Sales").
+2. Em **Ajustes → Configuração → Roteiro do manual**, toque em **Ver como fica**. Confira quem foi achado e escolha à mão quem não foi. Quem ficar como "Deixar de fora" não entra nos grupos.
+3. Toque em **Gravar roteiro**. Ficam criadas as dinâmicas Mapeamento às cegas, Gestão da qualidade na prática, Lidando com clientes, Laranjas Ugli e Feedbacks, com os grupos e trios, os avaliadores, os narradores (Dinâmica 1) e as personas (Dinâmica 3). Gravar de novo refaz a designação e mantém os candidatos de cada grupo.
+4. No **Ao vivo**, distribua os candidatos de cada dinâmica (Montar equipes ou Sortear).
+
+As dinâmicas do roteiro ficam **em salas**: cada grupo é avaliado só pelos seus avaliadores, nos dois momentos, e vários grupos são avaliados ao mesmo tempo. Cada dinâmica dá o seu nome aos dois momentos (por exemplo "Preparação" e "Reunião com o cliente"). Use **… em todas** para abrir um momento em todos os grupos e **Encerrar todas** no fim. Cada grupo também tem os seus botões. O narrador vê no celular que não avalia o grupo dele. O botão **Usar palco** volta a dinâmica para o jeito antigo: um grupo apresenta por vez e todos avaliam. Os nomes dos momentos e o formato também podem ser mudados em Ajustes → Dinâmicas.
+
 ## Durante o processo
 
 - **Ao vivo** (no celular, as seções ficam na barra de baixo: Ao vivo, Ranking, Pessoas, Ajustes):
@@ -33,6 +44,8 @@ O painel do admin abre pelo link de admin (planilha → **PS Proativa → Mostra
      Mexer nos membros em **Montar** não apaga os designados. Equipe sem avaliador aparece com um aviso amarelo: a Construção dela não começa,
      o resto funciona. Na Construção só os designados avaliam. Na Apresentação todos avaliam, a menos que **Configuração → Processo →
      "Na Apresentação, só os avaliadores designados à equipe avaliam"** esteja marcado.
+     Fora desses momentos ninguém avalia: o celular mostra os participantes, mas sem a opção de avaliar, e a planilha recusa a nota.
+     Para liberar todos a qualquer hora (plano B), desmarque **Configuração → Processo → "Avaliar só na Construção ou Apresentação liberada"**.
   5. Cada equipe tem dois momentos, com status **Pendente**, **Em andamento** ou **Concluído** e "X de Y avaliadores completaram":
      - **Construção:** toque em **Iniciar**. Só os avaliadores designados veem a equipe (várias equipes podem estar em construção ao mesmo tempo). **Concluir** tira a equipe dos celulares.
      - **Apresentação:** quando a equipe apresentar, toque em **Avaliar**. Em até 10 segundos todos os celulares mostram só essa equipe.

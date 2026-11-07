@@ -24,6 +24,9 @@ if (d.avaliadores.filter((a) => a.ativo === 'SIM').length < N_AV || d.candidatos
   await chamar(adm, 'admin.gerarFicticios', { candidatos: N_CAND, avaliadores: N_AV });
   d = await chamar(adm, 'admin.iniciar');
 }
+// O teste dá notas a todos os candidatos: desliga a trava por momento liberado durante o teste e religa no fim.
+const travaAntes = d.config.avaliar_so_no_momento ?? 'SIM';
+await chamar(adm, 'admin.salvarConfig', { config: { avaliar_so_no_momento: 'NÃO' } });
 const etapa = (d.etapas.find((e) => e.aberta === 'SIM') || d.etapas[0]).id;
 const avs = d.avaliadores.filter((a) => a.ativo === 'SIM').slice(0, N_AV);
 const cands = d.candidatos.filter((c) => c.status === 'ATIVO').slice(0, N_CAND);
@@ -46,6 +49,7 @@ await Promise.all(avs.map(async (av) => {
   }
 }));
 const fim = Date.now();
+await chamar(adm, 'admin.salvarConfig', { config: { avaliar_so_no_momento: travaAntes } });
 const notas = (await chamar(adm, 'admin.notas')).avaliacoes;
 const minhas = notas.filter((n) => n.etapa === etapa && avs.some((a) => a.id === n.avaliador_id) && cands.some((c) => c.id === n.candidato_id));
 const chaves = minhas.map((n) => [n.etapa, n.avaliador_id, n.candidato_id, n.criterio_id].join('|'));

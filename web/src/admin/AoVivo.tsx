@@ -1,17 +1,18 @@
 // Ao vivo: o admin escolhe a dinâmica, monta as equipes com quem está presente, designa os avaliadores de cada equipe
-// e conduz os dois momentos: Construção (só os avaliadores designados) e Apresentação (todos, uma equipe por vez).
+// e conduz os dois momentos: Construção (só os avaliadores designados) e Apresentação (em palco: todos, uma equipe por vez.
+// Em salas: cada equipe com os seus avaliadores, várias ao mesmo tempo). Cada dinâmica pode dar outro nome aos momentos.
 // Pensado para o celular: um toque no número da equipe aloca o candidato.
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { criteriosAtivos, criteriosDaEtapa } from '@shared/calc.js';
-import { normalizarNome } from '@shared/texto.js';
+import { normalizarNome, PERSONAS_D3 } from '@shared/texto.js';
 import type { Equipe, EstadoMomento, Etapa } from '../tipos';
-import { BotaoAcao, Modal, useTrava } from '../ui';
+import { BotaoAcao, Modal, toast, useTrava } from '../ui';
 import { Foto, iniciais } from '../avaliador/Foto';
 import type { PropsAba } from './Admin';
 import { I, NoCampo, useLargo } from './desktop';
 import {
   Check, CircleCheck, Clock, Hammer, Info, ListTodo, Minus, Pencil, Play, Plus, Presentation, Radio, RotateCcw,
-  Shuffle, Square, TrendingUp, TriangleAlert, UserCheck, UserMinus, UserPlus, Users, UsersRound,
+  DoorOpen, Shuffle, Square, TrendingUp, TriangleAlert, UserCheck, UserMinus, UserPlus, Users, UsersRound,
 } from 'lucide-preact';
 
 const idEquipe = (etapa: string, i: number) => `${etapa}_eq${i + 1}`;
@@ -51,7 +52,7 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
     if (!p) return true;
     pendente.current = null;
     const r = await acao<{ equipes: Equipe[]; config: Record<string, any> }>('admin.salvarEquipes', {
-      etapa, equipes: p.g.map((membros, i) => ({ nome: `Equipe ${i + 1}`, membros })), // sem "avaliadores": o servidor mantém os designados
+      etapa, equipes: p.g.map((membros, i) => ({ nome: doServidor(etapa)[i]?.nome || `Equipe ${i + 1}`, membros })), // sem "avaliadores": o servidor mantém os designados
     });
     if (r) setD((x) => ({ ...x, equipes: r.equipes, config: r.config }));
     return !!r;
@@ -71,7 +72,7 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
     if (!designando) return;
     const { i, sel } = designando;
     const r = await acao<{ equipes: Equipe[] }>('admin.designarAvaliadores', { etapa, equipe: idEquipe(etapa, i), avaliadores: sel },
-      sel.length ? `Equipe ${i + 1}: ${sel.length} avaliador${sel.length === 1 ? '' : 'es'}` : `Equipe ${i + 1} ficou sem avaliadores`);
+      sel.length ? `${nomeEq(i)}: ${sel.length} avaliador${sel.length === 1 ? '' : 'es'}` : `${nomeEq(i)} ficou sem avaliadores`);
     if (r) { setD((x) => ({ ...x, equipes: r.equipes })); setDesignando(null); }
   };
   // Desktop: tira um avaliador da equipe direto na lista (mesma gravação da janela de designação)
@@ -79,7 +80,7 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
     if (!(await salvarAgora())) return;
     const sel = (designados[i] || []).filter((x) => x !== av);
     const r = await acao<{ equipes: Equipe[] }>('admin.designarAvaliadores', { etapa, equipe: idEquipe(etapa, i), avaliadores: sel },
-      `${nomeAv(av)} saiu da Equipe ${i + 1}`);
+      `${nomeAv(av)} saiu ${doEq(i)}`);
     if (r) setD((x) => ({ ...x, equipes: r.equipes }));
   };
   useEffect(() => () => { if (pendente.current) salvarAgora(); }, [etapa]); // eslint-disable-line
@@ -129,6 +130,33 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
     const r = await acao<{ config: Record<string, any>; etapas: Etapa[]; equipes: Equipe[] }>('admin.construcao', { etapa, equipe: idEquipe(etapa, i), estado }, aviso);
     if (r) setD((x) => ({ ...x, config: r.config, etapas: r.etapas, equipes: r.equipes }));
   };
+  // Dinâmica em salas: a Apresentação de cada equipe é liberada à parte, só para os designados
+  const apresentacao = async (i: number, estado: EstadoMomento, aviso: string) => {
+    if (!(await salvarAgora())) return;
+    const r = await acao<{ config: Record<string, any>; etapas: Etapa[]; equipes: Equipe[] }>('admin.apresentacao', { etapa, equipe: idEquipe(etapa, i), estado }, aviso);
+    if (r) setD((x) => ({ ...x, config: r.config, etapas: r.etapas, equipes: r.equipes }));
+  };
+  // Comandos em massa (todas as equipes da dinâmica)
+  const todas = async (momento: 'construcao' | 'apresentacao', estado: EstadoMomento, aviso: string) => {
+    if (!(await salvarAgora())) return;
+    const r = await acao<{ config: Record<string, any>; etapas: Etapa[]; equipes: Equipe[]; mudadas: number; puladas: string[] }>('admin.momentoTodas', { etapa, momento, estado },
+      undefined);
+    if (!r) return;
+    setD((x) => ({ ...x, config: r.config, etapas: r.etapas, equipes: r.equipes }));
+    toast(r.puladas.length ? `${aviso}. Sem avaliador, ficaram de fora: ${r.puladas.join(', ')}` : `${aviso} (${r.mudadas})`);
+  };
+  const encerrarTodas = async () => {
+    const qs = doServidor(etapa);
+    if (qs.some((q) => q.apresentacao === 'ANDAMENTO')) await todas('apresentacao', 'CONCLUIDO', `${nA} encerrada em todas`);
+    if (qs.some((q) => q.construcao === 'ANDAMENTO')) await todas('construcao', 'CONCLUIDO', `${nC} encerrada em todas`);
+  };
+  const mudarFormato = async () => {
+    if (!et) return;
+    const novo = salas ? 'PALCO' : 'SALAS';
+    const r = await acao<{ etapas: Etapa[] }>('admin.salvarEtapas', { lista: [{ id: et.id, nome: et.nome, ordem: et.ordem, aberta: et.aberta, formato: novo }] },
+      novo === 'SALAS' ? 'Agora cada equipe tem a sua sala' : 'Agora uma equipe apresenta por vez para todos');
+    if (r) setD((x) => ({ ...x, etapas: r.etapas }));
+  };
   // Cria (sem id) ou renomeia (com id) uma dinâmica
   const salvarDinamica = async () => {
     if (!editando) return;
@@ -147,7 +175,12 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
 
   // Quantos avaliadores já completaram cada candidato nesta dinâmica
   const crits = useMemo(() => criteriosDaEtapa(criteriosAtivos(d.criterios, d.blocos), etapa), [d.criterios, d.blocos, etapa]);
-  const soDesignados = String(d.config.apresentacao_so_designados || '').toUpperCase() === 'SIM';
+  const et = etapas.find((e) => e.id === etapa);
+  // Em SALAS cada equipe tem os seus avaliadores nos dois momentos e várias apresentam ao mesmo tempo.
+  const salas = String(et?.formato || '').toUpperCase() === 'SALAS';
+  const nC = et?.nome_construcao || 'Construção';
+  const nA = et?.nome_apresentacao || 'Apresentação';
+  const soDesignados = salas || String(d.config.apresentacao_so_designados || '').toUpperCase() === 'SIM';
   const totalAv = d.avaliadores.filter((a) => a.ativo === 'SIM').length;
   const completos = useMemo(() => {
     const ids = new Set(crits.map((k) => k.id));
@@ -177,6 +210,28 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
     return { feitos, total: avs.length };
   };
   const nomeAv = (id: string) => d.avaliadores.find((a) => a.id === id)?.nome || id;
+  const nomeEq = (i: number) => doServidor(etapa)[i]?.nome || `Equipe ${i + 1}`;
+  // "do Grupo 1", "da Equipe 1"
+  const doEq = (i: number) => (/^equipe/i.test(nomeEq(i)) ? 'da ' : 'do ') + nomeEq(i);
+  const persona = (q: Equipe | undefined, av: string) => (PERSONAS_D3 as Record<string, { nome: string }>)[q?.personas?.[av] || '']?.nome || '';
+  const qsAqui = doServidor(etapa);
+  const emC = qsAqui.filter((q) => q.construcao === 'ANDAMENTO').length, emA = qsAqui.filter((q) => q.apresentacao === 'ANDAMENTO').length;
+  const comMembros = qsAqui.filter((q) => q.membros.length).length;
+  // Barra de comandos em massa e resumo (só em salas)
+  const barraSalas = salas && grupos.length > 0 && (
+    <div class="salas-barra" role="group" aria-label="Comandar todas as equipes">
+      <p class="salas-status" aria-live="polite">
+        {emA ? <><b>{nA}</b> em {emA} de {comMembros}. </> : null}{emC ? <><b>{nC}</b> em {emC} de {comMembros}. </> : null}
+        {!emA && !emC ? 'Nenhuma equipe em avaliação agora. ' : ''}
+        {et?.fases && <small>{et.fases}</small>}
+      </p>
+      <div class="salas-botoes">
+        <BotaoAcao class={'botao pequeno' + (!emC && !emA ? ' principal' : '')} disabled={!comMembros} aoClicar={() => todas('construcao', 'ANDAMENTO', `${nC} aberta em todas`)}>{largo && <I c={Play} />}{nC} em todas</BotaoAcao>
+        <BotaoAcao class={'botao pequeno' + (emC && !emA ? ' principal' : '')} disabled={!comMembros} aoClicar={() => todas('apresentacao', 'ANDAMENTO', `${nA} aberta em todas`)}>{largo && <I c={Play} />}{nA} em todas</BotaoAcao>
+        <BotaoAcao class="botao pequeno" disabled={!emC && !emA} aoClicar={encerrarTodas}>{largo && <I c={Square} />}Encerrar todas</BotaoAcao>
+      </div>
+    </div>
+  );
   const avaliadoresAtivos = d.avaliadores.filter((a) => a.ativo === 'SIM');
   // Na janela de designação: ativos e também quem já está designado mas foi desativado (para poder tirar)
   const paraDesignar = d.avaliadores.filter((a) => a.ativo === 'SIM' || (designando && designando.sel.includes(a.id)));
@@ -255,10 +310,10 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
       )}
 
       {designando && (
-        <Modal titulo={`Avaliadores da Equipe ${designando.i + 1}`} aoFechar={() => setDesignando(null)}>
-          <p class="ajuda">Toque para incluir ou tirar. {soDesignados ? 'Só os escolhidos avaliam esta equipe, na Construção e na Apresentação.' : 'Os escolhidos acompanham a Construção. Na Apresentação, todos avaliam.'}</p>
+        <Modal titulo={`Avaliadores ${doEq(designando.i)}`} aoFechar={() => setDesignando(null)}>
+          <p class="ajuda">Toque para incluir ou tirar. {soDesignados ? `Só os escolhidos avaliam esta equipe, nos dois momentos (${nC} e ${nA}).` : `Os escolhidos avaliam ${nC}. Em ${nA}, todos avaliam.`}</p>
           {!paraDesignar.length ? <p class="aviso">Nenhum avaliador cadastrado. Cadastre em Pessoas.</p> : (
-            <div class="chips" role="group" aria-label={`Avaliadores da Equipe ${designando.i + 1}`}>
+            <div class="chips" role="group" aria-label={`Avaliadores ${doEq(designando.i)}`}>
               {paraDesignar.map((a) => {
                 const marcado = designando.sel.includes(a.id);
                 return (
@@ -292,7 +347,7 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
     const avsSel = designados[sel] || [];
     const qSel = servidor[sel];
     const eC: EstadoMomento = qSel?.construcao || '';
-    const eA: EstadoMomento = sel === ativaAqui ? 'ANDAMENTO' : (qSel?.apresentacao || '');
+    const eA: EstadoMomento = !salas && sel === ativaAqui ? 'ANDAMENTO' : (qSel?.apresentacao || '');
     const lc = lancaram(sel, 'construcao'), la = lancaram(sel, 'apresentacao');
     const textoMomento = (e: EstadoMomento, l: { feitos: number; total: number }, ninguem: string) =>
       e === 'ANDAMENTO' ? `Em andamento. ${l.feitos} de ${l.total} avaliadores completaram.`
@@ -308,7 +363,9 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
             <h1>{nomeEtapa || 'Dinâmicas'}</h1>
             {etapa && <button class="botao inverso pequeno" onClick={() => setEditando({ id: etapa, nome: nomeEtapa })}><I c={Pencil} />Renomear</button>}
             <button class="botao inverso pequeno" onClick={() => setEditando({ id: '', nome: `Dinâmica ${etapas.length + 1}` })}><I c={Plus} />Nova dinâmica</button>
-            {ativaAqui >= 0 && <BotaoAcao class="botao inverso pequeno" aoClicar={() => aoVivo('', 'Avaliação encerrada')}><I c={Square} />Encerrar a Equipe {ativaAqui + 1}</BotaoAcao>}
+            {et && <BotaoAcao class="botao inverso pequeno" aoClicar={mudarFormato} title={salas ? 'Passar para uma equipe por vez, com todos avaliando a apresentação' : 'Passar para cada equipe na sua sala, com os seus avaliadores'}>
+              {salas ? <><I c={Presentation} />Usar palco</> : <><I c={DoorOpen} />Usar salas</>}</BotaoAcao>}
+            {ativaAqui >= 0 && <BotaoAcao class="botao inverso pequeno" aoClicar={() => aoVivo('', 'Avaliação encerrada')}><I c={Square} />Encerrar {nomeEq(ativaAqui)}</BotaoAcao>}
           </div>
           {etapas.length > 0 && (
             <div class="dinamicas-campo" role="radiogroup" aria-label="Escolher dinâmica">
@@ -324,7 +381,8 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
             </div>
           )}
           <p class="linha-status" aria-live="polite">
-            {ativaAqui >= 0 ? `A Equipe ${ativaAqui + 1} está apresentando. ${feitos} de ${totalAgoraDesk} avaliações recebidas.`
+            {salas ? (grupos.length ? `Em salas: cada equipe com os seus avaliadores, ${nC.toLowerCase()} e ${nA.toLowerCase()} ao mesmo tempo em todas.` : 'Crie as equipes desta dinâmica para começar.')
+              : ativaAqui >= 0 ? `${nomeEq(ativaAqui)} está apresentando. ${feitos} de ${totalAgoraDesk} avaliações recebidas.`
               : grupos.length ? 'Nenhuma equipe apresentando agora.' : 'Crie as equipes desta dinâmica para começar.'}
           </p>
         </NoCampo>
@@ -345,8 +403,9 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
           </div>
         ) : (
           <>
+            {barraSalas}
             <div class="degraus-topo">
-              <h2><I c={TrendingUp} t={22} />Ordem de apresentação</h2>
+              <h2><I c={salas ? DoorOpen : TrendingUp} t={22} />{salas ? 'Salas' : 'Ordem de apresentação'}</h2>
               <span class="espaco" />
               {semEquipe.length > 0 && <button class="botao pequeno" onClick={sortear}><I c={Shuffle} />Sortear {semEquipe.length} sem equipe</button>}
               <button class="botao pequeno" onClick={() => setMontar(true)}><I c={Users} />Montar equipes</button>
@@ -357,25 +416,29 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
               <p class="alerta-desk" role="status">
                 <I c={TriangleAlert} />
                 <span>
-                  <b>{semAvaliadores.length === 1 ? `A Equipe ${semAvaliadores[0] + 1} está` : `As Equipes ${semAvaliadores.map((i) => i + 1).join(', ')} estão`} sem avaliadores designados.</b>
+                  <b>{semAvaliadores.length === 1 ? `${nomeEq(semAvaliadores[0])} está` : `${semAvaliadores.map(nomeEq).join(', ')} estão`} sem avaliadores designados.</b>
                   {soDesignados ? (semAvaliadores.length === 1 ? ' Ninguém consegue avaliá-la.' : ' Ninguém consegue avaliá-las.')
                     : (semAvaliadores.length === 1 ? ' A Construção dela não pode começar' : ' A Construção delas não pode começar') + ', mas a Apresentação funciona normalmente.'} Escolha a equipe e use <b>Adicionar avaliador</b>.
                 </span>
               </p>
             )}
 
-            <ol class="degraus">
+            <ol class={'degraus' + (salas ? ' salas' : '')}>
               {grupos.map((g, i) => {
                 const c: EstadoMomento = servidor[i]?.construcao || '';
-                const [ic, txt, cls] = i === ativaAqui ? [Radio, 'Apresentando agora', ' andamento']
+                const a: EstadoMomento = servidor[i]?.apresentacao || '';
+                const [ic, txt, cls] = !salas && i === ativaAqui ? [Radio, 'Apresentando agora', ' andamento']
                   : !(designados[i] || []).length ? [TriangleAlert, 'Sem avaliadores', ' falta']
-                    : c === 'ANDAMENTO' ? [Hammer, 'Construção em andamento', ' andamento']
-                      : c === 'CONCLUIDO' ? [CircleCheck, 'Construção concluída', ' ok'] : [Clock, 'Construção pendente', ''];
+                    : salas && a === 'ANDAMENTO' ? [Radio, `${nA} em andamento`, ' andamento']
+                      : salas && a === 'CONCLUIDO' ? [CircleCheck, `${nA} concluída`, ' ok']
+                        : c === 'ANDAMENTO' ? [Hammer, `${nC} em andamento`, ' andamento']
+                          : c === 'CONCLUIDO' ? [CircleCheck, `${nC} concluída`, ' ok'] : [Clock, `${nC} pendente`, ''];
+                const quemAv = salas ? (designados[i] || []).map((id) => { const p = nomeAv(id).split(' '); return p.length > 2 ? p.slice(0, -1).join(' ') : p[0]; }).join(', ') : '';
                 return (
                   <li>
-                    <button class={'degrau' + (i === ativaAqui ? ' no-ar' : '')} aria-pressed={i === sel} onClick={() => setEscolhida(i)}>
-                      <span class="ordem">Apresenta em {i + 1}º</span>
-                      <b>Equipe {i + 1}</b>
+                    <button class={'degrau' + (!salas && i === ativaAqui ? ' no-ar' : '')} aria-pressed={i === sel} onClick={() => setEscolhida(i)}>
+                      <span class="ordem">{salas ? (quemAv ? `Avalia: ${quemAv}` : 'Sem avaliador') : `Apresenta em ${i + 1}º`}</span>
+                      <b>{nomeEq(i)}</b>
                       <span class="quem">{g.length ? g.map(curto).join(', ') : 'Ninguém ainda'}</span>
                       <span class={'estado' + cls}><I c={ic as any} t={18} />{txt}</span>
                     </button>
@@ -385,27 +448,32 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
             </ol>
 
             <section class="detalhe" aria-labelledby="equipe-aberta">
-              <h2 id="equipe-aberta">Equipe {sel + 1}
+              <h2 id="equipe-aberta">{nomeEq(sel)}
                 <span class="acoes"><button class="botao pequeno" onClick={() => setMontar(true)}><I c={Users} />Mudar candidatos</button></span>
               </h2>
               <div class="det-col">
                 <h3><I c={ListTodo} />Momentos</h3>
                 <ul class="momentos">
                   <li>
-                    <b><I c={Hammer} />Construção</b>
+                    <b><I c={Hammer} />{nC}</b>
                     <span class={'estado' + classeEstado(eC)}><I c={iconeEstado(eC)} t={18} />{textoMomento(eC, lc, avsSel.length ? 'Só os avaliadores da equipe avaliam.' : 'Precisa de pelo menos um avaliador.')}</span>
                     {eC === 'ANDAMENTO'
-                      ? <BotaoAcao class="botao pequeno" aoClicar={() => construcao(sel, 'CONCLUIDO', `Construção da Equipe ${sel + 1} concluída`)}><I c={CircleCheck} />Concluir</BotaoAcao>
-                      : <BotaoAcao class={'botao pequeno' + (eC === 'CONCLUIDO' ? '' : ' principal')} disabled={!membrosSel.length || !avsSel.length} aoClicar={() => construcao(sel, 'ANDAMENTO', `Construção da Equipe ${sel + 1} aberta`)}>
+                      ? <BotaoAcao class="botao pequeno" aoClicar={() => construcao(sel, 'CONCLUIDO', `${nC}: ${nomeEq(sel)} concluída`)}><I c={CircleCheck} />Concluir</BotaoAcao>
+                      : <BotaoAcao class={'botao pequeno' + (eC === 'CONCLUIDO' ? '' : ' principal')} disabled={!membrosSel.length || !avsSel.length} aoClicar={() => construcao(sel, 'ANDAMENTO', `${nC}: ${nomeEq(sel)} aberta`)}>
                         {eC === 'CONCLUIDO' ? <><I c={RotateCcw} />Reabrir</> : <><I c={Play} />Iniciar</>}
                       </BotaoAcao>}
                   </li>
                   <li>
-                    <b><I c={Presentation} />Apresentação</b>
+                    <b><I c={Presentation} />{nA}</b>
                     <span class={'estado' + classeEstado(eA)}><I c={iconeEstado(eA)} t={18} />{textoMomento(eA, la, soDesignados ? 'Só os avaliadores da equipe avaliam.' : 'Todos os avaliadores avaliam.')}</span>
-                    {sel === ativaAqui
+                    {salas ? (eA === 'ANDAMENTO'
+                      ? <BotaoAcao class="botao pequeno" aoClicar={() => apresentacao(sel, 'CONCLUIDO', `${nA}: ${nomeEq(sel)} concluída`)}><I c={CircleCheck} />Concluir</BotaoAcao>
+                      : <BotaoAcao class={'botao pequeno' + (eA === 'CONCLUIDO' ? '' : ' principal')} disabled={!membrosSel.length || !avsSel.length} aoClicar={() => apresentacao(sel, 'ANDAMENTO', `${nA}: ${nomeEq(sel)} aberta`)}>
+                        {eA === 'CONCLUIDO' ? <><I c={RotateCcw} />Reabrir</> : <><I c={Play} />Iniciar</>}
+                      </BotaoAcao>)
+                    : sel === ativaAqui
                       ? <BotaoAcao class="botao pequeno" aoClicar={() => aoVivo('', 'Avaliação encerrada')}><I c={Square} />Encerrar</BotaoAcao>
-                      : <BotaoAcao class="botao pequeno principal" disabled={!membrosSel.length} aoClicar={() => aoVivo(idEquipe(etapa, sel), `Equipe ${sel + 1} aberta`)}><I c={Play} />Pôr no ar</BotaoAcao>}
+                      : <BotaoAcao class="botao pequeno principal" disabled={!membrosSel.length} aoClicar={() => aoVivo(idEquipe(etapa, sel), `${nomeEq(sel)} aberta`)}><I c={Play} />Pôr no ar</BotaoAcao>}
                   </li>
                 </ul>
                 <h3><I c={UsersRound} />Candidatos <small>{membrosSel.length}</small></h3>
@@ -416,7 +484,7 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
                       return (
                         <li>
                           <Foto nome={nome(cid)} foto={cand?.foto_url} tam={48} forma="quadrada" />
-                          <span class="n">{nome(cid)}{sel === ativaAqui && <small>{completos[cid] || 0} de {totalAgora} avaliaram</small>}</span>
+                          <span class="n">{nome(cid)}{!salas && sel === ativaAqui && <small>{completos[cid] || 0} de {totalAgora} avaliaram</small>}</span>
                         </li>
                       );
                     })}
@@ -424,7 +492,8 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
                 ) : <p class="ajuda"><I c={Info} t={18} />Ninguém nesta equipe ainda. Use Mudar candidatos.</p>}
               </div>
               <div class="det-col">
-                <h3><I c={UserCheck} />{soDesignados ? 'Avaliadores da equipe' : 'Avaliadores da Construção'} <small>{avsSel.length}</small></h3>
+                <h3><I c={UserCheck} />{soDesignados ? 'Avaliadores da equipe' : `Avaliadores: ${nC}`} <small>{avsSel.length}</small></h3>
+                {qSel?.narrador && <p class="ajuda"><I c={Info} t={18} /><span>Narrador: <b>{nomeAv(qSel.narrador)}</b>. Conduz a equipe e não avalia.</span></p>}
                 {avsSel.length ? (
                   <ul class="pessoas">
                     {avsSel.map((id) => {
@@ -432,15 +501,15 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
                       return (
                         <li>
                           <span class="avatar-av" aria-hidden="true">{iniciais(nomeAv(id))}</span>
-                          <span class="n"><b>{nomeAv(id)}</b><small>{a && a.ativo !== 'SIM' ? 'Inativo' : a?.area || 'Avaliador'}</small></span>
-                          <BotaoAcao class="botao pequeno perigo" aoClicar={() => tirar(sel, id)} aria-label={`Tirar ${nomeAv(id)} da Equipe ${sel + 1}`}><I c={UserMinus} />Tirar</BotaoAcao>
+                          <span class="n"><b>{nomeAv(id)}</b><small>{a && a.ativo !== 'SIM' ? 'Inativo' : persona(qSel, id) ? `Persona: ${persona(qSel, id)}` : a?.area || 'Avaliador'}</small></span>
+                          <BotaoAcao class="botao pequeno perigo" aoClicar={() => tirar(sel, id)} aria-label={`Tirar ${nomeAv(id)} ${doEq(sel)}`}><I c={UserMinus} />Tirar</BotaoAcao>
                         </li>
                       );
                     })}
                   </ul>
                 ) : <p class="ajuda"><I c={Info} t={18} />Nenhum avaliador designado.</p>}
                 <button class="botao vaga" onClick={() => abrirDesignacao(sel)}><I c={UserPlus} />Adicionar avaliador</button>
-                <p class="ajuda"><I c={Info} t={18} />Sem limite de avaliadores. {soDesignados ? 'Só quem está aqui avalia esta equipe, na Construção e na Apresentação.' : 'Só quem está aqui avalia a Construção desta equipe. Na Apresentação, todos avaliam.'}</p>
+                <p class="ajuda"><I c={Info} t={18} />Sem limite de avaliadores. {soDesignados ? `Só quem está aqui avalia esta equipe, nos dois momentos (${nC} e ${nA}).` : `Só quem está aqui avalia esta equipe em ${nC}. Em ${nA}, todos avaliam.`}</p>
               </div>
             </section>
           </>
@@ -472,15 +541,17 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
         })}
       </div>
       {etapa && <button class="link renomear" onClick={() => setEditando({ id: etapa, nome: nomeEtapa })}>Renomear “{nomeEtapa}”</button>}
+      {et && <BotaoAcao class="link renomear" aoClicar={mudarFormato}>{salas ? 'Em salas. Mudar para palco' : 'Em palco. Mudar para salas'}</BotaoAcao>}
+      {barraSalas}
 
       {modais}
 
       <div class="aovivo-grade">
         <div class="coluna">
-          {ativaAqui >= 0 ? (
-            <div class="agora" role="status" aria-label={`Avaliando agora: Equipe ${ativaAqui + 1}`}>
+          {!salas && ativaAqui >= 0 ? (
+            <div class="agora" role="status" aria-label={`Avaliando agora: ${nomeEq(ativaAqui)}`}>
               <div class="agora-topo">
-                <div><small>Avaliando agora</small><b>Equipe {ativaAqui + 1}</b></div>
+                <div><small>Avaliando agora</small><b>{nomeEq(ativaAqui)}</b></div>
                 <span>{feitos} de {membrosAtivos.length * totalAgora} avaliações</span>
               </div>
               <ul>{membrosAtivos.map((cid) => (
@@ -492,7 +563,7 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
               ))}</ul>
               <BotaoAcao class="botao" aoClicar={() => aoVivo('', 'Avaliação encerrada')}>Encerrar</BotaoAcao>
             </div>
-          ) : grupos.length > 0 && (
+          ) : !salas && grupos.length > 0 && (
             <div class="bloco"><div class="vazio" style={{ padding: 0 }}><p>Nenhuma equipe em avaliação. Toque em <b>Avaliar</b> quando uma equipe apresentar.</p></div></div>
           )}
 
@@ -512,7 +583,7 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
               <>
               {semAvaliadores.length > 0 && (
                 <p class="aviso alerta" role="status">
-                  {semAvaliadores.length === 1 ? `A Equipe ${semAvaliadores[0] + 1} está` : `As Equipes ${semAvaliadores.map((i) => i + 1).join(', ')} estão`} sem avaliadores designados.
+                  {semAvaliadores.length === 1 ? `${nomeEq(semAvaliadores[0])} está` : `${semAvaliadores.map(nomeEq).join(', ')} estão`} sem avaliadores designados.
                   {soDesignados ? (semAvaliadores.length === 1 ? ' Ninguém consegue avaliá-la.' : ' Ninguém consegue avaliá-las.')
                     : (semAvaliadores.length === 1 ? ' A Construção dela não pode começar' : ' A Construção delas não pode começar') + ', mas a Apresentação funciona normalmente.'} Toque em <b>Avaliadores</b> na equipe para designar.
                 </p>
@@ -521,29 +592,32 @@ export function AoVivo({ d, setD, acao }: PropsAba) {
                 {grupos.map((g, i) => {
                   const q = doServidor(etapa)[i];
                   const eC: EstadoMomento = q?.construcao || '';
-                  const eA: EstadoMomento = i === ativaAqui ? 'ANDAMENTO' : (q?.apresentacao || '');
+                  const eA: EstadoMomento = !salas && i === ativaAqui ? 'ANDAMENTO' : (q?.apresentacao || '');
                   const lc = lancaram(i, 'construcao'), la = lancaram(i, 'apresentacao');
                   const nomes = (designados[i] || []).map((id) => nomeAv(id).split(' ')[0]).join(', ');
                   const status = (e: EstadoMomento, l: { feitos: number; total: number }) =>
                     e === 'ANDAMENTO' ? `Em andamento · ${l.feitos} de ${l.total} avaliadores completaram` : e === 'CONCLUIDO' ? `Concluído · ${l.feitos} de ${l.total} completaram` : 'Pendente';
                   return (
                     <li class="equipe-item">
-                      <div class="eq-txt"><b>Equipe {i + 1}</b><small>{g.length ? `${g.length} · ${g.map(curto).join(', ')}` : 'Ninguém ainda'}</small></div>
+                      <div class="eq-txt"><b>{nomeEq(i)}</b><small>{g.length ? `${g.length} · ${g.map(curto).join(', ')}` : 'Ninguém ainda'}</small></div>
                       <div class="eq-avs">
-                        <p><span>Avaliadores</span> {nomes || <i class="falta">nenhum designado</i>}</p>
-                        <button class="botao leve" onClick={() => abrirDesignacao(i)} aria-label={`Avaliadores da Equipe ${i + 1}`}>Avaliadores</button>
+                        <p><span>Avaliadores</span> {nomes || <i class="falta">nenhum designado</i>}{q?.narrador && <><br /><span>Narrador</span> {nomeAv(q.narrador).split(' ')[0]}</>}</p>
+                        <button class="botao leve" onClick={() => abrirDesignacao(i)} aria-label={`Avaliadores ${doEq(i)}`}>Avaliadores</button>
                       </div>
                       <div class="momento">
-                        <div class="mom-txt"><b>Construção</b><small class={'est ' + eC.toLowerCase()}>{status(eC, lc)}</small></div>
+                        <div class="mom-txt"><b>{nC}</b><small class={'est ' + eC.toLowerCase()}>{status(eC, lc)}</small></div>
                         {eC === 'ANDAMENTO'
-                          ? <BotaoAcao class="botao" aoClicar={() => construcao(i, 'CONCLUIDO', `Construção da Equipe ${i + 1} concluída`)}>Concluir</BotaoAcao>
-                          : <BotaoAcao class="botao" disabled={!g.length || !(designados[i] || []).length} aoClicar={() => construcao(i, 'ANDAMENTO', `Construção da Equipe ${i + 1} aberta`)}>{eC === 'CONCLUIDO' ? 'Reabrir' : 'Iniciar'}</BotaoAcao>}
+                          ? <BotaoAcao class="botao" aoClicar={() => construcao(i, 'CONCLUIDO', `${nC}: ${nomeEq(i)} concluída`)}>Concluir</BotaoAcao>
+                          : <BotaoAcao class="botao" disabled={!g.length || !(designados[i] || []).length} aoClicar={() => construcao(i, 'ANDAMENTO', `${nC}: ${nomeEq(i)} aberta`)}>{eC === 'CONCLUIDO' ? 'Reabrir' : 'Iniciar'}</BotaoAcao>}
                       </div>
                       <div class="momento">
-                        <div class="mom-txt"><b>Apresentação</b><small class={'est ' + eA.toLowerCase()}>{status(eA, la)}</small></div>
-                        {i === ativaAqui
+                        <div class="mom-txt"><b>{nA}</b><small class={'est ' + eA.toLowerCase()}>{status(eA, la)}</small></div>
+                        {salas ? (eA === 'ANDAMENTO'
+                          ? <BotaoAcao class="botao" aoClicar={() => apresentacao(i, 'CONCLUIDO', `${nA}: ${nomeEq(i)} concluída`)}>Concluir</BotaoAcao>
+                          : <BotaoAcao class="botao" disabled={!g.length || !(designados[i] || []).length} aoClicar={() => apresentacao(i, 'ANDAMENTO', `${nA}: ${nomeEq(i)} aberta`)}>{eA === 'CONCLUIDO' ? 'Reabrir' : 'Iniciar'}</BotaoAcao>)
+                        : i === ativaAqui
                           ? <span class="ao-vivo">Ao vivo</span>
-                          : <BotaoAcao class="botao" disabled={!g.length} aoClicar={() => aoVivo(idEquipe(etapa, i), `Equipe ${i + 1} aberta`)}>Avaliar</BotaoAcao>}
+                          : <BotaoAcao class="botao" disabled={!g.length} aoClicar={() => aoVivo(idEquipe(etapa, i), `${nomeEq(i)} aberta`)}>Avaliar</BotaoAcao>}
                       </div>
                     </li>
                   );
