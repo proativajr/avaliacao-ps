@@ -9,7 +9,9 @@ import { Foto } from './Foto';
 const NOTAS = [1, 2, 3, 4, 5] as const;
 
 export function TelaCandidato({ ctx, estadoFila, semConexao, abrir, candId, momento }: PropsTela & { candId: string; momento?: Momento }) {
-  const { pacote, etapa, aberta, criterios, notas } = ctx;
+  const { pacote, etapa, criterios, notas } = ctx;
+  // Fora do momento liberado (ou com a dinâmica fechada) a tela fica só para leitura.
+  const aberta = ctx.pode(candId, momento);
   // Navegação dentro da equipe em avaliação (se o candidato for dela); senão, entre todos.
   // Na Construção, só dentro da equipe designada ao avaliador.
   const eqConstrucao = momento ? ctx.construcao.find((q) => q.ids.includes(candId)) : undefined;
@@ -121,7 +123,7 @@ export function TelaCandidato({ ctx, estadoFila, semConexao, abrir, candId, mome
           <Foto key={cand.id} nome={cand.nome} foto={cand.foto_url} tam={120} forma="quadrada" />
           <h1 class="cand-nome">{cand.nome}</h1>
         </div>
-        {!aberta && <p class="aviso alerta">Avaliação fechada: somente leitura.</p>}
+        {!aberta && <p class="aviso alerta">{ctx.aberta && ctx.soNoMomento ? 'A avaliação deste candidato não está liberada agora: somente leitura.' : 'Avaliação fechada: somente leitura.'}</p>}
 
         {blocos.length > 1 && (
           <nav class="blocos" role="tablist" aria-label="Blocos de critérios">

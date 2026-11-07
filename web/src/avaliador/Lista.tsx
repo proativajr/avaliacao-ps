@@ -25,19 +25,20 @@ export function Salvamento({ e, n, semConexao, curto }: { e: EstadoFila; n: numb
 const CHECK = <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Avaliado"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>;
 const SETA = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>;
 
-function Linha({ c, s, abrir, sufixo = '' }: { c: Pacote['candidatos'][number]; s: ReturnType<Contexto['estado']>; abrir: (id: string) => void; sufixo?: string }) {
+function Linha({ c, s, abrir, sufixo = '', so_ver = false }: { c: Pacote['candidatos'][number]; s: ReturnType<Contexto['estado']>; abrir: (id: string) => void; sufixo?: string; so_ver?: boolean }) {
   const feito = s.tipo === 'completo';
-  return (
-    <li>
-      <button onClick={() => abrir(c.id + sufixo)}>
-        <span class={'av-ini' + (feito ? ' feito' : '')}><Foto nome={c.nome} foto={c.foto_url} tam={44} /></span>
-        <span class="nome">{c.nome_curto}</span>
-        <span class={'estado ' + s.tipo}>
-          {feito ? (s.tudoNA ? 'Não avaliei' : CHECK) : s.tipo === 'parcial' ? `${s.feitos} de ${s.total}` : SETA}
-        </span>
-      </button>
-    </li>
+  const miolo = (
+    <>
+      <span class={'av-ini' + (feito ? ' feito' : '')}><Foto nome={c.nome} foto={c.foto_url} tam={44} /></span>
+      <span class="nome">{c.nome_curto}</span>
+      <span class={'estado ' + s.tipo}>
+        {feito ? (s.tudoNA ? 'Não avaliei' : CHECK) : s.tipo === 'parcial' ? `${s.feitos} de ${s.total}` : so_ver ? null : SETA}
+      </span>
+    </>
   );
+  // Fora do momento liberado: o participante aparece na lista, mas não abre para avaliar.
+  if (so_ver) return <li><div class="so-ver">{miolo}</div></li>;
+  return <li><button onClick={() => abrir(c.id + sufixo)}>{miolo}</button></li>;
 }
 
 /** Topo comum: símbolo, nome da dinâmica e o estado de salvamento. */
@@ -81,7 +82,7 @@ export function Lista({ ctx, estadoFila, semConexao, abertas, trocarEtapa, abrir
 
       <main class="av-conteudo">
         {erro && <p class="aviso erro">{erro}</p>}
-        {!ctx.aberta && <p class="aviso alerta">Avaliação fechada. Você só pode ver suas notas.</p>}
+        {!ctx.aberta && <p class="aviso alerta">{ctx.soNoMomento ? 'Avaliação fechada.' : 'Avaliação fechada. Você só pode ver suas notas.'}</p>}
         {!total && <p class="aviso">Ainda não há candidatos.</p>}
 
         {equipe ? (
@@ -96,7 +97,9 @@ export function Lista({ ctx, estadoFila, semConexao, abertas, trocarEtapa, abrir
             <span class="sobrelinha"><i />Aguardando</span>
             {ctx.equipeDeOutros
               ? <><h1>{ctx.equipeDeOutros} está apresentando.</h1><p>Ela é avaliada pelos avaliadores designados a ela. Quando for a vez de uma equipe sua, ela aparece aqui sozinha.</p></>
-              : <><h1>A próxima equipe aparece aqui sozinha.</h1><p>Enquanto isso, você pode revisar qualquer candidato.</p></>}
+              : ctx.soNoMomento
+                ? <><h1>A próxima equipe aparece aqui sozinha.</h1><p>A avaliação abre quando o admin liberar a construção ou a apresentação de uma equipe. Enquanto isso, você vê os participantes.</p></>
+                : <><h1>A próxima equipe aparece aqui sozinha.</h1><p>Enquanto isso, você pode revisar qualquer candidato.</p></>}
           </section>
         )}
 
@@ -122,7 +125,7 @@ export function Lista({ ctx, estadoFila, semConexao, abertas, trocarEtapa, abrir
               </label>
             )}
             <ul class="cands">
-              {visiveis.map((c) => <Linha c={c} s={estados[c.id]} abrir={abrir} />)}
+              {visiveis.map((c) => <Linha c={c} s={estados[c.id]} abrir={abrir} so_ver={!ctx.pode(c.id)} />)}
               {!visiveis.length && <li class="vazio">Ninguém com esse nome.</li>}
             </ul>
           </>

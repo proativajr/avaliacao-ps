@@ -33,6 +33,8 @@ O painel do admin abre pelo link de admin (planilha → **PS Proativa → Mostra
      Mexer nos membros em **Montar** não apaga os designados. Equipe sem avaliador aparece com um aviso amarelo: a Construção dela não começa,
      o resto funciona. Na Construção só os designados avaliam. Na Apresentação todos avaliam, a menos que **Configuração → Processo →
      "Na Apresentação, só os avaliadores designados à equipe avaliam"** esteja marcado.
+     Fora desses momentos ninguém avalia: o celular mostra os participantes, mas sem a opção de avaliar, e a planilha recusa a nota.
+     Para liberar todos a qualquer hora (plano B), desmarque **Configuração → Processo → "Avaliar só na Construção ou Apresentação liberada"**.
   5. Cada equipe tem dois momentos, com status **Pendente**, **Em andamento** ou **Concluído** e "X de Y avaliadores completaram":
      - **Construção:** toque em **Iniciar**. Só os avaliadores designados veem a equipe (várias equipes podem estar em construção ao mesmo tempo). **Concluir** tira a equipe dos celulares.
      - **Apresentação:** quando a equipe apresentar, toque em **Avaliar**. Em até 10 segundos todos os celulares mostram só essa equipe.
