@@ -11,6 +11,8 @@ function preparar() {
   const adm = amb.props.get('ADMIN_TOKEN');
   const chamar = (token, acao, dados) => JSON.parse(gas.doPost({ postData: { contents: JSON.stringify({ token, acao, dados }) } }).getContent());
   const ok = (token, acao, dados) => { const r = chamar(token, acao, dados); assert.equal(r.ok, true, acao + ': ' + r.erro); return r.dados; };
+  // Estes testes cobrem outras regras; a trava por momento liberado tem o próprio arquivo (momento-liberado.test.mjs).
+  ok(adm, 'admin.salvarConfig', { config: { avaliar_so_no_momento: 'NÃO' } });
   const avs = ok(adm, 'admin.salvarAvaliadores', { lista: [{ nome: 'Avaliadora Um', area: 'Projetos' }, { nome: 'Avaliador Dois', area: 'Comercial' }, { nome: 'Avaliador Três', area: 'Vice-presidência' }] }).avaliadores;
   ok(adm, 'admin.salvarCandidatos', { lista: ['Ana Um', 'Bruno Dois', 'Carla Três', 'Davi Quatro'].map((n) => ({ nome_exibicao: n })) });
   ok(adm, 'admin.salvarEtapas', { lista: [{ nome: 'Dinâmica 2', ordem: 2, aberta: 'SIM' }] });

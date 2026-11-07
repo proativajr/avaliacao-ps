@@ -3,7 +3,7 @@
  * Mexer aqui muda a estrutura criada pelo setup().
  * ===================================================================== */
 
-var VERSAO_SISTEMA = '1.4.0';
+var VERSAO_SISTEMA = '1.5.0';
 
 var ABAS = {
   CONFIG: 'Config',
@@ -78,6 +78,7 @@ var CONFIG_PADRAO = [
   ['peso_construcao', 1, 'Peso da Construção na nota da dinâmica em equipe'],
   ['peso_apresentacao', 1, 'Peso da Apresentação na nota da dinâmica em equipe'],
   ['apresentacao_so_designados', 'NÃO', 'SIM: na Apresentação, só os avaliadores designados à equipe do candidato podem avaliá-lo'],
+  ['avaliar_so_no_momento', 'SIM', 'SIM: o avaliador só avalia a equipe em Construção ou Apresentação liberada pelo admin. NÃO libera todos os candidatos a qualquer hora'],
 ];
 
 var ETAPAS_PADRAO = [['geral', 'Dinâmica 1', 1, 'SIM']];

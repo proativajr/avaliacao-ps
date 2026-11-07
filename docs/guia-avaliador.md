@@ -4,7 +4,8 @@
 Dica: no celular, use **"Adicionar à tela inicial"** para abrir como app.
 
 **2. Avalie a equipe da vez.** Quando o admin abre uma equipe, ela aparece no topo como **Avalie agora · Equipe N**.
-Toque num membro, dê as notas e use **Próximo**. Os outros candidatos ficam em **Outros candidatos**.
+Toque num membro, dê as notas e use **Próximo**. Os outros candidatos ficam em **Outros candidatos**, só para ver.
+Enquanto o admin não libera a construção ou a apresentação de uma equipe, a lista mostra todos os participantes, mas ninguém abre para avaliar.
 Cada dinâmica tem notas separadas: a nota de alguém na Dinâmica 1 não muda a da Dinâmica 2.
 Se o admin escolheu você para acompanhar uma equipe enquanto ela **constrói** a apresentação, aparece **Construção · você acompanha**:
 avalie normalmente. Só você e os outros avaliadores dessa equipe veem esse bloco. Na **Apresentação** todos avaliam, inclusive quem acompanhou a construção

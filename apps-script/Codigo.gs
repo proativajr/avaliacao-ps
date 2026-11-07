@@ -345,7 +345,7 @@ function estadoCandidato(respondidos, total) {
  * Mexer aqui muda a estrutura criada pelo setup().
  * ===================================================================== */
 
-var VERSAO_SISTEMA = '1.4.0';
+var VERSAO_SISTEMA = '1.5.0';
 
 var ABAS = {
   CONFIG: 'Config',
@@ -420,6 +420,7 @@ var CONFIG_PADRAO = [
   ['peso_construcao', 1, 'Peso da Construção na nota da dinâmica em equipe'],
   ['peso_apresentacao', 1, 'Peso da Apresentação na nota da dinâmica em equipe'],
   ['apresentacao_so_designados', 'NÃO', 'SIM: na Apresentação, só os avaliadores designados à equipe do candidato podem avaliá-lo'],
+  ['avaliar_so_no_momento', 'SIM', 'SIM: o avaliador só avalia a equipe em Construção ou Apresentação liberada pelo admin. NÃO libera todos os candidatos a qualquer hora'],
 ];
 
 var ETAPAS_PADRAO = [['geral', 'Dinâmica 1', 1, 'SIM']];
@@ -1662,6 +1663,8 @@ function pacotePublico_() {
     equipe: equipeAtiva_(cfg),
     equipes_construcao: equipesEmConstrucao_(),
     apresentacao_so_designados: ehSim_(cfg.apresentacao_so_designados),
+    // Sem a chave na Config (planilha antiga ainda não migrada), vale o padrão SIM.
+    avaliar_so_no_momento: cfg.avaliar_so_no_momento === undefined || ehSim_(cfg.avaliar_so_no_momento),
     // Só com a regra ligada: quem é de qual equipe (cada avaliador recebe só o seu recorte, sem a lista de designados).
     equipes_designacao: ehSim_(cfg.apresentacao_so_designados)
       ? lerEquipes_().map(function (q) { return { etapa: q.etapa, membros: q.membros, avaliadores: q.avaliadores }; }) : [],
@@ -1795,7 +1798,8 @@ ACOES_AVALIADOR['av.sincronizar'] = function (av) {
   var pub = pacotePublico_();
   return { versao: pub.versao, em_votacao: pub.em_votacao, avaliacao_aberta: pub.avaliacao_aberta, etapas: pub.etapas,
     dinamica_ativa: pub.dinamica_ativa, equipe: pub.equipe, construcao: construcaoDoAvaliador_(pub.equipes_construcao, av.id),
-    apresentacao_so_designados: pub.apresentacao_so_designados, fora_da_equipe: foraDaEquipe_(pub, av.id) };
+    apresentacao_so_designados: pub.apresentacao_so_designados, avaliar_so_no_momento: pub.avaliar_so_no_momento,
+    fora_da_equipe: foraDaEquipe_(pub, av.id) };
 };
 
 /** Média dos colegas por etapa|candidato|critério (só quando a configuração permite). */
@@ -1845,11 +1849,23 @@ ACOES_AVALIADOR['av.salvar'] = function (av, dados) {
     if (!construcao && !dele.length) return true;
     return dele.some(function (q) { return q.avaliadores.indexOf(av.id) >= 0; });
   };
+  /**
+   * Com "avaliar_so_no_momento" ligado (padrão): a nota só vale se o admin já liberou o momento da equipe do candidato
+   * (Construção ou Apresentação em andamento ou concluída). Concluída também vale, para a fila offline enviar depois
+   * o que foi dado durante o momento. Candidato sem equipe nesta dinâmica não tem momento: fica bloqueado.
+   */
+  var liberado = function (item) {
+    if (!pub.avaliar_so_no_momento) return true;
+    if (!equipes) equipes = lerEquipes_();
+    var campo = item.momento === 'construcao' ? 'construcao' : 'apresentacao';
+    return equipes.some(function (q) { return q.etapa === item.etapa && q.membros.indexOf(item.candidato_id) >= 0 && q[campo] !== ''; });
+  };
   var validar = function (item, ehNota) {
     var e = etapas[item.etapa];
     if (!e) return 'Etapa inexistente.';
     if (!pub.avaliacao_aberta || !e.aberta) return 'A avaliação desta etapa está fechada.';
     if (!cands[item.candidato_id]) return 'Candidato não está ativo.';
+    if (!liberado(item)) return 'A avaliação deste candidato ainda não foi liberada pelo admin.';
     if (!podeAvaliar(item)) return item.momento === 'construcao' ? 'Você não é avaliador desta equipe na construção.'
       : 'Só os avaliadores designados à equipe deste candidato podem avaliá-lo.';
     if (ehNota) {
@@ -1971,6 +1987,7 @@ var VALIDA_CONFIG = {
   peso_construcao: function (v) { return numeroOuVazio_(v, 0, 10); },
   peso_apresentacao: function (v) { return numeroOuVazio_(v, 0, 10); },
   apresentacao_so_designados: simNao_,
+  avaliar_so_no_momento: simNao_,
   url_app: function (v) { return String(v).trim().replace(/\/+$/, ''); },
 };
 
