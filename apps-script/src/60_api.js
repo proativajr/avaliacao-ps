@@ -188,11 +188,13 @@ function pacotePublico_() {
     apresentacao_so_designados: ehSim_(cfg.apresentacao_so_designados),
     // Sem a chave na Config (planilha antiga ainda não migrada), vale o padrão SIM.
     avaliar_so_no_momento: cfg.avaliar_so_no_momento === undefined || ehSim_(cfg.avaliar_so_no_momento),
-    // Só com a regra ligada: quem é de qual equipe (cada avaliador recebe só o seu recorte, sem a lista de designados).
-    equipes_designacao: ehSim_(cfg.apresentacao_so_designados)
-      ? lerEquipes_().map(function (q) { return { etapa: q.etapa, membros: q.membros, avaliadores: q.avaliadores }; }) : [],
-    etapas: lerObjetos_(ABAS.ETAPAS).map(function (e) { return { id: String(e.id), nome: String(e.nome), ordem: Number(e.ordem) || 0, aberta: ehSim_(e.aberta) }; })
-      .sort(function (a, b) { return a.ordem - b.ordem; }),
+    // Quem é de qual equipe, com narrador e personas (só vai ao cache; cada avaliador recebe só o seu recorte).
+    equipes_designacao: lerEquipes_().map(function (q) {
+      return { id: q.id, nome: q.nome, etapa: q.etapa, membros: q.membros, avaliadores: q.avaliadores, narrador: q.narrador, personas: q.personas,
+        apresentacao: q.apresentacao };
+    }),
+    nomes_avaliadores: nomesCurtosAvaliadores_(),
+    etapas: lerObjetos_(ABAS.ETAPAS).map(etapaPublica_).sort(function (a, b) { return a.ordem - b.ordem; }),
     blocos: blocosAtivos(blocos, criterios).map(function (b) { return { id: b.id, nome: b.nome, nome_curto: b.nome_curto, ordem: b.ordem }; }),
     criterios: criterios,
     candidatos: cands.map(function (c) {
@@ -201,6 +203,28 @@ function pacotePublico_() {
   };
   cache.put('pub', JSON.stringify(pub), CACHE_SEG);
   return pub;
+}
+
+/** Etapa no formato do app: com o formato (PALCO ou SALAS) e o nome de cada momento. */
+function etapaPublica_(e) {
+  return { id: String(e.id), nome: String(e.nome), ordem: Number(e.ordem) || 0, aberta: ehSim_(e.aberta), formato: formatoEtapa_(e.formato),
+    nome_construcao: String(e.nome_construcao || '').trim(), nome_apresentacao: String(e.nome_apresentacao || '').trim(), fases: String(e.fases || '').trim() };
+}
+
+function formatoEtapa_(v) {
+  return String(v || '').trim().toUpperCase() === 'SALAS' ? 'SALAS' : 'PALCO';
+}
+
+/** Primeiro nome de cada avaliador (nome e sobrenome quando o primeiro se repete), para mostrar colegas e narrador. */
+function nomesCurtosAvaliadores_() {
+  var avs = lerObjetos_(ABAS.AVALIADORES).map(function (a) { return { id: String(a.id), nome: String(a.nome) }; });
+  return nomesParaAvaliador(avs);
+}
+
+/** Na Apresentação desta dinâmica só os designados avaliam? Sempre em SALAS; em PALCO, só com a chave geral ligada. */
+function soDesignados_(pub, etapaId) {
+  var e = (pub.etapas || []).filter(function (x) { return x.id === etapaId; })[0];
+  return !!pub.apresentacao_so_designados || !!(e && e.formato === 'SALAS');
 }
 
 function listaIds_(txt) {
@@ -226,19 +250,42 @@ function construcaoDoAvaliador_(equipes, avId) {
     .map(function (q) { return { id: q.id, nome: q.nome, etapa: q.etapa, membros: q.membros }; });
 }
 
+/** Dinâmicas em SALAS: equipes com a Apresentação em andamento em que este avaliador foi designado. */
+function apresentacaoDoAvaliador_(pub, avId) {
+  return (pub.equipes_designacao || []).filter(function (q) {
+    var e = (pub.etapas || []).filter(function (x) { return x.id === q.etapa; })[0];
+    return e && e.formato === 'SALAS' && q.apresentacao === 'ANDAMENTO' && q.avaliadores.indexOf(avId) >= 0;
+  }).map(function (q) { return { id: q.id, nome: q.nome, etapa: q.etapa, membros: q.membros }; });
+}
+
 /**
- * Com "apresentacao_so_designados" ligado: candidatos que este avaliador NÃO pode avaliar, por dinâmica
+ * Equipes em que este avaliador tem papel (avaliador designado ou narrador), em todas as dinâmicas, com o que o celular mostra:
+ * colegas que avaliam junto, narrador da equipe e a persona que ele interpreta (Dinâmica 3).
+ */
+function papeisDoAvaliador_(pub, avId) {
+  var nomes = pub.nomes_avaliadores || {};
+  return (pub.equipes_designacao || []).filter(function (q) { return q.avaliadores.indexOf(avId) >= 0 || q.narrador === avId; })
+    .map(function (q) {
+      var p = PERSONAS_D3[(q.personas || {})[avId]];
+      return { id: q.id, nome: q.nome, etapa: q.etapa, papel: q.narrador === avId ? 'narrador' : 'avaliador',
+        colegas: q.avaliadores.filter(function (a) { return a !== avId; }).map(function (a) { return nomes[a] || ''; }).filter(Boolean),
+        narrador: q.narrador && q.narrador !== avId ? (nomes[q.narrador] || '') : '',
+        persona: p ? { nome: p.nome, resumo: p.resumo } : null };
+    });
+}
+
+/**
+ * Com "apresentacao_so_designados" ligado (ou em dinâmicas em SALAS): candidatos que este avaliador NÃO pode avaliar, por dinâmica
  * (os que estão em equipes às quais ele não foi designado). Candidato sem equipe fica livre. Sem a regra: {}.
  */
 function foraDaEquipe_(pub, avId) {
   var r = {};
-  if (!pub.apresentacao_so_designados) return r;
   var minhas = {};
   (pub.equipes_designacao || []).forEach(function (q) {
     if (q.avaliadores.indexOf(avId) >= 0) q.membros.forEach(function (c) { minhas[q.etapa + '|' + c] = true; });
   });
   (pub.equipes_designacao || []).forEach(function (q) {
-    if (q.avaliadores.indexOf(avId) >= 0) return;
+    if (!soDesignados_(pub, q.etapa) || q.avaliadores.indexOf(avId) >= 0) return;
     q.membros.forEach(function (c) {
       if (minhas[q.etapa + '|' + c]) return;
       (r[q.etapa] = r[q.etapa] || []).push(c);
@@ -308,8 +355,11 @@ ACOES_AVALIADOR['av.iniciar'] = function (av) {
   var r = JSON.parse(JSON.stringify(pub));
   r.construcao = construcaoDoAvaliador_(pub.equipes_construcao, av.id);
   r.fora_da_equipe = foraDaEquipe_(pub, av.id);
+  r.apresentacao = apresentacaoDoAvaliador_(pub, av.id);
+  r.papeis = papeisDoAvaliador_(pub, av.id);
   delete r.equipes_construcao;
   delete r.equipes_designacao;
+  delete r.nomes_avaliadores;
   r.eu = { id: av.id, nome: av.nome };
   r.minhas = { notas: lerAvaliacoes_(av.id), observacoes: lerObservacoes_(av.id) };
   if (pub.veem_outros) r.colegas = mediasDosColegas_(av.id);
@@ -322,7 +372,7 @@ ACOES_AVALIADOR['av.sincronizar'] = function (av) {
   return { versao: pub.versao, em_votacao: pub.em_votacao, avaliacao_aberta: pub.avaliacao_aberta, etapas: pub.etapas,
     dinamica_ativa: pub.dinamica_ativa, equipe: pub.equipe, construcao: construcaoDoAvaliador_(pub.equipes_construcao, av.id),
     apresentacao_so_designados: pub.apresentacao_so_designados, avaliar_so_no_momento: pub.avaliar_so_no_momento,
-    fora_da_equipe: foraDaEquipe_(pub, av.id) };
+    fora_da_equipe: foraDaEquipe_(pub, av.id), apresentacao: apresentacaoDoAvaliador_(pub, av.id), papeis: papeisDoAvaliador_(pub, av.id) };
 };
 
 /** Média dos colegas por etapa|candidato|critério (só quando a configuração permite). */
@@ -366,7 +416,7 @@ ACOES_AVALIADOR['av.salvar'] = function (av, dados) {
    */
   var podeAvaliar = function (item) {
     var construcao = item.momento === 'construcao';
-    if (!construcao && !pub.apresentacao_so_designados) return true;
+    if (!construcao && !soDesignados_(pub, item.etapa)) return true;
     if (!equipes) equipes = lerEquipes_();
     var dele = equipes.filter(function (q) { return q.etapa === item.etapa && q.membros.indexOf(item.candidato_id) >= 0; });
     if (!construcao && !dele.length) return true;
@@ -564,8 +614,14 @@ ACOES_ADMIN['admin.emVotacao'] = function (dados) {
 function lerEquipes_() {
   return lerObjetos_(ABAS.EQUIPES).map(function (e) {
     return { id: String(e.id), etapa: String(e.etapa), nome: String(e.nome), ordem: Number(e.ordem) || 0, membros: listaIds_(e.membros),
-      avaliadores: listaIds_(e.avaliadores), construcao: estadoMomento_(e.construcao), apresentacao: estadoMomento_(e.apresentacao) };
+      avaliadores: listaIds_(e.avaliadores), construcao: estadoMomento_(e.construcao), apresentacao: estadoMomento_(e.apresentacao),
+      narrador: String(e.narrador || '').trim(), personas: lerPersonas_(e.personas) };
   }).sort(function (a, b) { return a.ordem - b.ordem; });
+}
+
+/** {id do avaliador: chave da persona}. Texto inválido vira {}. */
+function lerPersonas_(txt) {
+  try { var o = JSON.parse(String(txt || '') || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; }
 }
 
 /** '' (pendente), 'ANDAMENTO' ou 'CONCLUIDO'. */
@@ -577,7 +633,8 @@ function estadoMomento_(v) {
 /** Equipe no formato da planilha (membros e avaliadores viram texto). */
 function linhaEquipe_(q) {
   return { id: q.id, etapa: q.etapa, nome: q.nome, ordem: q.ordem, membros: q.membros.join(','), avaliadores: q.avaliadores.join(','),
-    construcao: q.construcao, apresentacao: q.apresentacao };
+    construcao: q.construcao, apresentacao: q.apresentacao, narrador: q.narrador || '',
+    personas: q.personas && Object.keys(q.personas).length ? JSON.stringify(q.personas) : '' };
 }
 
 /**
@@ -606,7 +663,8 @@ ACOES_ADMIN['admin.salvarEquipes'] = function (dados) {
       var avaliadores = q.avaliadores === undefined ? (antiga ? antiga.avaliadores : [])
         : q.avaliadores.map(String).filter(function (a, k, arr) { return avs[a] && arr.indexOf(a) === k; });
       return { id: id, etapa: etapa, nome: String(q.nome || ('Equipe ' + (i + 1))).trim().slice(0, 40), ordem: i + 1, membros: membros,
-        avaliadores: avaliadores, construcao: antiga ? antiga.construcao : '', apresentacao: antiga ? antiga.apresentacao : '' };
+        avaliadores: avaliadores, construcao: antiga ? antiga.construcao : '', apresentacao: antiga ? antiga.apresentacao : '',
+        narrador: antiga ? antiga.narrador : '', personas: antiga ? antiga.personas : {} };
     });
     var outras = lerEquipes_().filter(function (e) { return e.etapa !== etapa; });
     limparDados_(ABAS.EQUIPES);
@@ -712,6 +770,137 @@ ACOES_ADMIN['admin.construcao'] = function (dados) {
   });
 };
 
+/**
+ * Dinâmicas em SALAS: libera ou encerra a Apresentação de UMA equipe (várias podem estar em andamento ao mesmo tempo).
+ * Só os avaliadores designados à equipe avaliam. Ao começar a Apresentação, a Construção da equipe fica concluída.
+ * dados: {etapa, equipe, estado: 'ANDAMENTO' | 'CONCLUIDO' | ''}.
+ */
+ACOES_ADMIN['admin.apresentacao'] = function (dados) {
+  var etapa = String(dados.etapa || '');
+  var equipeId = String(dados.equipe || '');
+  var estado = estadoMomento_(dados.estado);
+  return comTrava_(function () {
+    var q = lerEquipes_().filter(function (x) { return x.id === equipeId && x.etapa === etapa; })[0];
+    if (!q) throw erroApi_('VALIDACAO', 'Equipe inexistente nesta dinâmica.');
+    if (estado === 'ANDAMENTO') {
+      if (!q.avaliadores.length) throw erroApi_('VALIDACAO', 'Escolha ao menos um avaliador para esta equipe antes de começar.');
+      abrirDinamica_(etapa);
+      if (q.construcao === 'ANDAMENTO') gravarEstadoEquipe_(equipeId, 'construcao', 'CONCLUIDO');
+    }
+    gravarEstadoEquipe_(equipeId, 'apresentacao', estado);
+    limparCache_(true);
+    return { config: lerConfig_(), etapas: lerObjetos_(ABAS.ETAPAS).map(limparObj_), equipes: lerEquipes_() };
+  });
+};
+
+/**
+ * Comanda todas as equipes de uma dinâmica de uma vez.
+ * dados: {etapa, momento: 'construcao' | 'apresentacao', estado: 'ANDAMENTO' | 'CONCLUIDO'}.
+ * Equipes sem candidatos ficam de fora. Para começar, a equipe precisa de avaliador: as que não têm são puladas e devolvidas
+ * em "puladas". Começar a Apresentação conclui a Construção que estiver em andamento. Encerrar só mexe em quem estava em andamento.
+ */
+ACOES_ADMIN['admin.momentoTodas'] = function (dados) {
+  var etapa = String(dados.etapa || '');
+  var momento = dados.momento === 'construcao' ? 'construcao' : 'apresentacao';
+  var estado = estadoMomento_(dados.estado);
+  if (estado !== 'ANDAMENTO' && estado !== 'CONCLUIDO') throw erroApi_('VALIDACAO', 'Estado inválido.');
+  return comTrava_(function () {
+    if (!lerObjetos_(ABAS.ETAPAS).some(function (e) { return String(e.id) === etapa; })) throw erroApi_('VALIDACAO', 'Dinâmica inexistente.');
+    var linhas = lerObjetos_(ABAS.EQUIPES).filter(function (e) { return String(e.etapa) === etapa; });
+    var mudar = [], puladas = [];
+    linhas.forEach(function (l) {
+      if (!listaIds_(l.membros).length) return;
+      var atual = estadoMomento_(l[momento]);
+      if (estado === 'ANDAMENTO') {
+        if (atual === 'ANDAMENTO') return;
+        if (!listaIds_(l.avaliadores).length) { puladas.push(String(l.nome)); return; }
+        l[momento] = 'ANDAMENTO';
+        if (momento === 'apresentacao' && estadoMomento_(l.construcao) === 'ANDAMENTO') l.construcao = 'CONCLUIDO';
+        mudar.push(l);
+      } else if (atual === 'ANDAMENTO') { l[momento] = 'CONCLUIDO'; mudar.push(l); }
+    });
+    if (estado === 'ANDAMENTO' && mudar.length) abrirDinamica_(etapa);
+    reescrever_(ABAS.EQUIPES, mudar);
+    limparCache_(true);
+    return { config: lerConfig_(), etapas: lerObjetos_(ABAS.ETAPAS).map(limparObj_), equipes: lerEquipes_(), mudadas: mudar.length, puladas: puladas };
+  });
+};
+
+/**
+ * Roteiro do Manual do Avaliador: as 5 dinâmicas, com grupos, avaliadores, narradores e personas.
+ * dados.escolhas: {nome do manual: id do avaliador ou '' (deixar de fora)}. Sem "gravar", só devolve a prévia:
+ * para cada nome do manual, quem casou no cadastro (ou as opções, quando não casou ou casou com mais de um).
+ * Com "gravar": cria ou atualiza as dinâmicas (em SALAS, abertas) e substitui as equipes delas, mantendo os candidatos de
+ * cada equipe pela posição e os estados dos momentos. Equipes a mais de antes deixam de existir (os candidatos ficam sem equipe).
+ */
+ACOES_ADMIN['admin.roteiroManual'] = function (dados) {
+  var escolhas = dados.escolhas || {};
+  var avs = lerObjetos_(ABAS.AVALIADORES).filter(function (a) { return ehSim_(a.ativo); })
+    .map(function (a) { return { id: String(a.id), nome: String(a.nome) }; });
+  var porId = {};
+  avs.forEach(function (a) { porId[a.id] = a; });
+  var casamento = nomesDoRoteiro().map(function (n) {
+    var ids = casarNomeRoteiro(n, avs);
+    var escolhido = escolhas[n] !== undefined ? String(escolhas[n] || '') : (ids.length === 1 ? ids[0] : '');
+    if (escolhido && !porId[escolhido]) escolhido = '';
+    return { nome: n, achados: ids, id: escolhido, cadastro: escolhido ? porId[escolhido].nome : '' };
+  });
+  var dinamicas = ROTEIRO_MANUAL.map(function (d) {
+    return { id: d.id, nome: d.nome, grupos: d.grupos.length, grupo: d.grupo, nome_construcao: d.nome_construcao,
+      nome_apresentacao: d.nome_apresentacao, fases: d.fases };
+  });
+  if (!dados.gravar) return { casamento: casamento, dinamicas: dinamicas };
+
+  var idDe = {};
+  casamento.forEach(function (c) { idDe[c.nome] = c.id; });
+  return comTrava_(function () { return emTransacao_([ABAS.ETAPAS, ABAS.EQUIPES], ['equipe_ativa', 'em_votacao'], function () {
+    var etapas = lerObjetos_(ABAS.ETAPAS);
+    var etapaPorId = {};
+    etapas.forEach(function (e) { etapaPorId[String(e.id)] = e; });
+    var novasEt = [], mudarEt = [];
+    ROTEIRO_MANUAL.forEach(function (d, i) {
+      var o = { id: d.id, nome: d.nome, ordem: i + 1, aberta: 'SIM', formato: 'SALAS', nome_construcao: d.nome_construcao,
+        nome_apresentacao: d.nome_apresentacao, fases: d.fases };
+      var a = etapaPorId[d.id];
+      if (a) { o._linha = a._linha; o.aberta = a.aberta || 'SIM'; mudarEt.push(o); } else novasEt.push(o);
+    });
+    reescrever_(ABAS.ETAPAS, mudarEt);
+    acrescentar_(ABAS.ETAPAS, novasEt);
+
+    var ids = ROTEIRO_MANUAL.map(function (d) { return d.id; });
+    var antigas = {};
+    var outras = lerEquipes_().filter(function (q) {
+      if (ids.indexOf(q.etapa) < 0) return true;
+      antigas[q.id] = q; return false;
+    });
+    var novas = [];
+    ROTEIRO_MANUAL.forEach(function (d) {
+      d.grupos.forEach(function (g, i) {
+        var id = d.id + '_eq' + (i + 1);
+        var a = antigas[id];
+        var avIds = [], personas = {};
+        g.avaliadores.forEach(function (n) {
+          var av = idDe[n];
+          if (!av || avIds.indexOf(av) >= 0) return;
+          avIds.push(av);
+          if (g.persona) personas[av] = g.persona;
+        });
+        novas.push({ id: id, etapa: d.id, nome: d.grupo + ' ' + (i + 1), ordem: i + 1, membros: a ? a.membros : [], avaliadores: avIds,
+          construcao: a ? a.construcao : '', apresentacao: a ? a.apresentacao : '', narrador: g.narrador ? (idDe[g.narrador] || '') : '',
+          personas: personas });
+      });
+    });
+    limparDados_(ABAS.EQUIPES);
+    acrescentar_(ABAS.EQUIPES, outras.concat(novas).map(linhaEquipe_));
+    var cfg = lerConfig_();
+    if (String(cfg.equipe_ativa) && !lerEquipes_().some(function (q) { return q.id === String(cfg.equipe_ativa); })) {
+      gravarConfig_('equipe_ativa', ''); gravarConfig_('em_votacao', '');
+    }
+    limparCache_();
+    return { casamento: casamento, dinamicas: dinamicas, etapas: lerObjetos_(ABAS.ETAPAS).map(limparObj_), equipes: lerEquipes_(), config: lerConfig_() };
+  }); });
+};
+
 function slug_(txt) {
   return normalizarNome(txt).replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'item';
 }
@@ -753,10 +942,18 @@ function removerConfig_(nomeAba, ids, colunaNotas) {
 }
 
 ACOES_ADMIN['admin.salvarEtapas'] = function (dados) {
+  var atuais = {};
+  lerObjetos_(ABAS.ETAPAS).forEach(function (e) { atuais[String(e.id)] = e; });
   return { etapas: salvarListaConfig_(ABAS.ETAPAS, dados.lista || [], function (e) {
     var nome = String(e.nome || '').trim();
     if (!nome) throw erroApi_('VALIDACAO', 'Etapa sem nome.');
-    return { id: String(e.id || slug_(nome)), nome: nome, ordem: Number(e.ordem) || 1, aberta: simNao_(e.aberta === undefined ? 'SIM' : e.aberta) };
+    var id = String(e.id || slug_(nome));
+    var a = atuais[id] || {};
+    // Campo ausente no pedido mantém o que está na planilha (telas antigas não conhecem formato nem nomes dos momentos).
+    var manter = function (k) { return String((e[k] !== undefined ? e[k] : a[k]) || '').trim().slice(0, 120); };
+    return { id: id, nome: nome, ordem: Number(e.ordem) || 1, aberta: simNao_(e.aberta === undefined ? 'SIM' : e.aberta),
+      formato: e.formato !== undefined || a.formato ? formatoEtapa_(manter('formato')) : '',
+      nome_construcao: manter('nome_construcao').slice(0, 40), nome_apresentacao: manter('nome_apresentacao').slice(0, 40), fases: manter('fases') };
   }) };
 };
 ACOES_ADMIN['admin.removerEtapas'] = function (dados) {

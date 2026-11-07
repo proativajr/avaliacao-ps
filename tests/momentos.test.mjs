@@ -121,7 +121,7 @@ test('compatibilidade: planilha com o esquema antigo é completada sozinha na pr
   gas.aba_('Equipes').getRange(1, 1, 1, 5).setValues([antigo]);
   const r = JSON.parse(gas.doPost({ postData: { contents: JSON.stringify({ token: adm, acao: 'admin.iniciar', dados: {} }) } }).getContent());
   assert.equal(r.ok, true, r.erro);
-  assert.deepEqual([...gas.aba_('Equipes').getRange(1, 1, 1, 8).getValues()[0]], [...gas.CABECALHOS.Equipes]);
+  assert.deepEqual([...gas.aba_('Equipes').getRange(1, 1, 1, gas.CABECALHOS.Equipes.length).getValues()[0]], [...gas.CABECALHOS.Equipes]);
   assert.equal(props.get('versao'), gas.VERSAO_SISTEMA);
 });
 
