@@ -89,6 +89,16 @@ function migrarEsquema_() {
 function aplicarMigracoes_() {
   migrarCriterios130_();
   migrarDiretorias_();
+  migrarSoPredador140_();
+}
+
+/** 1.4.0: desliga o bloco comportamental uma única vez (nada é apagado). Depois disso, vale o que o admin escolher. */
+function migrarSoPredador140_() {
+  var p = props_();
+  if (p.getProperty('mig_so_predador')) return;
+  var b = lerObjetos_(ABAS.BLOCOS).filter(function (x) { return String(x.id) === 'comport'; })[0];
+  if (b && ehSim_(b.ativo)) { b.ativo = 'NÃO'; reescrever_(ABAS.BLOCOS, [b]); }
+  p.setProperty('mig_so_predador', '1');
 }
 
 /** 1.3.0: acrescenta o critério Respeito ao bloco comportamental e troca a descrição antiga da Proatividade. */

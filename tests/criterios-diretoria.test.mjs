@@ -48,6 +48,8 @@ test('planilha antiga (1.2.0): a migração acrescenta Respeito uma vez e troca 
 
 test('Respeito entra na média com o mesmo cálculo dos outros critérios', () => {
   const { ok, adm } = preparar();
+  // O bloco comportamental vem desligado desde a 1.4.0: religar pela Configuração volta a aceitar as notas
+  ok(adm, 'admin.salvarBlocos', { lista: [{ id: 'comport', nome: 'Performance comportamental', nome_curto: 'Comport.', ordem: 2, ativo: 'SIM' }] });
   const [a] = ok(adm, 'admin.salvarAvaliadores', { lista: [{ nome: 'Ava', area: 'Projetos' }] }).avaliadores;
   ok(adm, 'admin.salvarCandidatos', { lista: [{ nome_exibicao: 'Ana Um' }] });
   const n = (k, v) => ({ etapa: 'geral', candidato_id: 'c001', criterio_id: k, nota: v, cliente_ts: Date.now() });
@@ -94,4 +96,27 @@ test('mapearDiretoria e diretoriaValida', () => {
   assert.equal(mapearDiretoria('Marketing'), '');
   assert.equal(diretoriaValida('PROJETOS'), 'Projetos');
   assert.equal(diretoriaValida('proj'), '');
+});
+
+test('só PREDADOR: planilha nova e planilha antiga ficam só com os 8 valores no formulário, sem apagar nada', () => {
+  const { gas, props, ok, adm, chamar } = preparar();
+  const [a] = ok(adm, 'admin.salvarAvaliadores', { lista: [{ nome: 'Ava', area: 'Comercial' }] }).avaliadores;
+  ok(adm, 'admin.salvarCandidatos', { lista: [{ nome_exibicao: 'Ana Um' }] });
+  let pub = ok(a.token, 'av.iniciar', {});
+  assert.deepEqual([...pub.blocos.map((b) => b.id)], ['valores']);
+  assert.deepEqual([...pub.criterios.map((c) => c.nome)], ['Proatividade', 'Resultado', 'Excelência', 'Dono', 'Antecipação', 'Dedicação', 'Organização', 'Rede']);
+  assert.equal(gas.lerObjetos_('Config_Criterios').length, 15, 'critérios comportamentais continuam na aba, só desligados');
+  // Nota em critério comportamental é recusada
+  const r = ok(a.token, 'av.salvar', { notas: [{ etapa: 'geral', candidato_id: 'c001', criterio_id: 'comport_respeito', nota: 4, cliente_ts: 1 }] });
+  assert.equal(r.salvos.length, 0);
+  // Planilha antiga com o bloco ligado: a migração desliga uma vez; religar depois continua valendo
+  const b = gas.lerObjetos_('Config_Blocos').find((x) => x.id === 'comport');
+  b.ativo = 'SIM'; gas.reescrever_('Config_Blocos', [b]);
+  props.delete('mig_so_predador'); props.set('versao', '1.3.0');
+  const d = ok(adm, 'admin.iniciar', {});
+  assert.equal(d.blocos.find((x) => x.id === 'comport').ativo, 'NÃO');
+  ok(adm, 'admin.salvarBlocos', { lista: [{ id: 'comport', nome: 'Performance comportamental', nome_curto: 'Comport.', ordem: 2, ativo: 'SIM' }] });
+  gas.aplicarMigracoes_();
+  assert.equal(gas.lerObjetos_('Config_Blocos').find((x) => x.id === 'comport').ativo, 'SIM');
+  void chamar;
 });

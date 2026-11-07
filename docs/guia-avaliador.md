@@ -13,7 +13,7 @@ avalie normalmente. Só você e os outros avaliadores dessa equipe veem esse blo
 **3. Dê as notas com um toque**, de **1 a 5** em cada critério.
 Não viu o suficiente, ou é muito próximo do candidato? Toque em **N/A** (não posso avaliar).
 Não acompanhou esse candidato? Toque em **⋯ → Não posso avaliar este candidato** (marca todos de uma vez).
-Toque no nome do critério para ler a descrição. Os critérios ficam em duas abas: PREDADOR e Comportamental.
+Toque no nome do critério para ler a descrição. Os critérios são os 8 valores PREDADOR: Proatividade, Resultado, Excelência, Dono, Antecipação, Dedicação, Organização e Rede.
 
 **4. Pronto, já está salvo.** Não tem botão de enviar: cada toque é salvo na hora.
 No topo aparece **Salvo ✓**. Se aparecer **Sem conexão**, pode continuar avaliando: as notas ficam guardadas

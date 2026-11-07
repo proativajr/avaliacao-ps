@@ -84,7 +84,8 @@ var ETAPAS_PADRAO = [['geral', 'Dinâmica 1', 1, 'SIM']];
 
 var BLOCOS_PADRAO = [
   ['valores', 'Valores PREDADOR', 'PREDADOR', 1, 'SIM'],
-  ['comport', 'Performance comportamental', 'Comport.', 2, 'SIM'],
+  // Desligado desde 07/11/2026: o formulário fica só com os valores PREDADOR. Religar em Ajustes → Configuração → Blocos.
+  ['comport', 'Performance comportamental', 'Comport.', 2, 'NÃO'],
 ];
 
 /** Textos novos de 06/11/2026 (versão 1.3.0). A migração usa os mesmos valores nas planilhas já criadas. */
